@@ -2,18 +2,14 @@ import React from "react";
 import { Button, Form, Input, Typography, message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../api/auth";
+import "../styles/pages/LoginPage.css";
 
 const { Title } = Typography;
-
-type LoginForm = {
-  email: string;
-  password: string;
-};
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const onFinish = async (values: LoginForm) => {
+  const onFinish = async (values: { email: string; password: string }) => {
     try {
       const res = await loginUser(values);
       const user = res.data.user;
@@ -34,32 +30,36 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto" }}>
-      <Title level={2}>Вход</Title>
-      <Form layout="vertical" onFinish={onFinish}>
-        <Form.Item
-          label="Email"
-          name="email"
-          rules={[{ required: true, message: "Введите email!" }]}
-        >
-          <Input />
-        </Form.Item>
-        <Form.Item
-          label="Пароль"
-          name="password"
-          rules={[{ required: true, message: "Введите пароль!" }]}
-        >
-          <Input.Password />
-        </Form.Item>
-        <Form.Item>
-          <Button type="primary" htmlType="submit" block>
-            Войти
-          </Button>
-        </Form.Item>
-        <Form.Item style={{ textAlign: "center" }}>
-          Ещё не зарегистрированы? <Link to="/register">Создать аккаунт</Link>
-        </Form.Item>
-      </Form>
+    <div className="auth-page">
+      <div className="auth-container">
+        <div className="auth-form">
+          <Title level={2} style={{ textAlign: "center" }}>Вход</Title>
+          <Form layout="vertical" onFinish={onFinish}>
+            <Form.Item
+              label="Email"
+              name="email"
+              rules={[{ required: true, message: "Введите email!" }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              label="Пароль"
+              name="password"
+              rules={[{ required: true, message: "Введите пароль!" }]}
+            >
+              <Input.Password />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" block>
+                Войти
+              </Button>
+            </Form.Item>
+            <Form.Item style={{ textAlign: "center" }}>
+              Ещё не зарегистрированы? <Link to="/register">Создать аккаунт</Link>
+            </Form.Item>
+          </Form>
+        </div>
+      </div>
     </div>
   );
 };

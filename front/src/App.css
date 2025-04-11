@@ -1,10 +1,14 @@
+/* App.css — Оформление контейнера #root */
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
 }
 
+/* Если вы используете .logo в App.tsx, можно оставить анимацию */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -35,6 +39,9 @@
 
 .card {
   padding: 2em;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .read-the-docs {
