@@ -1,0 +1,21 @@
+.dashboard {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-body {
+  display: flex;
+  margin-top: var(--header-height);
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: var(--sidebar-width);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: calc(100vh - var(--header-height));
+}

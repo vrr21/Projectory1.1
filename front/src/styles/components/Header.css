@@ -1,0 +1,50 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--header-height);
+  background-color: var(--bg-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 1000;
+  border-bottom: 1px solid #2a2a2a; /* 💡 Разделительная линия */
+}
+
+
+.logo {
+  color: var(--text-color);
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.menu {
+  flex: 1;
+  margin-left: 24px;
+  background-color: transparent;
+}
+
+.menu .ant-menu-item a {
+  color: var(--text-color);
+}
+
+.menu .ant-menu-item-selected,
+.menu .ant-menu-item:hover {
+  background-color: transparent !important;
+}
+
+.right-section {
+  display: flex;
+  align-items: center;
+}
+
+.search-input {
+  width: 200px;
+  margin-right: 16px;
+}
+
+.icon {
+  margin-right: 16px;
+}
