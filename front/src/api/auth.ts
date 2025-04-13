@@ -1,4 +1,3 @@
-// src/api/auth.ts
 import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -13,14 +12,15 @@ interface RegisterData {
 }
 
 export const registerUser = async (data: RegisterData) => {
-  const role = data.isManager ? 'Менеджер' : 'Сотрудник'; // <-- важно!
+  const role = data.isManager ? 'Менеджер' : 'Сотрудник';
+
   return axios.post(`${API_URL}/register`, {
     firstName: data.firstName,
     lastName: data.lastName,
     phone: data.phone,
     email: data.email,
     password: data.password,
-    role: role, // <-- БД ждёт 'Менеджер' или 'Сотрудник'
+    role: role,
   }, {
     headers: {
       'Content-Type': 'application/json',

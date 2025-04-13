@@ -1,0 +1,62 @@
+.dashboard {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .account-container {
+    margin-top: var(--header-height);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem;
+    gap: 2rem;
+  }
+  
+  .account-card {
+    max-width: 500px;
+    width: 100%;
+    text-align: center;
+    background-color: #2c2c2c;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    color: var(--text-color);
+  }
+  
+  .avatar-wrapper {
+    margin-bottom: 16px;
+  }
+  
+  .role-text {
+    color: #aaa;
+  }
+  
+  .info-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 12px;
+  }
+  
+  .icon {
+    color: var(--accent-color);
+    font-size: 18px;
+  }
+  
+  .info-text {
+    color: var(--text-color);
+  }
+  
+  .bottom-content {
+    max-width: 900px;
+    width: 100%;
+    background-color: #2c2c2c;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  

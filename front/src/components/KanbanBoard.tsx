@@ -1,81 +1,46 @@
-import React from "react";
-import {
-  DragDropContext,
-  Droppable,
-  Draggable,
-  DropResult,
-  DraggableProvided,
-  DroppableProvided
-} from "@hello-pangea/dnd";
-import "../styles/components/KanbanBoard.css";
-
-interface Task {
-  id: string;
-  title: string;
-  status: string;
-}
-
-const initialTasks: Task[] = [
-  { id: "1", title: "Разработка интерфейса", status: "new" },
-  { id: "2", title: "Настройка БД", status: "inProgress" },
-  { id: "3", title: "Тестирование", status: "done" },
-];
+import React from 'react';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 
 const KanbanBoard: React.FC = () => {
-  const [tasks, setTasks] = React.useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = React.useState([
+    { id: 'task-1', content: 'Task 1' },
+    { id: 'task-2', content: 'Task 2' },
+    { id: 'task-3', content: 'Task 3' },
+  ]);
 
   const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
-    const updatedTasks = [...tasks];
-    const [moved] = updatedTasks.splice(result.source.index, 1);
-    moved.status = result.destination.droppableId;
-    updatedTasks.splice(result.destination.index, 0, moved);
+    const reorderedTasks = Array.from(tasks);
+    const [movedTask] = reorderedTasks.splice(result.source.index, 1);
+    reorderedTasks.splice(result.destination.index, 0, movedTask);
 
-    setTasks(updatedTasks);
-  };
-
-  const columns = {
-    new: "Новая",
-    inProgress: "В работе",
-    done: "Завершена",
+    setTasks(reorderedTasks);
   };
 
   return (
-    <div className="kanban-container">
-      <DragDropContext onDragEnd={onDragEnd}>
-        {Object.entries(columns).map(([key, title]) => (
-          <Droppable droppableId={key} key={key}>
-            {(provided: DroppableProvided) => (
-              <div
-                className="kanban-column"
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-              >
-                <h3>{title}</h3>
-                {tasks
-                  .filter((task) => task.status === key)
-                  .map((task, index) => (
-                    <Draggable draggableId={task.id} index={index} key={task.id}>
-                      {(provided: DraggableProvided) => (
-                        <div
-                          className="kanban-task"
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          {...provided.dragHandleProps}
-                        >
-                          {task.title}
-                        </div>
-                      )}
-                    </Draggable>
-                  ))}
-                {provided.placeholder}
-              </div>
-            )}
-          </Droppable>
-        ))}
-      </DragDropContext>
-    </div>
+    <DragDropContext onDragEnd={onDragEnd}>
+      <Droppable droppableId="tasks">
+        {(provided) => (
+          <div {...provided.droppableProps} ref={provided.innerRef}>
+            {tasks.map((task, index) => (
+              <Draggable key={task.id} draggableId={task.id} index={index}>
+                {(provided) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.draggableProps}
+                    {...provided.dragHandleProps}
+                  >
+                    {task.content}
+                  </div>
+                )}
+              </Draggable>
+            ))}
+            {provided.placeholder}
+          </div>
+        )}
+      </Droppable>
+    </DragDropContext>
   );
 };
 

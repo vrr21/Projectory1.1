@@ -2,18 +2,22 @@ import React from "react";
 import { Button, Form, Input, Typography, message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../api/auth";
+import { useAuth } from '../contexts/useAuth';
+
 import "../styles/pages/LoginPage.css";
 
 const { Title } = Typography;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const onFinish = async (values: { email: string; password: string }) => {
     try {
       const res = await loginUser(values);
       const user = res.data.user;
       localStorage.setItem("token", res.data.token);
+      setUser(user);
 
       message.success("Успешный вход!");
 
