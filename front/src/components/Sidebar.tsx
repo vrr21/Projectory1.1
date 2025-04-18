@@ -6,6 +6,7 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
+import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
 
 interface SidebarProps {
@@ -13,25 +14,59 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ role }) => {
-  const menuItems = role === 'manager'
-    ? [
-        { key: 'dashboard', icon: <DashboardOutlined />, label: <a href="/dashboard">Главная</a> },
-        { key: 'projects', icon: <ProjectOutlined />, label: <a href="/projects">Управление проектами</a> },
-        { key: 'teams', icon: <TeamOutlined />, label: <a href="/teams">Команды</a> },
-        { key: 'profile', icon: <UserOutlined />, label: <a href="/profile">Профиль</a> },
-      ]
-    : [
-        { key: 'dashboard', icon: <DashboardOutlined />, label: <a href="/dashboard">Главная</a> },
-        { key: 'tasks', icon: <ProjectOutlined />, label: <a href="/tasks">Мои задачи</a> },
-        { key: 'profile', icon: <UserOutlined />, label: <a href="/profile">Профиль</a> },
-      ];
+  const location = useLocation();
+
+  const dashboardPath = role === 'manager' ? '/manager' : '/employee';
+
+  const managerMenuItems = [
+    {
+      key: '/manager',
+      icon: <DashboardOutlined />,
+      label: <Link to={dashboardPath}>Главная</Link>,
+    },
+    {
+      key: '/projects',
+      icon: <ProjectOutlined />,
+      label: <Link to="/projects">Управление проектами</Link>,
+    },
+    {
+      key: '/teams',
+      icon: <TeamOutlined />,
+      label: <Link to="/teams">Команды</Link>,
+    },
+    {
+      key: '/profile',
+      icon: <UserOutlined />,
+      label: <Link to="/profile">Профиль</Link>,
+    },
+  ];
+
+  const employeeMenuItems = [
+    {
+      key: '/employee',
+      icon: <DashboardOutlined />,
+      label: <Link to={dashboardPath}>Главная</Link>,
+    },
+    {
+      key: '/tasks',
+      icon: <ProjectOutlined />,
+      label: <Link to="/tasks">Мои задачи</Link>,
+    },
+    {
+      key: '/profile',
+      icon: <UserOutlined />,
+      label: <Link to="/profile">Профиль</Link>,
+    },
+  ];
+
+  const menuItems = role === 'manager' ? managerMenuItems : employeeMenuItems;
 
   return (
     <aside className="sidebar">
       <Menu
         theme="dark"
         mode="inline"
-        defaultSelectedKeys={['dashboard']}
+        selectedKeys={[location.pathname]}
         items={menuItems}
       />
     </aside>

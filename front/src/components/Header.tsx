@@ -1,22 +1,29 @@
 import React from 'react';
 import { Layout, Menu, Input, Badge, Avatar, Dropdown } from 'antd';
-import {
-  BellOutlined,
-  UserOutlined,
-  SearchOutlined,
-} from '@ant-design/icons';
+import { BellOutlined, UserOutlined, SearchOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/useAuth'; // ✅
 import '../styles/components/Header.css';
 
 const { Header } = Layout;
 
-const profileMenu = {
-  items: [
-    { key: '1', label: <a href="/profile">Профиль</a> },
-    { key: '2', label: <a href="/logout">Выйти</a> },
-  ],
-};
-
 const AppHeader: React.FC = () => {
+  const { setUser } = useAuth(); // ✅ доступ к AuthContext
+  const navigate = useNavigate(); // ✅ для перехода
+
+  const handleLogout = () => {
+    localStorage.removeItem('user'); // очистка localStorage
+    setUser(null); // сброс пользователя
+    navigate('/login'); // переход на страницу логина
+  };
+
+  const profileMenu = {
+    items: [
+      { key: '1', label: <a href="/profile">Профиль</a> },
+      { key: '2', label: <span onClick={handleLogout}>Выйти</span> }, // ✅
+    ],
+  };
+
   return (
     <Header className="header">
       <div className="logo">ProjectApp</div>

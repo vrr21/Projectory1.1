@@ -1,0 +1,115 @@
+/* Обёртка страницы */
+.dashboard {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout под Header + Sidebar */
+.dashboard-body {
+  display: flex;
+  margin-top: var(--header-height);
+}
+
+/* Основная часть контента */
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: var(--sidebar-width);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: calc(100vh - var(--header-height));
+  box-sizing: border-box;
+}
+
+/* Стиль для блока управления проектами */
+.project-management-page {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* Заголовок */
+.project-management-page h1 {
+  color: var(--text-color);
+  margin-bottom: 20px;
+}
+
+/* Кнопка */
+.ant-btn-primary {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.ant-btn-primary:hover {
+  background-color: #00bcd4;
+  border-color: #00bcd4;
+}
+
+/* Таблица */
+.ant-table {
+  background-color: #2c2c2c;
+  color: var(--text-color);
+}
+
+.ant-table-thead > tr > th {
+  background-color: #3a3a3a;
+  color: var(--text-color);
+}
+
+.ant-table-tbody > tr > td {
+  background-color: #2c2c2c;
+  color: var(--text-color);
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: #3d3d3d;
+}
+
+/* Модальное окно */
+.ant-modal-content {
+  background-color: #2c2c2c !important;
+  color: var(--text-color) !important;
+}
+
+.ant-modal-header {
+  background-color: #2c2c2c !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid #444;
+}
+
+.ant-modal-title {
+  color: var(--text-color) !important;
+}
+
+.ant-modal-close {
+  color: var(--text-color) !important;
+}
+
+/* Поля формы */
+.ant-form-item-label > label {
+  color: var(--text-color);
+}
+
+.ant-select-selector,
+.ant-picker,
+.ant-input {
+  background-color: #1f1f1f;
+  color: var(--text-color);
+  border: 1px solid #555;
+}
+
+/* Выпадающие списки */
+.ant-select-dropdown {
+  background-color: #2c2c2c;
+  color: var(--text-color);
+}
+
+.ant-select-item-option {
+  color: var(--text-color);
+}
+
+.ant-select-item-option-active {
+  background-color: #444;
+}

@@ -1,12 +1,54 @@
-// routes/auth.routes.js
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { sql, poolConnect, pool } = require('../config/db');
 
 const router = express.Router();
 
-// Регистрация
+// ⚙️ Настройка multer для загрузки аватаров
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '..', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir);
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
+
+// 📤 Загрузка аватара
+router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Нет токена' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id;
+
+    await poolConnect;
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .input('avatar', sql.NVarChar, req.file.filename)
+      .query('UPDATE Users SET Avatar = @avatar WHERE ID_User = @userId');
+
+    res.json({ filename: req.file.filename });
+  } catch (error) {
+    console.error('Ошибка при загрузке аватара:', error);
+    res.status(500).json({ message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ✅ Регистрация
 router.post('/register', async (req, res) => {
   const { firstName, lastName, phone, email, password, role } = req.body;
 
@@ -17,9 +59,7 @@ router.post('/register', async (req, res) => {
   try {
     await poolConnect;
 
-    // Проверка существующего пользователя
-    const checkUserRequest = pool.request();
-    const checkUser = await checkUserRequest
+    const checkUser = await pool.request()
       .input('email', sql.NVarChar, email)
       .query('SELECT * FROM Users WHERE Email = @email');
 
@@ -27,9 +67,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Пользователь уже существует' });
     }
 
-    // Получение ID роли
-    const roleRequest = pool.request();
-    const roleResult = await roleRequest
+    const roleResult = await pool.request()
       .input('roleName', sql.NVarChar, role)
       .query('SELECT ID_Role FROM Roles WHERE Role_Name = @roleName');
 
@@ -40,9 +78,7 @@ router.post('/register', async (req, res) => {
     const roleId = roleResult.recordset[0].ID_Role;
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Вставка нового пользователя
-    const insertRequest = pool.request();
-    await insertRequest
+    await pool.request()
       .input('firstName', sql.NVarChar, firstName)
       .input('lastName', sql.NVarChar, lastName)
       .input('phone', sql.NVarChar, phone)
@@ -61,7 +97,7 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Авторизация
+// 🔐 Авторизация
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -71,9 +107,8 @@ router.post('/login', async (req, res) => {
 
   try {
     await poolConnect;
-    const request = pool.request();
 
-    const userResult = await request
+    const userResult = await pool.request()
       .input('email', sql.NVarChar, email)
       .query('SELECT * FROM Users WHERE Email = @email');
 
@@ -87,8 +122,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Неверный email или пароль' });
     }
 
-    const roleRequest = pool.request();
-    const roleResult = await roleRequest
+    const roleResult = await pool.request()
       .input('roleId', sql.Int, user.ID_Role)
       .query('SELECT Role_Name FROM Roles WHERE ID_Role = @roleId');
 
@@ -106,7 +140,11 @@ router.post('/login', async (req, res) => {
         id: user.ID_User,
         email: user.Email,
         role: roleName,
-        name: `${user.First_Name} ${user.Last_Name}`,
+        name: `${user.Last_Name} ${user.First_Name}`,
+        firstName: user.First_Name,
+        lastName: user.Last_Name,
+        phone: user.Phone,
+        avatar: user.Avatar ?? null
       },
     });
   } catch (error) {

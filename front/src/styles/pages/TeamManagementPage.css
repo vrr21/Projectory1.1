@@ -1,0 +1,22 @@
+.team-management-page {
+    padding: 2rem;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: calc(100vh - var(--header-height));
+    box-sizing: border-box;
+  }
+  
+  .team-form {
+    max-width: 600px;
+    margin-bottom: 2rem;
+  }
+  
+  .member-list {
+    margin-top: 2rem;
+  }
+  
+  .member-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #444;
+  }
+  

@@ -16,8 +16,8 @@ const config = {
 const pool = new sql.ConnectionPool(config);
 const poolConnect = pool.connect();
 
-pool.on('error', err => {
-  console.error('Ошибка подключения к MSSQL:', err);
+pool.on('error', (err) => {
+  console.error('❌ Ошибка подключения к MSSQL:', err);
 });
 
 module.exports = {
