@@ -11,7 +11,7 @@ import {
   theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import Header from '../components/Header';
+import Header from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/TeamManagementPage.css';
 

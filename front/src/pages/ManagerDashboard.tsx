@@ -1,6 +1,6 @@
 // src/pages/ManagerDashboard.tsx
 import React from 'react';
-import AppHeader from '../components/Header';
+import HeaderEmployee from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import ProjectManagement from '../components/ProjectManagement';
 import '../styles/pages/ManagerDashboard.css';
@@ -8,7 +8,7 @@ import '../styles/pages/ManagerDashboard.css';
 const ManagerDashboard: React.FC = () => {
   return (
     <div className="dashboard">
-      <AppHeader />
+      <HeaderEmployee/>
       <div className="dashboard-body">
         <Sidebar role="manager" />
         <main className="main-content">

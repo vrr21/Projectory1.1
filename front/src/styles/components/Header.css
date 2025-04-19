@@ -48,3 +48,20 @@
 .icon {
   margin-right: 16px;
 }
+.dark-modal .ant-modal-content {
+  background-color: #1f1f1f;
+  color: #fff;
+}
+
+.dark-modal .ant-modal-header {
+  background-color: #1f1f1f;
+  border-bottom: 1px solid #333;
+}
+
+.dark-modal .ant-modal-title {
+  color: #fff;
+}
+
+.dark-modal .ant-modal-footer {
+  border-top: 1px solid #333;
+}

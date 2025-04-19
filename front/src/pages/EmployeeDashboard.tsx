@@ -1,5 +1,5 @@
 import React from 'react';
-import AppHeader from '../components/Header';
+import HeaderEmployee from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import { useAuth } from '../contexts/useAuth';
 import '../styles/pages/EmployeeDashboard.css';
@@ -9,7 +9,7 @@ const EmployeeDashboard: React.FC = () => {
 
   return (
     <div className="dashboard">
-      <AppHeader />
+      <HeaderEmployee/>
       <div className="dashboard-body">
         <Sidebar role="employee" />
         <main className="main-content">
