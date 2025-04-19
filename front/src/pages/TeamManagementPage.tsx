@@ -1,16 +1,28 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Button, Table, Modal, Form, Input, message, ConfigProvider, theme } from 'antd';
+import {
+  Button,
+  Table,
+  Modal,
+  Form,
+  Input,
+  Select,
+  message,
+  ConfigProvider,
+  theme,
+} from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/TeamManagementPage.css';
 
 const { darkAlgorithm } = theme;
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
   id: number;
-  email: string;
   fullName: string;
+  email: string;
+  role: string;
 }
 
 interface Team {
@@ -19,42 +31,45 @@ interface Team {
   members: TeamMember[];
 }
 
+const roleOptions: { label: string; value: string }[] = [
+  { label: 'Менеджер', value: 'Менеджер' },
+  { label: 'Сотрудник', value: 'Сотрудник' },
+  { label: 'Scrum Master', value: 'Scrum Master' },
+  { label: 'Product Owner', value: 'Product Owner' },
+  { label: 'Разработчик', value: 'Разработчик' },
+  { label: 'Тестировщик', value: 'Тестировщик' },
+  { label: 'Дизайнер UX/UI', value: 'Дизайнер UX/UI' },
+  { label: 'Аналитик', value: 'Аналитик' },
+  { label: 'DevOps-инженер', value: 'DevOps-инженер' },
+  { label: 'Технический писатель', value: 'Технический писатель' },
+  { label: 'Менеджер (Администратор)', value: 'Менеджер (Администратор)' },
+  { label: 'Тимлид', value: 'Тимлид' },
+  { label: 'Бизнес-аналитик', value: 'Бизнес-аналитик' },
+  { label: 'Архитектор ПО', value: 'Архитектор ПО' },
+  { label: 'Frontend-разработчик', value: 'Frontend-разработчик' },
+  { label: 'Backend-разработчик', value: 'Backend-разработчик' },
+  { label: 'Fullstack-разработчик', value: 'Fullstack-разработчик' },
+  { label: 'Системный администратор', value: 'Системный администратор' },
+  { label: 'Специалист по безопасности', value: 'Специалист по безопасности' },
+  { label: 'Маркетолог', value: 'Маркетолог' },
+  { label: 'HR-менеджер', value: 'HR-менеджер' },
+  { label: 'Координатор проектов', value: 'Координатор проектов' },
+];
+
 const TeamManagementPage: React.FC = () => {
-  const [members, setMembers] = useState<TeamMember[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [isMemberModalVisible, setIsMemberModalVisible] = useState(false);
-  const [form] = Form.useForm();
-  const [newMemberForm] = Form.useForm();
+  const [isTeamModalVisible, setIsTeamModalVisible] = useState(false);
+  const [isAddMembersModalVisible, setIsAddMembersModalVisible] = useState(false);
+  const [currentTeamId, setCurrentTeamId] = useState<number | null>(null);
+  const [teamForm] = Form.useForm();
+  const [memberForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
-
-  const fetchJSON = async <T,>(url: string): Promise<T> => {
-    try {
-      const res = await fetch(url);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('Ошибка при запросе:', res.status, text);
-        throw new Error(`Ошибка HTTP: ${res.status}`);
-      }
-      return await res.json();
-    } catch (error) {
-      console.error('Ошибка запроса:', error);
-      throw error;
-    }
-  };
-
-  const fetchMembers = useCallback(async () => {
-    try {
-      const data = await fetchJSON<TeamMember[]>('/api/members');
-      setMembers(data);
-    } catch {
-      messageApi.error('Ошибка при загрузке сотрудников');
-    }
-  }, [messageApi]);
 
   const fetchTeams = useCallback(async () => {
     try {
-      const data = await fetchJSON<Team[]>('/api/teams');
+      const res = await fetch(`${API_URL}/api/teams`);
+      if (!res.ok) throw new Error();
+      const data: Team[] = await res.json();
       setTeams(data);
     } catch {
       messageApi.error('Ошибка при загрузке команд');
@@ -62,63 +77,87 @@ const TeamManagementPage: React.FC = () => {
   }, [messageApi]);
 
   useEffect(() => {
-    fetchMembers();
     fetchTeams();
-  }, [fetchMembers, fetchTeams]);
+  }, [fetchTeams]);
 
   const handleCreateTeam = async (values: { name: string }) => {
+    const teamName = values.name.trim().toLowerCase();
+  
+    // Проверка на дубликат в локальном состоянии
+    const duplicate = teams.some(team => team.name.trim().toLowerCase() === teamName);
+    if (duplicate) {
+      messageApi.error('Команда с таким названием уже существует');
+      return;
+    }
+  
     try {
-      const res = await fetch('/api/teams', {
+      const res = await fetch(`${API_URL}/api/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: values.name }),
+        body: JSON.stringify({ name: values.name.trim() }),
       });
-      if (!res.ok) throw new Error('Ошибка HTTP');
-      messageApi.success('Команда создана!');
-      form.resetFields();
-      setIsModalVisible(false);
-      setIsMemberModalVisible(true);
-      fetchTeams();
+  
+      if (!res.ok) throw new Error();
+  
+      // Обновляем список только после успешного запроса
+      await fetchTeams();
+      teamForm.resetFields();
+      setIsTeamModalVisible(false);
+      messageApi.success('Команда успешно создана');
     } catch {
       messageApi.error('Ошибка при создании команды');
     }
   };
+  
+  
 
-  const handleAddMemberInline = async (values: { fullName: string; email: string }) => {
+  const handleAddMember = async (values: Omit<TeamMember, 'id'>) => {
+    if (!currentTeamId) return;
     try {
-      const res = await fetch('/api/team/add', {
+      const res = await fetch(`${API_URL}/api/team/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, teamId: currentTeamId }),
       });
-      if (!res.ok) throw new Error('Ошибка HTTP');
-      messageApi.success('Участник добавлен!');
-      newMemberForm.resetFields();
-      fetchMembers();
+
+      if (res.status === 400) {
+        const { message: errMsg } = await res.json();
+        messageApi.error(errMsg || 'Ошибка валидации данных участника');
+        return;
+      }
+
+      if (!res.ok) throw new Error();
+      memberForm.resetFields();
+      fetchTeams();
+      messageApi.success('Участник добавлен');
     } catch {
       messageApi.error('Ошибка при добавлении участника');
     }
   };
 
-  const handleDeleteTeam = async (teamId: number) => {
-    try {
-      const res = await fetch(`/api/teams/${teamId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Ошибка HTTP');
-      messageApi.success('Команда удалена');
-      fetchTeams();
-    } catch {
-      messageApi.error('Ошибка при удалении команды');
-    }
-  };
-
   const handleDeleteMember = async (teamId: number, memberId: number) => {
     try {
-      const res = await fetch(`/api/team/${teamId}/remove/${memberId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Ошибка HTTP');
+      const res = await fetch(`${API_URL}/api/team/${teamId}/remove/${memberId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error();
       messageApi.success('Участник удалён');
       fetchTeams();
     } catch {
       messageApi.error('Ошибка при удалении участника');
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/teams/${teamId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) throw new Error();
+      messageApi.success('Команда удалена');
+      fetchTeams();
+    } catch {
+      messageApi.error('Ошибка при удалении команды');
     }
   };
 
@@ -131,27 +170,39 @@ const TeamManagementPage: React.FC = () => {
     {
       title: 'Участники',
       key: 'members',
-      render: (_, record) => record.members.map((m) => m.fullName).join(', '),
+      render: (_, team) =>
+        team.members.map((m) => (
+          <div key={m.id} style={{ marginBottom: 8 }}>
+            {m.fullName} ({m.role}) — {m.email}{' '}
+            <Button
+              type="link"
+              danger
+              size="small"
+              onClick={() => handleDeleteMember(team.id, m.id)}
+            >
+              Удалить
+            </Button>
+          </div>
+        )),
     },
     {
-      title: 'Действия',
-      key: 'actions',
+      title: 'Редактировать',
+      key: 'edit',
       render: (_, record) => (
-        <div>
+        <>
+          <Button
+            type="link"
+            onClick={() => {
+              setCurrentTeamId(record.id);
+              setIsAddMembersModalVisible(true);
+            }}
+          >
+            Добавить участников
+          </Button>
           <Button type="link" danger onClick={() => handleDeleteTeam(record.id)}>
             Удалить команду
           </Button>
-          {record.members.map((m) => (
-            <Button
-              key={m.id}
-              type="link"
-              danger
-              onClick={() => handleDeleteMember(record.id, m.id)}
-            >
-              Удалить участника {m.fullName}
-            </Button>
-          ))}
-        </div>
+        </>
       ),
     },
   ];
@@ -165,20 +216,20 @@ const TeamManagementPage: React.FC = () => {
           <Sidebar role="manager" />
           <main className="main-content">
             <h1>Управление командами</h1>
-            <Button type="primary" onClick={() => setIsModalVisible(true)}>
+            <Button type="primary" onClick={() => setIsTeamModalVisible(true)}>
               Создать команду
             </Button>
-
             <Table dataSource={teams} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
 
             <Modal
               title="Создание команды"
-              open={isModalVisible}
-              onCancel={() => setIsModalVisible(false)}
-              onOk={() => form.submit()}
+              open={isTeamModalVisible}
+              onCancel={() => setIsTeamModalVisible(false)}
+              onOk={() => teamForm.submit()}
               okText="Создать"
+              cancelText="Отмена"
             >
-              <Form form={form} layout="vertical" onFinish={handleCreateTeam}>
+              <Form form={teamForm} layout="vertical" onFinish={handleCreateTeam}>
                 <Form.Item
                   name="name"
                   label="Название команды"
@@ -191,11 +242,14 @@ const TeamManagementPage: React.FC = () => {
 
             <Modal
               title="Добавление участника"
-              open={isMemberModalVisible}
-              onCancel={() => setIsMemberModalVisible(false)}
+              open={isAddMembersModalVisible}
+              onCancel={() => {
+                setIsAddMembersModalVisible(false);
+                memberForm.resetFields();
+              }}
               footer={null}
             >
-              <Form form={newMemberForm} layout="vertical" onFinish={handleAddMemberInline}>
+              <Form form={memberForm} layout="vertical" onFinish={handleAddMember}>
                 <Form.Item
                   name="fullName"
                   label="Полное имя"
@@ -206,29 +260,23 @@ const TeamManagementPage: React.FC = () => {
                 <Form.Item
                   name="email"
                   label="Email"
-                  rules={[
-                    { required: true, message: 'Введите email' },
-                    { type: 'email', message: 'Неверный формат' },
-                  ]}
+                  rules={[{ required: true, message: 'Введите email' }, { type: 'email' }]}
                 >
                   <Input />
                 </Form.Item>
+                <Form.Item
+                  name="role"
+                  label="Должность"
+                  rules={[{ required: true, message: 'Выберите должность' }]}
+                >
+                  <Select options={roleOptions} showSearch optionFilterProp="label" />
+                </Form.Item>
                 <Form.Item>
-                  <Button type="dashed" htmlType="submit">
+                  <Button type="dashed" htmlType="submit" block>
                     Добавить участника
                   </Button>
                 </Form.Item>
               </Form>
-
-              <Table<TeamMember>
-                dataSource={members}
-                columns={[
-                  { title: 'ФИО', dataIndex: 'fullName', key: 'fullName' },
-                  { title: 'Email', dataIndex: 'email', key: 'email' },
-                ]}
-                rowKey="id"
-                style={{ marginTop: 20 }}
-              />
             </Modal>
           </main>
         </div>

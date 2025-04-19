@@ -1,0 +1,24 @@
+Список сотрудников:
+--------------------------------------------------------------------------------
+Имя: Иван Иванов, Телефон: +375291234567, Email: ivan_manager@gmail.com, Пароль: password123, Роль: Менеджер
+Имя: Петр Петров, Телефон: +375331234567, Email: petr_employee@gmail.com, Пароль: employee456, Роль: Сотрудник
+Имя: Алексей Смирнов, Телефон: +375441234567, Email: alex_teamlead@gmail.com, Пароль: teamlead789, Роль: Тимлид
+Имя: Анна Ковалёва, Телефон: +375291234568, Email: anna_scrum@gmail.com, Пароль: scrummaster1, Роль: Scrum Master
+Имя: Дмитрий Лебедев, Телефон: +375331234568, Email: dmitry_po@gmail.com, Пароль: productowner2, Роль: Product Owner
+Имя: Ольга Морозова, Телефон: +375441234568, Email: olga_dev@gmail.com, Пароль: developer3, Роль: Разработчик
+Имя: Владислав Павлов, Телефон: +375251234567, Email: vlad_qa@gmail.com, Пароль: qa4testing, Роль: Тестировщик
+Имя: Марина Соколова, Телефон: +375291234569, Email: marina_ui@gmail.com, Пароль: uxuidesign, Роль: Дизайнер UX/UI
+Имя: Сергей Волков, Телефон: +375331234569, Email: sergey_analyst@gmail.com, Пароль: analyst567, Роль: Аналитик
+Имя: Екатерина Бондарева, Телефон: +375441234569, Email: ekaterina_devops@gmail.com, Пароль: devopsadmin, Роль: DevOps-инженер
+Имя: Никита Зайцев, Телефон: +375251234568, Email: nikita_writer@gmail.com, Пароль: techwriter, Роль: Технический писатель
+Имя: Юлия Козлова, Телефон: +375291234570, Email: yulia_admin@gmail.com, Пароль: admin123, Роль: Менеджер (Администратор)
+Имя: Павел Григорьев, Телефон: +375331234570, Email: pavel_ba@gmail.com, Пароль: bizanalyst, Роль: Бизнес-аналитик
+Имя: Игорь Фомин, Телефон: +375441234570, Email: igor_architect@gmail.com, Пароль: architect321, Роль: Архитектор ПО
+Имя: Алёна Лазарева, Телефон: +375251234569, Email: alena_front@gmail.com, Пароль: frontend321, Роль: Frontend-разработчик
+Имя: Роман Титов, Телефон: +375291234571, Email: roman_back@gmail.com, Пароль: backend456, Роль: Backend-разработчик
+Имя: Виктория Шевцова, Телефон: +375331234571, Email: vika_fullstack@gmail.com, Пароль: fullstackdev, Роль: Fullstack-разработчик
+Имя: Антон Михайлов, Телефон: +375441234571, Email: anton_sysadmin@gmail.com, Пароль: sysadmin, Роль: Системный администратор
+Имя: Кристина Егорова, Телефон: +375251234570, Email: kristina_security@gmail.com, Пароль: securepass, Роль: Специалист по безопасности
+Имя: Мария Романова, Телефон: +375291234572, Email: maria_marketing@gmail.com, Пароль: market2024, Роль: Маркетолог
+Имя: Елена Васильева, Телефон: +375331234572, Email: elena_hr@gmail.com, Пароль: hrrecruit, Роль: HR-менеджер
+Имя: Андрей Белов, Телефон: +375441234572, Email: andrey_coord@gmail.com, Пароль: coordproj, Роль: Координатор проектов

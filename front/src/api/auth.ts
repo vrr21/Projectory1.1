@@ -14,7 +14,7 @@ interface RegisterData {
 export const registerUser = async (data: RegisterData) => {
   const role = data.isManager ? 'Менеджер' : 'Сотрудник';
 
-  return axios.post(`${API_URL}/register`, {
+  return axios.post(`${API_URL}/api/register`, {
     firstName: data.firstName,
     lastName: data.lastName,
     phone: data.phone,
@@ -29,7 +29,7 @@ export const registerUser = async (data: RegisterData) => {
 };
 
 export const loginUser = async (data: { email: string; password: string }) => {
-  return axios.post(`${API_URL}/login`, data, {
+  return axios.post(`${API_URL}/api/login`, data, {
     headers: {
       'Content-Type': 'application/json',
     },

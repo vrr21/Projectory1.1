@@ -9,7 +9,7 @@ import ManagerDashboard from "./pages/ManagerDashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import EmployeeAccount from "./pages/EmployeeAccount";
 import ProjectManagementPage from "./pages/ProjectManagementPage";
-import TeamManagementPage from "./pages/TeamManagementPage"; // Новый импорт
+import TeamManagementPage from "./pages/TeamManagementPage";
 
 import { AuthProvider } from './contexts/AuthProvider';
 
@@ -27,7 +27,7 @@ const App: React.FC = () => {
               <Route path="/employee" element={<EmployeeDashboard />} />
               <Route path="/profile" element={<EmployeeAccount />} />
               <Route path="/projects" element={<ProjectManagementPage />} />
-              <Route path="/teams" element={<TeamManagementPage />} /> {/* Новый маршрут */}
+              <Route path="/teams" element={<TeamManagementPage />} />
             </Routes>
           </Router>
         </AntdApp>

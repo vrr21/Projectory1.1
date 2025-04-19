@@ -1,8 +1,6 @@
-const express = require('express');
-const router = express.Router();
-const { pool, poolConnect } = require('../config/db');
+const { sql, pool, poolConnect } = require('../config/db');
 
-router.get('/members', async (req, res) => {
+const getAllMembers = async (req, res) => {
   try {
     await poolConnect;
     const result = await pool.request().query(`
@@ -11,10 +9,10 @@ router.get('/members', async (req, res) => {
       WHERE ID_Role = 2
     `);
     res.json(result.recordset);
-  } catch (err) {
-    console.error('Ошибка получения сотрудников:', err);
+  } catch (error) {
+    console.error('Ошибка получения сотрудников:', error);
     res.status(500).json({ error: 'Ошибка при получении сотрудников' });
   }
-});
+};
 
-module.exports = router;
+module.exports = { getAllMembers };

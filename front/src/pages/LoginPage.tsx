@@ -1,8 +1,9 @@
 import React from "react";
-import { Button, Form, Input, Typography, message } from "antd";
+import { Button, Form, Input, Typography } from "antd";
 import { useNavigate, Link } from "react-router-dom";
 import { loginUser } from "../api/auth";
 import { useAuth } from '../contexts/useAuth';
+import { App } from 'antd';
 
 import "../styles/pages/LoginPage.css";
 
@@ -11,6 +12,7 @@ const { Title } = Typography;
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { setUser } = useAuth();
+  const { message } = App.useApp();
 
   const onFinish = async (values: { email: string; password: string }) => {
     try {
