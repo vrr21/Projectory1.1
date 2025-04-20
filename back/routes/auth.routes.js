@@ -1,52 +1,9 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const { sql, poolConnect, pool } = require('../config/db');
 
 const router = express.Router();
-
-// ⚙️ Настройка multer для загрузки аватаров
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '..', 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, uniqueName);
-  },
-});
-
-const upload = multer({ storage });
-
-// 📤 Загрузка аватара
-router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ message: 'Нет токена' });
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.id;
-
-    await poolConnect;
-    await pool.request()
-      .input('userId', sql.Int, userId)
-      .input('avatar', sql.NVarChar, req.file.filename)
-      .query('UPDATE Users SET Avatar = @avatar WHERE ID_User = @userId');
-
-    res.json({ filename: req.file.filename });
-  } catch (error) {
-    console.error('Ошибка при загрузке аватара:', error);
-    res.status(500).json({ message: 'Внутренняя ошибка сервера' });
-  }
-});
 
 // ✅ Регистрация
 router.post('/register', async (req, res) => {

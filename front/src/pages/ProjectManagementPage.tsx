@@ -1,4 +1,3 @@
-// src/pages/ProjectManagementPage.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   ConfigProvider,
@@ -8,85 +7,58 @@ import {
   Form,
   Input,
   Select,
-  DatePicker,
   message,
   theme,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
-import moment, { Moment } from 'moment';
+const { Option } = Select; // Исправленный импорт
 import Header from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/ProjectManagementPage.css';
 
-const { Option } = Select;
 const { darkAlgorithm } = theme;
 
-interface Project {
-  id: number;
-  name: string;
-  type: string;
-  startDate: string;
-  endDate: string;
-  employeeId?: number;
-}
-
-interface ProjectFormValues {
-  name: string;
-  type: string;
-  startDate: Moment;
-  endDate: Moment;
-  employeeId?: number;
-}
-
-interface Employee {
-  id: number;
-  fullName: string;
+interface Task {
+  ID_Task: number;
+  Task_Name: string;
+  Description: string;
+  Time_Norm: number;
+  Status_Name: string;
 }
 
 const ProjectManagementPage: React.FC = () => {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form] = Form.useForm();
 
-  const fetchProjects = useCallback(async () => {
+  // Получаем задачи с сервера
+  const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch('/api/projects');
-      if (!response.ok) throw new Error();
-      const data: Project[] = await response.json();
-      setProjects(data);
-    } catch {
-      message.error('Ошибка при загрузке проектов');
-    }
-  }, []);
-
-  const fetchEmployees = useCallback(async () => {
-    try {
-      const response = await fetch('/api/employees');
-      if (!response.ok) throw new Error();
-      const data: Employee[] = await response.json();
-      setEmployees(data);
-    } catch {
-      message.error('Ошибка при загрузке сотрудников');
+      const response = await fetch('http://localhost:3002/api/tasks');
+      if (!response.ok) throw new Error('Ошибка при загрузке задач');
+      const data: Task[] = await response.json();
+      setTasks(data);
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchProjects();
-    fetchEmployees();
-  }, [fetchProjects, fetchEmployees]);
+    fetchTasks();
+  }, [fetchTasks]);
 
-  const showModal = (project?: Project) => {
-    setEditingProject(project || null);
+  // Показать модальное окно
+  const showModal = (task?: Task) => {
+    setEditingTask(task || null);
     setIsModalVisible(true);
-    if (project) {
+    if (task) {
       form.setFieldsValue({
-        name: project.name,
-        type: project.type,
-        startDate: moment(project.startDate),
-        endDate: moment(project.endDate),
-        employeeId: project.employeeId,
+        Task_Name: task.Task_Name,
+        Description: task.Description,
+        Time_Norm: task.Time_Norm,
+        Status_Name: task.Status_Name,
       });
     } else {
       form.resetFields();
@@ -95,65 +67,69 @@ const ProjectManagementPage: React.FC = () => {
 
   const handleCancel = () => {
     setIsModalVisible(false);
-    setEditingProject(null);
+    setEditingTask(null);
     form.resetFields();
   };
 
-  const handleFinish = async (values: ProjectFormValues) => {
-    const projectData = {
-      ...values,
-      startDate: values.startDate.format('YYYY-MM-DD'),
-      endDate: values.endDate.format('YYYY-MM-DD'),
+  // Обработчик отправки формы
+  const handleFinish = async (values: { Task_Name: string; Description: string; Time_Norm: number; Status_Name: string }) => {
+    const taskData = {
+      Task_Name: values.Task_Name,
+      Description: values.Description,
+      Time_Norm: values.Time_Norm,
+      Status_Name: values.Status_Name,
     };
 
     try {
-      const url = editingProject ? `/api/projects/${editingProject.id}` : '/api/projects';
-      const method = editingProject ? 'PUT' : 'POST';
+      const url = editingTask
+        ? `http://localhost:3002/api/tasks/${editingTask.ID_Task}`
+        : 'http://localhost:3002/api/tasks';
+      const method = editingTask ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData),
+        body: JSON.stringify(taskData),
       });
 
-      if (!response.ok) throw new Error();
-      message.success(editingProject ? 'Проект обновлён' : 'Проект создан');
-      fetchProjects();
+      if (!response.ok) throw new Error('Ошибка при сохранении задачи');
+      message.success(editingTask ? 'Задача обновлена' : 'Задача создана');
+      fetchTasks();
       handleCancel();
-    } catch {
-      message.error('Ошибка при сохранении проекта');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message);
+      }
     }
   };
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      if (!response.ok) throw new Error();
-      message.success('Проект удалён');
-      fetchProjects();
-    } catch {
-      message.error('Ошибка при удалении проекта');
+      const response = await fetch(`http://localhost:3002/api/tasks/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Ошибка при удалении задачи');
+      message.success('Задача удалена');
+      fetchTasks();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        message.error(error.message);
+      }
     }
   };
 
-  const columns: ColumnsType<Project> = [
-    { title: 'Название проекта', dataIndex: 'name', key: 'name' },
-    { title: 'Тип проекта', dataIndex: 'type', key: 'type' },
-    { title: 'Дата начала', dataIndex: 'startDate', key: 'startDate' },
-    { title: 'Дата окончания', dataIndex: 'endDate', key: 'endDate' },
-    {
-      title: 'Сотрудник',
-      dataIndex: 'employeeId',
-      key: 'employeeId',
-      render: (id) => employees.find((e) => e.id === id)?.fullName || 'Не назначен',
-    },
+  const columns = [
+    { title: 'Название задачи', dataIndex: 'Task_Name', key: 'Task_Name' },
+    { title: 'Описание', dataIndex: 'Description', key: 'Description' },
+    { title: 'Норма времени', dataIndex: 'Time_Norm', key: 'Time_Norm' },
+    { title: 'Статус', dataIndex: 'Status_Name', key: 'Status_Name' },
     {
       title: 'Действия',
       key: 'actions',
-      render: (_, record) => (
+      render: (_: unknown, record: Task) => (
         <>
           <Button type="link" onClick={() => showModal(record)}>Редактировать</Button>
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>Удалить</Button>
+          <Button type="link" danger onClick={() => handleDelete(record.ID_Task)}>Удалить</Button>
         </>
       ),
     },
@@ -167,60 +143,46 @@ const ProjectManagementPage: React.FC = () => {
           <Sidebar role="manager" />
           <main className="main-content">
             <div className="project-management-page">
-              <h1>Управление проектами</h1>
+              <h1>Управление задачами</h1>
               <Button type="primary" onClick={() => showModal()} style={{ marginBottom: 16 }}>
-                Добавить проект
+                Добавить задачу
               </Button>
-              <Table dataSource={projects} columns={columns} rowKey="id" />
-
+              <Table dataSource={tasks} columns={columns} rowKey="ID_Task" />
               <Modal
-                title={editingProject ? 'Редактировать проект' : 'Создать проект'}
+                title={editingTask ? 'Редактировать задачу' : 'Создать задачу'}
                 open={isModalVisible}
                 onCancel={handleCancel}
                 onOk={() => form.submit()}
               >
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
                   <Form.Item
-                    name="name"
-                    label="Название проекта"
-                    rules={[{ required: true, message: 'Пожалуйста, введите название проекта' }]}
-                  >
+                    name="Task_Name"
+                    label="Название задачи"
+                    rules={[{ required: true, message: 'Введите название задачи' }]}>
                     <Input />
                   </Form.Item>
                   <Form.Item
-                    name="type"
-                    label="Тип проекта"
-                    rules={[{ required: true, message: 'Пожалуйста, выберите тип проекта' }]}
-                  >
-                    <Select placeholder="Выберите тип проекта">
-                      <Option value="Разработка ПО">Разработка ПО</Option>
-                      <Option value="Дизайн">Дизайн</Option>
+                    name="Description"
+                    label="Описание"
+                    rules={[{ required: true, message: 'Введите описание задачи' }]}>
+                    <Input />
+                  </Form.Item>
+                  <Form.Item
+                    name="Time_Norm"
+                    label="Норма времени"
+                    rules={[{ required: true, message: 'Введите норму времени' }]}>
+                    <Input type="number" />
+                  </Form.Item>
+                  <Form.Item
+                    name="Status_Name"
+                    label="Статус задачи"
+                    rules={[{ required: true, message: 'Выберите статус задачи' }]}>
+                    <Select placeholder="Выберите статус задачи">
+                      <Option value="Новая">Новая</Option>
+                      <Option value="В работе">В работе</Option>
+                      <Option value="Завершена">Завершена</Option>
+                      <Option value="Выполнена">Выполнена</Option>
                     </Select>
-                  </Form.Item>
-                  <Form.Item
-                    name="employeeId"
-                    label="Назначить сотрудника"
-                    rules={[{ required: true, message: 'Пожалуйста, выберите сотрудника' }]}
-                  >
-                    <Select placeholder="Выберите сотрудника">
-                      {employees.map(emp => (
-                        <Option key={emp.id} value={emp.id}>{emp.fullName}</Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                  <Form.Item
-                    name="startDate"
-                    label="Дата начала"
-                    rules={[{ required: true, message: 'Пожалуйста, выберите дату начала' }]}
-                  >
-                    <DatePicker style={{ width: '100%' }} />
-                  </Form.Item>
-                  <Form.Item
-                    name="endDate"
-                    label="Дата окончания"
-                    rules={[{ required: true, message: 'Пожалуйста, выберите дату окончания' }]}
-                  >
-                    <DatePicker style={{ width: '100%' }} />
                   </Form.Item>
                 </Form>
               </Modal>

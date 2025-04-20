@@ -1,6 +1,6 @@
 const express = require('express');
-const router = express.Router();
 const { pool, poolConnect, sql } = require('../config/db');
+const router = express.Router();
 
 // Получить все команды с участниками
 router.get('/teams', async (req, res) => {
@@ -36,7 +36,6 @@ router.get('/teams', async (req, res) => {
   }
 });
 
-// Создать команду
 // Создать команду с проверкой на дублирование имени
 router.post('/teams', async (req, res) => {
   const { name } = req.body;
@@ -68,7 +67,6 @@ router.post('/teams', async (req, res) => {
     res.status(500).json({ error: 'Ошибка при создании команды' });
   }
 });
-
 
 // Добавить участника в команду
 router.post('/team/add', async (req, res) => {

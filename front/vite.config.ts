@@ -1,3 +1,4 @@
+// vite.config.ts
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -14,7 +15,7 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:3002', // Express backend
+        target: 'http://localhost:3002', // Ваш сервер Express
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },

@@ -1,17 +1,18 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { ConfigProvider, App as AntdApp, theme } from "antd";
+// App.tsx
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ConfigProvider, App as AntdApp, theme } from 'antd'; // Измените импорт на AntdApp
 import './styles/theme.css';
 
-import RegisterPage from "./pages/RegisterPage";
-import LoginPage from "./pages/LoginPage";
-import ManagerDashboard from "./pages/ManagerDashboard";
-import EmployeeDashboard from "./pages/EmployeeDashboard";
-import EmployeeAccount from "./pages/EmployeeAccount";
-import ProjectManagementPage from "./pages/ProjectManagementPage";
-import TeamManagementPage from "./pages/TeamManagementPage";
-import MyCommandsEmployee from "./pages/MyCommandsEmployee";
-import MyCommandsManager from "./pages/MyCommandsManager"; // ✅ новый импорт
+import RegisterPage from './pages/RegisterPage';
+import LoginPage from './pages/LoginPage';
+import ManagerDashboard from './pages/ManagerDashboard';
+import EmployeeDashboard from './pages/EmployeeDashboard';
+import EmployeeAccount from './pages/EmployeeAccount';
+import ProjectManagementPage from './pages/ProjectManagementPage';
+import TeamManagementPage from './pages/TeamManagementPage';
+import MyCommandsEmployee from './pages/MyCommandsEmployee';
+import MyCommandsManager from './pages/MyCommandsManager';
 
 import { AuthProvider } from './contexts/AuthProvider';
 
@@ -31,7 +32,7 @@ const App: React.FC = () => {
               <Route path="/projects" element={<ProjectManagementPage />} />
               <Route path="/team-management" element={<TeamManagementPage />} />
               <Route path="/teams" element={<MyCommandsEmployee />} />
-              <Route path="/myteams" element={<MyCommandsManager />} /> {/* ✅ маршрут для менеджера */}
+              <Route path="/myteams" element={<MyCommandsManager />} />
             </Routes>
           </Router>
         </AntdApp>
