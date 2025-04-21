@@ -1,16 +1,15 @@
-// src/pages/ManagerDashboard.tsx
 import React from 'react';
-import HeaderEmployee from '../components/HeaderEmployee';
-import Sidebar from '../components/Sidebar';
+import HeaderManager from '../components/HeaderManager'; // Используем HeaderManager для менеджера
+import SidebarManager from '../components/SidebarManager'; // Используем SidebarManager
 import ProjectManagement from '../components/ProjectManagement';
 import '../styles/pages/ManagerDashboard.css';
 
 const ManagerDashboard: React.FC = () => {
   return (
     <div className="dashboard">
-      <HeaderEmployee/>
+      <HeaderManager />
       <div className="dashboard-body">
-        <Sidebar role="manager" />
+        <SidebarManager />
         <main className="main-content">
           <ProjectManagement />
         </main>

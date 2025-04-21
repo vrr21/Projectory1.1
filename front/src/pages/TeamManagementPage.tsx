@@ -11,8 +11,8 @@ import {
   theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import Header from '../components/HeaderEmployee';
-import Sidebar from '../components/Sidebar';
+import Header from '../components/HeaderManager'; // Используем HeaderManager для менеджера
+import SidebarManager from '../components/SidebarManager'; // Используем SidebarManager
 import '../styles/pages/TeamManagementPage.css';
 
 const { darkAlgorithm } = theme;
@@ -82,24 +82,22 @@ const TeamManagementPage: React.FC = () => {
 
   const handleCreateTeam = async (values: { name: string }) => {
     const teamName = values.name.trim().toLowerCase();
-  
-    // Проверка на дубликат в локальном состоянии
+
     const duplicate = teams.some(team => team.name.trim().toLowerCase() === teamName);
     if (duplicate) {
       messageApi.error('Команда с таким названием уже существует');
       return;
     }
-  
+
     try {
       const res = await fetch(`${API_URL}/api/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: values.name.trim() }),
       });
-  
+
       if (!res.ok) throw new Error();
-  
-      // Обновляем список только после успешного запроса
+
       await fetchTeams();
       teamForm.resetFields();
       setIsTeamModalVisible(false);
@@ -108,8 +106,6 @@ const TeamManagementPage: React.FC = () => {
       messageApi.error('Ошибка при создании команды');
     }
   };
-  
-  
 
   const handleAddMember = async (values: Omit<TeamMember, 'id'>) => {
     if (!currentTeamId) return;
@@ -213,7 +209,7 @@ const TeamManagementPage: React.FC = () => {
       <div className="dashboard">
         <Header />
         <div className="dashboard-body">
-          <Sidebar role="manager" />
+          <SidebarManager />
           <main className="main-content">
             <h1>Управление командами</h1>
             <Button type="primary" onClick={() => setIsTeamModalVisible(true)}>

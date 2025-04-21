@@ -1,10 +1,9 @@
-const { sql, pool, poolConnect } = require('../config/db');
+const { pool, poolConnect } = require('../config/db');
 
-// Получить все команды с участниками
+// Получение всех команд
 const getAllTeams = async (req, res) => {
   try {
     await poolConnect;
-
     const result = await pool.request().query(`
       SELECT t.ID_Team AS id, t.Team_Name AS name,
              u.ID_User AS userId, u.First_Name + ' ' + u.Last_Name AS fullName, u.Email,
@@ -15,16 +14,14 @@ const getAllTeams = async (req, res) => {
     `);
 
     const teamMap = {};
-
     for (const row of result.recordset) {
       if (!teamMap[row.id]) {
         teamMap[row.id] = {
-          id: row.id,
-          name: row.name,
+          ID_Team: row.id,
+          Team_Name: row.name,
           members: [],
         };
       }
-
       if (row.userId) {
         teamMap[row.id].members.push({
           id: row.userId,
@@ -42,35 +39,31 @@ const getAllTeams = async (req, res) => {
   }
 };
 
-// Создание новой команды (с проверкой на дубликат названия)
+// ✅ Создание команды
 const createTeam = async (req, res) => {
-  const { name } = req.body;
-
   try {
     await poolConnect;
+    const { Team_Name } = req.body;
 
-    const duplicate = await pool.request()
-      .input('name', sql.NVarChar, name.trim())
-      .query('SELECT COUNT(*) as count FROM Teams WHERE Team_Name = @name');
-
-    if (duplicate.recordset[0].count > 0) {
-      return res.status(400).json({ message: 'Команда с таким названием уже существует' });
+    if (!Team_Name) {
+      return res.status(400).json({ error: 'Название команды обязательно' });
     }
 
-    const insert = await pool.request()
-      .input('name', sql.NVarChar, name.trim())
-      .query('INSERT INTO Teams (Team_Name) OUTPUT INSERTED.ID_Team AS id VALUES (@name)');
+    const result = await pool
+      .request()
+      .input('Team_Name', Team_Name)
+      .query('INSERT INTO Teams (Team_Name) OUTPUT INSERTED.ID_Team VALUES (@Team_Name)');
 
-    const newId = insert.recordset[0].id;
+    const newTeam = {
+      ID_Team: result.recordset[0].ID_Team,
+      Team_Name,
+    };
 
-    res.status(201).json({ id: newId, name, members: [] });
+    res.status(201).json(newTeam);
   } catch (error) {
-    console.error('Ошибка создания команды:', error);
-    res.status(500).json({ error: 'Ошибка при создании команды' });
+    console.error('Ошибка при создании команды:', error);
+    res.status(500).json({ error: 'Не удалось создать команду' });
   }
 };
 
-module.exports = {
-  getAllTeams,
-  createTeam,
-};
+module.exports = { getAllTeams, createTeam };

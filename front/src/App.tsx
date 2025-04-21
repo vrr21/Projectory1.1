@@ -1,7 +1,6 @@
-// App.tsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, App as AntdApp, theme } from 'antd'; // Измените импорт на AntdApp
+import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import './styles/theme.css';
 
 import RegisterPage from './pages/RegisterPage';
@@ -10,6 +9,7 @@ import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import EmployeeAccount from './pages/EmployeeAccount';
 import ProjectManagementPage from './pages/ProjectManagementPage';
+import TasksPageManagement from './pages/TasksPageManagement';
 import TeamManagementPage from './pages/TeamManagementPage';
 import MyCommandsEmployee from './pages/MyCommandsEmployee';
 import MyCommandsManager from './pages/MyCommandsManager';
@@ -30,6 +30,7 @@ const App: React.FC = () => {
               <Route path="/employee" element={<EmployeeDashboard />} />
               <Route path="/profile" element={<EmployeeAccount />} />
               <Route path="/projects" element={<ProjectManagementPage />} />
+              <Route path="/tasks" element={<TasksPageManagement />} />
               <Route path="/team-management" element={<TeamManagementPage />} />
               <Route path="/teams" element={<MyCommandsEmployee />} />
               <Route path="/myteams" element={<MyCommandsManager />} />
