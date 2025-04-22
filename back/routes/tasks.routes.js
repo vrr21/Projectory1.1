@@ -2,13 +2,15 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/task.controller');
 
-// Базовые CRUD
+// Получить все задачи (или отфильтрованные)
 router.get('/', taskController.getAllTasks);
+
+// CRUD задачи
 router.post('/', taskController.createTask);
 router.put('/:id', taskController.updateTask);
 router.delete('/:id', taskController.deleteTask);
 
-// Задачи конкретного сотрудника
+// Получить задачи по сотруднику
 router.get('/employee/:id', taskController.getTasksByEmployee);
 
 module.exports = router;

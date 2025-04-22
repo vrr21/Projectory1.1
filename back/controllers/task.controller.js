@@ -1,27 +1,54 @@
 const { pool, sql } = require('../config/db');
 
-// Получить все задачи
+// Получить все задачи или по фильтрам: ?employee=2&team=1
 exports.getAllTasks = async (req, res) => {
+  const { employee, team } = req.query;
+
   try {
-    const result = await pool.request().query(`
+    const request = pool.request();
+
+    if (employee) {
+      request.input('EmployeeID', sql.Int, parseInt(employee, 10));
+    }
+
+    if (team) {
+      request.input('TeamID', sql.Int, parseInt(team, 10));
+    }
+
+    let baseQuery = `
       SELECT 
         t.ID_Task,
         t.Task_Name,
         t.Description,
         t.Time_Norm,
-        t.ID_Order,
-        s.Status_Name
-      FROM Tasks t
-      LEFT JOIN Statuses s ON t.ID_Status = s.ID_Status
-    `);
+        s.Status_Name,
+        o.Order_Name,
+        tm.Team_Name
+      FROM Assignment a
+      INNER JOIN Tasks t ON a.ID_Task = t.ID_Task
+      INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
+      INNER JOIN Orders o ON t.ID_Order = o.ID_Order
+      INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
+    `;
+
+    const where = [];
+
+    if (employee) where.push('a.ID_Employee = @EmployeeID');
+    if (team) where.push('tm.ID_Team = @TeamID');
+
+    if (where.length > 0) {
+      baseQuery += ' WHERE ' + where.join(' AND ');
+    }
+
+    const result = await request.query(baseQuery);
     res.status(200).json(result.recordset);
   } catch (error) {
-    console.error('Ошибка при получении всех задач:', error);
+    console.error('Ошибка при получении задач:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
 
-// Создать задачу
+// Создание задачи
 exports.createTask = async (req, res) => {
   const { Task_Name, Description, Time_Norm, Status_Name, ID_Order, Employee_Name } = req.body;
 
@@ -77,10 +104,10 @@ exports.createTask = async (req, res) => {
   }
 };
 
-// Обновить задачу
+// Обновление задачи
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
-  const { Task_Name, Description, Time_Norm, Status_Name } = req.body;
+  const { Status_Name } = req.body;
 
   try {
     const statusResult = await pool.request()
@@ -94,28 +121,22 @@ exports.updateTask = async (req, res) => {
     const ID_Status = statusResult.recordset[0].ID_Status;
 
     await pool.request()
-      .input('Task_Name', sql.NVarChar, Task_Name)
-      .input('Description', sql.NVarChar, Description)
-      .input('Time_Norm', sql.Int, Time_Norm)
       .input('ID_Status', sql.Int, ID_Status)
       .input('ID_Task', sql.Int, id)
       .query(`
         UPDATE Tasks
-        SET Task_Name = @Task_Name,
-            Description = @Description,
-            Time_Norm = @Time_Norm,
-            ID_Status = @ID_Status
+        SET ID_Status = @ID_Status
         WHERE ID_Task = @ID_Task
       `);
 
-    res.status(200).json({ message: 'Задача успешно обновлена' });
+    res.status(200).json({ message: 'Статус задачи успешно обновлен' });
   } catch (error) {
     console.error('Ошибка при обновлении задачи:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
 
-// Удалить задачу
+// Удаление задачи
 exports.deleteTask = async (req, res) => {
   const { id } = req.params;
 
@@ -131,10 +152,10 @@ exports.deleteTask = async (req, res) => {
   }
 };
 
-// Получить задачи по ID сотрудника
+// Получение задач по ID сотрудника
 exports.getTasksByEmployee = async (req, res) => {
   const { id } = req.params;
-  console.log("📥 Поступил запрос задач сотрудника ID:", req.params.id);
+
   try {
     const result = await pool.request()
       .input('ID_User', sql.Int, id)

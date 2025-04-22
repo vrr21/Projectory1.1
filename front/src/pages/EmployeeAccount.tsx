@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card, Typography, Avatar, Divider, Upload, message, Table, ConfigProvider, theme
+  Card, Typography, Avatar, Divider, Upload, message, Table, ConfigProvider, theme, Tabs
 } from 'antd';
 import {
   UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined
@@ -68,9 +68,7 @@ const EmployeeAccount: React.FC = () => {
       }
     };
 
-    if (user) {
-      fetchTeams();
-    }
+    if (user) fetchTeams();
   }, [user]);
 
   useEffect(() => {
@@ -86,9 +84,7 @@ const EmployeeAccount: React.FC = () => {
       }
     };
 
-    if (user) {
-      fetchTasks();
-    }
+    if (user) fetchTasks();
   }, [user]);
 
   const handleAvatarUpload = async (info: UploadChangeParam<UploadFile<RcFile>>) => {
@@ -126,15 +122,10 @@ const EmployeeAccount: React.FC = () => {
 
   const fullName = user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
   const normalizedRole = String(user.role).toLowerCase();
-
   const isManager = normalizedRole === 'менеджер' || normalizedRole === 'менеджер (администратор)';
 
   const teamColumns = [
-    {
-      title: 'Команда',
-      dataIndex: 'Team_Name',
-      key: 'Team_Name',
-    },
+    { title: 'Команда', dataIndex: 'Team_Name', key: 'Team_Name' },
     {
       title: 'Участники',
       key: 'members',
@@ -194,24 +185,64 @@ const EmployeeAccount: React.FC = () => {
               </Card>
 
               <div className="table-block">
-                <Title level={4} className="text-color">Мои команды</Title>
-                <Table
-                  dataSource={teams}
-                  columns={teamColumns}
-                  rowKey="ID_Team"
-                  className="dark-table"
-                  pagination={false}
-                />
-              </div>
+                <Tabs
+                  defaultActiveKey="progress"
+                  type="card"
+                  items={[
+                    {
+                      key: 'progress',
+                      label: 'Мой прогресс',
+                      children: (
+                        <>
+                          <Title level={4} className="text-color">Мои команды</Title>
+                          <Table dataSource={teams} columns={teamColumns} rowKey="ID_Team" className="dark-table" pagination={false} />
 
-              <div className="table-block">
-                <Title level={4} className="text-color">Мои задачи</Title>
-                <Table
-                  dataSource={tasks}
-                  columns={taskColumns}
-                  rowKey="ID_Task"
-                  className="dark-table"
-                  pagination={{ pageSize: 5 }}
+                          <Divider />
+
+                          <Title level={4} className="text-color">Мои задачи</Title>
+                          <Table dataSource={tasks} columns={taskColumns} rowKey="ID_Task" className="dark-table" pagination={{ pageSize: 5 }} />
+
+                          <Divider />
+
+                          <Title level={4} className="text-color">Kanban-доска задач</Title>
+                          <Tabs
+                            defaultActiveKey="Новая"
+                            type="card"
+                            items={['Новая', 'В работе', 'Завершена', 'Выполнена'].map(status => ({
+                              key: status,
+                              label: status,
+                              children: (
+                                <div className="kanban-column">
+                                  {tasks
+                                    .filter(task => task.Status_Name === status)
+                                    .map(task => (
+                                      <Card key={task.ID_Task} className="kanban-task-card" bordered={false}>
+                                        <Title level={5} className="text-color">{task.Task_Name}</Title>
+                                        <p><b>Проект:</b> {task.Order_Name}</p>
+                                        <p><b>Команда:</b> {task.Team_Name}</p>
+                                        <p><b>Описание:</b> {task.Description}</p>
+                                        <p><b>Норма времени:</b> {task.Time_Norm} ч.</p>
+                                      </Card>
+                                    ))}
+                                </div>
+                              )
+                            }))}
+                          />
+                        </>
+                      )
+                    },
+                    {
+                      key: 'reports',
+                      label: 'Мои отчёты',
+                      children: (
+                        <div>
+                          <Title level={4} className="text-color">Отчёты по выполненным задачам</Title>
+                          {/* Здесь подключим отображение графиков и таблиц из представлений + кнопки экспорта */}
+                          <p>Графики и таблицы загружаются...</p>
+                        </div>
+                      )
+                    }
+                  ]}
                 />
               </div>
             </div>
