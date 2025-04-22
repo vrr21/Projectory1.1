@@ -11,27 +11,33 @@ interface RegisterData {
   isManager: boolean;
 }
 
+// 📌 Регистрация пользователя
 export const registerUser = async (data: RegisterData) => {
-  const role = data.isManager ? 'Менеджер' : 'Сотрудник';
+  const role = data.isManager ? "Менеджер" : "Сотрудник";
 
-  return axios.post(`${API_URL}/api/register`, {
-    firstName: data.firstName,
-    lastName: data.lastName,
-    phone: data.phone,
-    email: data.email,
-    password: data.password,
-    role: role,
-  }, {
-    headers: {
-      'Content-Type': 'application/json',
+  return axios.post(
+    `${API_URL}/api/auth/register`,
+    {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      phone: data.phone,
+      email: data.email,
+      password: data.password,
+      role: role,
     },
-  });
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
 };
 
+// 🔐 Авторизация пользователя
 export const loginUser = async (data: { email: string; password: string }) => {
-  return axios.post(`${API_URL}/api/login`, data, {
+  return axios.post(`${API_URL}/api/auth/login`, data, {
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 };

@@ -11,8 +11,8 @@ import {
   theme,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import Header from '../components/HeaderManager'; // Используем HeaderManager для менеджера
-import SidebarManager from '../components/SidebarManager'; // Используем SidebarManager
+import Header from '../components/HeaderManager';
+import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
 
 const { darkAlgorithm } = theme;
@@ -26,35 +26,19 @@ interface TeamMember {
 }
 
 interface Team {
-  id: number;
-  name: string;
+  ID_Team: number;
+  Team_Name: string;
   members: TeamMember[];
 }
 
-const roleOptions: { label: string; value: string }[] = [
-  { label: 'Менеджер', value: 'Менеджер' },
-  { label: 'Сотрудник', value: 'Сотрудник' },
-  { label: 'Scrum Master', value: 'Scrum Master' },
-  { label: 'Product Owner', value: 'Product Owner' },
-  { label: 'Разработчик', value: 'Разработчик' },
-  { label: 'Тестировщик', value: 'Тестировщик' },
-  { label: 'Дизайнер UX/UI', value: 'Дизайнер UX/UI' },
-  { label: 'Аналитик', value: 'Аналитик' },
-  { label: 'DevOps-инженер', value: 'DevOps-инженер' },
-  { label: 'Технический писатель', value: 'Технический писатель' },
-  { label: 'Менеджер (Администратор)', value: 'Менеджер (Администратор)' },
-  { label: 'Тимлид', value: 'Тимлид' },
-  { label: 'Бизнес-аналитик', value: 'Бизнес-аналитик' },
-  { label: 'Архитектор ПО', value: 'Архитектор ПО' },
-  { label: 'Frontend-разработчик', value: 'Frontend-разработчик' },
-  { label: 'Backend-разработчик', value: 'Backend-разработчик' },
-  { label: 'Fullstack-разработчик', value: 'Fullstack-разработчик' },
-  { label: 'Системный администратор', value: 'Системный администратор' },
-  { label: 'Специалист по безопасности', value: 'Специалист по безопасности' },
-  { label: 'Маркетолог', value: 'Маркетолог' },
-  { label: 'HR-менеджер', value: 'HR-менеджер' },
-  { label: 'Координатор проектов', value: 'Координатор проектов' },
-];
+const roleOptions = [
+  'Менеджер', 'Сотрудник', 'Scrum Master', 'Product Owner', 'Разработчик',
+  'Тестировщик', 'Дизайнер UX/UI', 'Аналитик', 'DevOps-инженер', 'Технический писатель',
+  'Менеджер (Администратор)', 'Тимлид', 'Бизнес-аналитик', 'Архитектор ПО',
+  'Frontend-разработчик', 'Backend-разработчик', 'Fullstack-разработчик',
+  'Системный администратор', 'Специалист по безопасности', 'Маркетолог',
+  'HR-менеджер', 'Координатор проектов'
+].map(role => ({ label: role, value: role }));
 
 const TeamManagementPage: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -81,9 +65,16 @@ const TeamManagementPage: React.FC = () => {
   }, [fetchTeams]);
 
   const handleCreateTeam = async (values: { name: string }) => {
-    const teamName = values.name.trim().toLowerCase();
+    const teamName = values?.name?.trim();
 
-    const duplicate = teams.some(team => team.name.trim().toLowerCase() === teamName);
+    if (!teamName) {
+      messageApi.error('Название команды не может быть пустым');
+      return;
+    }
+
+    const duplicate = teams.some(
+      team => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase()
+    );
     if (duplicate) {
       messageApi.error('Команда с таким названием уже существует');
       return;
@@ -93,11 +84,10 @@ const TeamManagementPage: React.FC = () => {
       const res = await fetch(`${API_URL}/api/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: values.name.trim() }),
+        body: JSON.stringify({ Team_Name: teamName }), // ✅ ключ исправлен
       });
 
       if (!res.ok) throw new Error();
-
       await fetchTeams();
       teamForm.resetFields();
       setIsTeamModalVisible(false);
@@ -110,7 +100,7 @@ const TeamManagementPage: React.FC = () => {
   const handleAddMember = async (values: Omit<TeamMember, 'id'>) => {
     if (!currentTeamId) return;
     try {
-      const res = await fetch(`${API_URL}/api/team/add`, {
+      const res = await fetch(`${API_URL}/api/teams/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...values, teamId: currentTeamId }),
@@ -160,42 +150,46 @@ const TeamManagementPage: React.FC = () => {
   const columns: ColumnsType<Team> = [
     {
       title: 'Название команды',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'Team_Name',
+      key: 'Team_Name',
     },
     {
       title: 'Участники',
       key: 'members',
-      render: (_, team) =>
-        team.members.map((m) => (
-          <div key={m.id} style={{ marginBottom: 8 }}>
-            {m.fullName} ({m.role}) — {m.email}{' '}
-            <Button
-              type="link"
-              danger
-              size="small"
-              onClick={() => handleDeleteMember(team.id, m.id)}
-            >
-              Удалить
-            </Button>
-          </div>
-        )),
+      render: (_, team) => (
+        <div>
+          {team.members.map((m) => (
+  <div key={`${team.ID_Team}-${m.email}-${m.role}`}>
+    {m.fullName} ({m.role}) — {m.email}{' '}
+    <Button
+      type="link"
+      danger
+      size="small"
+      onClick={() => handleDeleteMember(team.ID_Team, m.id)}
+    >
+      Удалить
+    </Button>
+  </div>
+))}
+
+        </div>
+      ),
     },
     {
-      title: 'Редактировать',
-      key: 'edit',
-      render: (_, record) => (
+      title: 'Действия',
+      key: 'actions',
+      render: (_, team) => (
         <>
           <Button
             type="link"
             onClick={() => {
-              setCurrentTeamId(record.id);
+              setCurrentTeamId(team.ID_Team);
               setIsAddMembersModalVisible(true);
             }}
           >
             Добавить участников
           </Button>
-          <Button type="link" danger onClick={() => handleDeleteTeam(record.id)}>
+          <Button type="link" danger onClick={() => handleDeleteTeam(team.ID_Team)}>
             Удалить команду
           </Button>
         </>
@@ -215,7 +209,12 @@ const TeamManagementPage: React.FC = () => {
             <Button type="primary" onClick={() => setIsTeamModalVisible(true)}>
               Создать команду
             </Button>
-            <Table dataSource={teams} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
+            <Table
+              dataSource={teams}
+              columns={columns}
+              rowKey="ID_Team"
+              style={{ marginTop: 20 }}
+            />
 
             <Modal
               title="Создание команды"

@@ -20,6 +20,20 @@ interface Team {
   members: TeamMember[];
 }
 
+// Типы данных от API (без приведения)
+interface RawTeamMember {
+  ID_User?: number;
+  fullName: string;
+  email: string;
+  role: string;
+}
+
+interface RawTeam {
+  ID_Team: number;
+  Team_Name: string;
+  members: RawTeamMember[];
+}
+
 const MyCommandsManager: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
@@ -28,14 +42,31 @@ const MyCommandsManager: React.FC = () => {
     const fetchTeams = async () => {
       try {
         const res = await fetch(`${API_URL}/api/teams`);
-        if (!res.ok) throw new Error();
-        const allTeams: Team[] = await res.json();
+        if (!res.ok) {
+          messageApi.error('Ошибка при загрузке данных');
+          return;
+        }
+
+        const allTeams: RawTeam[] = await res.json();
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         const userEmail = currentUser?.email;
 
-        const userTeams = allTeams.filter(team =>
-          team.members.some(member => member.email === userEmail)
-        );
+        const userTeams: Team[] = allTeams
+          .filter((team) =>
+            Array.isArray(team.members) &&
+            team.members.some((member) => member.email === userEmail)
+          )
+          .map((team) => ({
+            id: team.ID_Team,
+            name: team.Team_Name,
+            members: team.members.map((member, idx) => ({
+              id: member.ID_User ?? idx,
+              fullName: member.fullName,
+              email: member.email,
+              role: member.role,
+            })),
+          }));
+
         setTeams(userTeams);
       } catch {
         messageApi.error('Ошибка при загрузке команд');
@@ -46,16 +77,23 @@ const MyCommandsManager: React.FC = () => {
   }, [messageApi]);
 
   const columns = [
-    { title: 'Название команды', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Название команды',
+      dataIndex: 'name',
+      key: 'name',
+    },
     {
       title: 'Участники',
       key: 'members',
-      render: (_: unknown, team: Team) =>
-        team.members.map((m) => (
-          <div key={m.id} style={{ marginBottom: 8 }}>
-            {m.fullName} ({m.role}) — {m.email}
-          </div>
-        )),
+      render: (_: unknown, team: Team) => (
+        <>
+          {team.members?.map((m) => (
+            <div key={`member-${team.id}-${m.email}-${m.role}`}>
+              {m.fullName} ({m.role}) — {m.email}
+            </div>
+          ))}
+        </>
+      ),
     },
   ];
 
@@ -68,7 +106,12 @@ const MyCommandsManager: React.FC = () => {
           <SidebarManager />
           <main className="main-content">
             <h1>Мои команды</h1>
-            <Table dataSource={teams} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
+            <Table
+              dataSource={teams}
+              columns={columns}
+              rowKey="id"
+              style={{ marginTop: 20 }}
+            />
           </main>
         </div>
       </div>

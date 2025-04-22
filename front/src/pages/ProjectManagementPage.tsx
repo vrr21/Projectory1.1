@@ -11,6 +11,7 @@ import {
   theme,
   AutoComplete,
 } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 
 import Header from '../components/HeaderManager';
@@ -18,6 +19,7 @@ import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/ProjectManagementPage.css';
 
 const { darkAlgorithm } = theme;
+const { Option } = Select;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Project {
@@ -28,6 +30,7 @@ interface Project {
   End_Date: string;
   Status: string;
   ID_Team?: number;
+  Team_Name?: string;
 }
 
 interface Team {
@@ -52,53 +55,62 @@ const ProjectManagementPage: React.FC = () => {
   const [form] = Form.useForm<FormValues>();
   const [messageApi, contextHolder] = message.useMessage();
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/orders`);
-      if (!response.ok) throw new Error('Ошибка при загрузке проектов');
-      const data: Project[] = await response.json();
-      setProjects(data);
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        messageApi.error(error.message);
-      }
-    }
-  }, [messageApi]);
-
-  const fetchTeams = useCallback(async () => {
+  const fetchTeams = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch(`${API_URL}/api/teams`);
       if (!response.ok) throw new Error('Ошибка при загрузке команд');
       const data: Team[] = await response.json();
-      setTeams(data.filter(team => typeof team.Team_Name === 'string'));
+      setTeams(data);
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        messageApi.error(error.message);
-      }
+      if (error instanceof Error) messageApi.error(error.message);
     }
   }, [messageApi]);
 
+  const fetchProjects = useCallback(async (): Promise<void> => {
+    try {
+      const response = await fetch(`${API_URL}/api/orders`);
+      if (!response.ok) throw new Error('Ошибка при загрузке проектов');
+      const data: Project[] = await response.json();
+
+      const projectsWithTeamNames = data.map((proj) => {
+        const team = teams.find((t) => t.ID_Team === proj.ID_Team);
+        return {
+          ...proj,
+          Team_Name: team?.Team_Name || '—',
+        };
+      });
+
+      setProjects(projectsWithTeamNames);
+    } catch (error: unknown) {
+      if (error instanceof Error) messageApi.error(error.message);
+    }
+  }, [messageApi, teams]);
+
+  useEffect(() => {
+    (async () => {
+      await fetchTeams();
+    })();
+  }, [fetchTeams]);
+
   useEffect(() => {
     fetchProjects();
-    fetchTeams();
-  }, [fetchProjects, fetchTeams]);
+  }, [fetchProjects]);
 
-  const showModal = (project?: Project) => {
+  const showModal = (project?: Project): void => {
     setEditingProject(project || null);
     setIsModalVisible(true);
 
     if (project) {
-      const selectedTeam = teams.find(team => team.ID_Team === project.ID_Team);
       form.setFieldsValue({
         ...project,
-        Team_Name: selectedTeam?.Team_Name || '',
+        Team_Name: project.Team_Name || '',
       });
     } else {
       form.resetFields();
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = (): void => {
     setIsModalVisible(false);
     setEditingProject(null);
     form.resetFields();
@@ -106,11 +118,8 @@ const ProjectManagementPage: React.FC = () => {
 
   const getOrCreateTeam = async (teamName: string): Promise<number> => {
     const existingTeam = teams.find(
-      team =>
-        typeof team.Team_Name === 'string' &&
-        team.Team_Name.toLowerCase() === teamName.toLowerCase()
+      (team) => team.Team_Name.toLowerCase() === teamName.toLowerCase()
     );
-
     if (existingTeam) return existingTeam.ID_Team;
 
     const response = await fetch(`${API_URL}/api/teams`, {
@@ -126,11 +135,11 @@ const ProjectManagementPage: React.FC = () => {
     return newTeam.ID_Team;
   };
 
-  const handleFinish = async (values: FormValues) => {
+  const handleFinish = async (values: FormValues): Promise<void> => {
     try {
       const teamId = await getOrCreateTeam(values.Team_Name);
 
-      const payload: Omit<Project, 'ID_Order'> = {
+      const payload: Omit<Project, 'ID_Order' | 'Team_Name'> = {
         Order_Name: values.Order_Name,
         Type_Name: values.Type_Name,
         Creation_Date: values.Creation_Date,
@@ -155,13 +164,11 @@ const ProjectManagementPage: React.FC = () => {
       fetchProjects();
       handleCancel();
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        messageApi.error(error.message);
-      }
+      if (error instanceof Error) messageApi.error(error.message);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number): Promise<void> => {
     try {
       const response = await fetch(`${API_URL}/api/orders/${id}`, {
         method: 'DELETE',
@@ -170,38 +177,35 @@ const ProjectManagementPage: React.FC = () => {
       messageApi.success('Проект удалён');
       fetchProjects();
     } catch (error: unknown) {
-      if (error instanceof Error) {
-        messageApi.error(error.message);
-      }
+      if (error instanceof Error) messageApi.error(error.message);
     }
   };
 
-  const columns = [
+  const columns: ColumnsType<Project> = [
     { title: 'Название проекта', dataIndex: 'Order_Name', key: 'Order_Name' },
     { title: 'Тип проекта', dataIndex: 'Type_Name', key: 'Type_Name' },
     {
       title: 'Дата создания',
       dataIndex: 'Creation_Date',
       key: 'Creation_Date',
-      render: (date: string) => dayjs(date).format('YYYY-MM-DD'),
+      render: (date: string): string => dayjs(date).format('YYYY-MM-DD'),
     },
     {
       title: 'Дата окончания',
       dataIndex: 'End_Date',
       key: 'End_Date',
-      render: (date: string) => (date ? dayjs(date).format('YYYY-MM-DD') : ''),
+      render: (date: string): string => date ? dayjs(date).format('YYYY-MM-DD') : '',
     },
     { title: 'Статус', dataIndex: 'Status', key: 'Status' },
     {
       title: 'Команда',
+      dataIndex: 'Team_Name',
       key: 'Team_Name',
-      render: (_: unknown, record: Project) =>
-        teams.find(t => t.ID_Team === record.ID_Team)?.Team_Name || '—',
     },
     {
       title: 'Действия',
       key: 'actions',
-      render: (_: unknown, record: Project) => (
+      render: (_text, record) => (
         <>
           <Button type="link" onClick={() => showModal(record)}>Редактировать</Button>
           <Button type="link" danger onClick={() => handleDelete(record.ID_Order)}>Удалить</Button>
@@ -240,29 +244,20 @@ const ProjectManagementPage: React.FC = () => {
                   <Form.Item name="Creation_Date" label="Дата создания" rules={[{ required: true }]}>
                     <Input type="date" />
                   </Form.Item>
-                  <Form.Item name="End_Date" label="Дата окончания">
+                  <Form.Item name="End_Date" label="Дата окончания" rules={[{ required: true }]}>
                     <Input type="date" />
                   </Form.Item>
                   <Form.Item name="Status" label="Статус" rules={[{ required: true }]}>
                     <Select placeholder="Выберите статус проекта">
-                      <Select.Option value="Новый">Новый</Select.Option>
-                      <Select.Option value="В процессе">В процессе</Select.Option>
-                      <Select.Option value="Завершён">Завершён</Select.Option>
+                      <Option value="Новый">Новый</Option>
+                      <Option value="В процессе">В процессе</Option>
+                      <Option value="Завершён">Завершён</Option>
                     </Select>
                   </Form.Item>
-                  <Form.Item
-                    name="Team_Name"
-                    label="Команда"
-                    rules={[{ required: true, message: 'Введите или выберите команду' }]}
-                  >
+                  <Form.Item name="Team_Name" label="Команда" rules={[{ required: true }]}>
                     <AutoComplete
                       placeholder="Введите или выберите команду"
-                      options={teams
-                        .filter(team => typeof team.Team_Name === 'string')
-                        .map(team => ({
-                          value: team.Team_Name,
-                        }))
-                      }
+                      options={teams.map(team => ({ value: team.Team_Name }))}
                       filterOption={(inputValue, option) =>
                         (option?.value ?? '').toLowerCase().includes(inputValue.toLowerCase())
                       }
