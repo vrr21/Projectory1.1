@@ -8,15 +8,15 @@ const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
-  id: number;
+  ID_User: number;
   fullName: string;
   email: string;
   role: string;
 }
 
 interface Team {
-  id: number;
-  name: string;
+  ID_Team: number;
+  Team_Name: string;
   members: TeamMember[];
 }
 
@@ -46,13 +46,13 @@ const MyCommandsEmployee: React.FC = () => {
   }, [messageApi]);
 
   const columns = [
-    { title: 'Название команды', dataIndex: 'name', key: 'name' },
+    { title: 'Название команды', dataIndex: 'Team_Name', key: 'Team_Name' },
     {
       title: 'Участники',
       key: 'members',
       render: (_: unknown, team: Team) =>
-        team.members.map((m) => (
-          <div key={m.id} style={{ marginBottom: 8 }}>
+        team.members.map((m, index) => (
+          <div key={m.ID_User || index} style={{ marginBottom: 8 }}>
             {m.fullName} ({m.role}) — {m.email}
           </div>
         )),
@@ -68,7 +68,7 @@ const MyCommandsEmployee: React.FC = () => {
           <Sidebar role="employee" />
           <main className="main-content">
             <h1>Мои команды</h1>
-            <Table dataSource={teams} columns={columns} rowKey="id" style={{ marginTop: 20 }} />
+            <Table dataSource={teams} columns={columns} rowKey="ID_Team" style={{ marginTop: 20 }} />
           </main>
         </div>
       </div>

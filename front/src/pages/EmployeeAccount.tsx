@@ -17,22 +17,33 @@ const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
-  id: number;
+  ID_User: number;
   fullName: string;
   email: string;
   role: string;
 }
 
 interface Team {
-  id: number;
-  name: string;
+  ID_Team: number;
+  Team_Name: string;
   members: TeamMember[];
+}
+
+interface Task {
+  ID_Task: number;
+  Task_Name: string;
+  Description: string;
+  Time_Norm: number;
+  Status_Name: string;
+  Order_Name: string;
+  Team_Name: string;
 }
 
 const EmployeeAccount: React.FC = () => {
   const { user, setUser } = useAuth();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   useEffect(() => {
     if (user?.avatar) {
@@ -59,6 +70,24 @@ const EmployeeAccount: React.FC = () => {
 
     if (user) {
       fetchTeams();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await fetch(`${API_URL}/api/tasks/employee/${user.id}`);
+        if (!res.ok) throw new Error();
+        const data: Task[] = await res.json();
+        setTasks(data);
+      } catch {
+        message.error('Ошибка загрузки задач');
+      }
+    };
+
+    if (user) {
+      fetchTasks();
     }
   }, [user]);
 
@@ -98,25 +127,34 @@ const EmployeeAccount: React.FC = () => {
   const fullName = user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
   const normalizedRole = String(user.role).toLowerCase();
 
+  const isManager = normalizedRole === 'менеджер' || normalizedRole === 'менеджер (администратор)';
+
   const teamColumns = [
     {
       title: 'Команда',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'Team_Name',
+      key: 'Team_Name',
     },
     {
       title: 'Участники',
       key: 'members',
       render: (_: unknown, team: Team) =>
         team.members.map(m => (
-          <div key={m.id}>
+          <div key={m.ID_User}>
             {m.fullName} ({m.role}) — {m.email}
           </div>
         )),
     },
   ];
 
-  const isManager = normalizedRole === 'менеджер' || normalizedRole === 'менеджер (администратор)';
+  const taskColumns = [
+    { title: 'Проект', dataIndex: 'Order_Name', key: 'Order_Name' },
+    { title: 'Команда', dataIndex: 'Team_Name', key: 'Team_Name' },
+    { title: 'Задача', dataIndex: 'Task_Name', key: 'Task_Name' },
+    { title: 'Описание', dataIndex: 'Description', key: 'Description' },
+    { title: 'Норма времени', dataIndex: 'Time_Norm', key: 'Time_Norm' },
+    { title: 'Статус', dataIndex: 'Status_Name', key: 'Status_Name' },
+  ];
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -155,14 +193,25 @@ const EmployeeAccount: React.FC = () => {
                 </div>
               </Card>
 
-              <div className="bottom-content">
+              <div className="table-block">
                 <Title level={4} className="text-color">Мои команды</Title>
                 <Table
                   dataSource={teams}
                   columns={teamColumns}
-                  rowKey="id"
+                  rowKey="ID_Team"
                   className="dark-table"
                   pagination={false}
+                />
+              </div>
+
+              <div className="table-block">
+                <Title level={4} className="text-color">Мои задачи</Title>
+                <Table
+                  dataSource={tasks}
+                  columns={taskColumns}
+                  rowKey="ID_Task"
+                  className="dark-table"
+                  pagination={{ pageSize: 5 }}
                 />
               </div>
             </div>

@@ -119,3 +119,34 @@
 .bottom-content h4 {
   color: var(--text-color) !important;
 }
+.table-block {
+  background-color: #2c2c2c;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: var(--text-color);
+  width: 100%;
+  margin-top: 1.5rem;
+}
+
+.table-block .ant-table,
+.table-block .ant-table-container,
+.table-block .ant-table-content,
+.table-block .ant-table-thead > tr > th,
+.table-block .ant-table-tbody > tr > td {
+  background-color: #2c2c2c !important;
+  color: var(--text-color) !important;
+}
+
+.table-block .ant-table-thead > tr > th {
+  border-bottom: 1px solid #444 !important;
+}
+
+.table-block .ant-table-tbody > tr > td {
+  border-bottom: 1px solid #333 !important;
+}
+
+.table-block p,
+.table-block h4 {
+  color: var(--text-color) !important;
+}
