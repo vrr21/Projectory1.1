@@ -10,6 +10,7 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import EmployeeAccount from './pages/EmployeeAccount';
 import ProjectManagementPage from './pages/ProjectManagementPage';
 import TasksPageManagement from './pages/TasksPageManagement';
+import MyTasksEmployee from './pages/MyTasksEmployee';
 import TeamManagementPage from './pages/TeamManagementPage';
 import MyCommandsEmployee from './pages/MyCommandsEmployee';
 import MyCommandsManager from './pages/MyCommandsManager';
@@ -31,6 +32,7 @@ const App: React.FC = () => {
               <Route path="/profile" element={<EmployeeAccount />} />
               <Route path="/projects" element={<ProjectManagementPage />} />
               <Route path="/tasks" element={<TasksPageManagement />} />
+              <Route path="/mytasks" element={<MyTasksEmployee />} />
               <Route path="/team-management" element={<TeamManagementPage />} />
               <Route path="/teams" element={<MyCommandsEmployee />} />
               <Route path="/myteams" element={<MyCommandsManager />} />

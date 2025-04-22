@@ -13,10 +13,10 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
 
   const employeeMenuItems = [
     { key: '/employee', icon: <DashboardOutlined />, label: <Link to="/employee">Главная</Link> },
-    { key: '/tasks', icon: <ProjectOutlined />, label: <Link to="/tasks">Задачи</Link> },
+    { key: '/mytasks', icon: <ProjectOutlined />, label: <Link to="/mytasks">Мои задачи</Link> },
     { key: '/teams', icon: <TeamOutlined />, label: <Link to="/teams">Мои команды</Link> },
   ];
-
+  
   const managerMenuItems = [
     { key: '/manager', icon: <DashboardOutlined />, label: <Link to="/manager">Главная</Link> },
     { key: '/projects', icon: <ProjectOutlined />, label: <Link to="/projects">Проекты</Link> },
