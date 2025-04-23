@@ -2,12 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool, sql } = require('../config/db');
 const {
-  Document,
-  Packer,
-  Paragraph,
-  Table,
-  TableCell,
-  TableRow
+  Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun
 } = require('docx');
 
 // 🔹 Отчёт по конкретному сотруднику
@@ -44,39 +39,44 @@ router.get('/export-word/:id', async (req, res) => {
       `);
 
     const rows = result.recordset;
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: 'Нет данных для экспорта' });
+    const children = [];
+
+    children.push(new Paragraph({
+      text: "Отчёт по задачам сотрудника",
+      heading: "Heading1",
+      spacing: { after: 300 }
+    }));
+
+    if (rows && rows.length > 0) {
+      const tableHeader = new TableRow({
+        children: Object.keys(rows[0]).map(key =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: key, bold: true })] })],
+          })
+        ),
+      });
+
+      const tableRows = rows.map(row =>
+        new TableRow({
+          children: Object.values(row).map(val =>
+            new TableCell({
+              children: [new Paragraph({ text: String(val ?? '') })],
+            })
+          ),
+        })
+      );
+
+      children.push(new Table({ rows: [tableHeader, ...tableRows] }));
+    } else {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: "Нет данных для отображения", bold: true })],
+      }));
     }
 
-    const doc = new Document();
-    doc.addSection({
-      children: [
-        new Paragraph({ text: 'Отчёт по задачам сотрудника', heading: 'Heading1' }),
-        new Table({
-          rows: [
-            new TableRow({
-              children: Object.keys(rows[0]).map(key =>
-                new TableCell({
-                  children: [new Paragraph(key)]
-                })
-              )
-            }),
-            ...rows.map(row =>
-              new TableRow({
-                children: Object.values(row).map(val =>
-                  new TableCell({
-                    children: [new Paragraph(String(val ?? ''))]
-                  })
-                )
-              })
-            )
-          ]
-        })
-      ]
-    });
+    const doc = new Document({ sections: [{ children }] });
 
     const buffer = await Packer.toBuffer(doc);
-    res.setHeader('Content-Disposition', 'attachment; filename=employee-report.docx');
+    res.setHeader('Content-Disposition', 'attachment; filename="employee-report.docx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.send(buffer);
   } catch (err) {
@@ -108,35 +108,44 @@ router.get('/export-all', async (req, res) => {
     `);
     const rows = result.recordset;
 
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: 'Нет данных для экспорта' });
+    const children = [];
+
+    children.push(new Paragraph({
+      text: "Общий отчёт по задачам сотрудников",
+      heading: "Heading1",
+      spacing: { after: 300 }
+    }));
+
+    if (rows && rows.length > 0) {
+      const tableHeader = new TableRow({
+        children: Object.keys(rows[0]).map(key =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: key, bold: true })] })],
+          })
+        ),
+      });
+
+      const tableRows = rows.map(row =>
+        new TableRow({
+          children: Object.values(row).map(val =>
+            new TableCell({
+              children: [new Paragraph({ text: String(val ?? '') })],
+            })
+          ),
+        })
+      );
+
+      children.push(new Table({ rows: [tableHeader, ...tableRows] }));
+    } else {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: "Нет данных для отображения", bold: true })],
+      }));
     }
 
-    const doc = new Document();
-    doc.addSection({
-      children: [
-        new Paragraph({ text: 'Общий отчёт по задачам сотрудников', heading: 'Heading1' }),
-        new Table({
-          rows: [
-            new TableRow({
-              children: Object.keys(rows[0]).map(key =>
-                new TableCell({ children: [new Paragraph(key)] })
-              )
-            }),
-            ...rows.map(row =>
-              new TableRow({
-                children: Object.values(row).map(val =>
-                  new TableCell({ children: [new Paragraph(String(val ?? ''))] })
-                )
-              })
-            )
-          ]
-        })
-      ]
-    });
+    const doc = new Document({ sections: [{ children }] });
 
     const buffer = await Packer.toBuffer(doc);
-    res.setHeader('Content-Disposition', 'attachment; filename=manager-report.docx');
+    res.setHeader('Content-Disposition', 'attachment; filename="manager-report.docx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.send(buffer);
   } catch (error) {

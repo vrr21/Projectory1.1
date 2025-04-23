@@ -1,21 +1,15 @@
 const { pool, sql } = require('../config/db');
 
-// Получить все задачи или по фильтрам: ?employee=2&team=1
+// 🔹 Получение задач (с фильтрами: ?employee=2&team=1)
 exports.getAllTasks = async (req, res) => {
   const { employee, team } = req.query;
 
   try {
     const request = pool.request();
+    if (employee) request.input('EmployeeID', sql.Int, parseInt(employee));
+    if (team) request.input('TeamID', sql.Int, parseInt(team));
 
-    if (employee) {
-      request.input('EmployeeID', sql.Int, parseInt(employee, 10));
-    }
-
-    if (team) {
-      request.input('TeamID', sql.Int, parseInt(team, 10));
-    }
-
-    let baseQuery = `
+    let query = `
       SELECT 
         t.ID_Task,
         t.Task_Name,
@@ -23,24 +17,25 @@ exports.getAllTasks = async (req, res) => {
         t.Time_Norm,
         s.Status_Name,
         o.Order_Name,
-        tm.Team_Name
-      FROM Assignment a
-      INNER JOIN Tasks t ON a.ID_Task = t.ID_Task
+        tm.Team_Name,
+        ISNULL(u.First_Name + ' ' + u.Last_Name, '') AS Employee_Name
+      FROM Tasks t
       INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
       INNER JOIN Orders o ON t.ID_Order = o.ID_Order
       INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
+      LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task
+      LEFT JOIN Users u ON a.ID_Employee = u.ID_User
     `;
 
     const where = [];
-
     if (employee) where.push('a.ID_Employee = @EmployeeID');
     if (team) where.push('tm.ID_Team = @TeamID');
 
-    if (where.length > 0) {
-      baseQuery += ' WHERE ' + where.join(' AND ');
+    if (where.length) {
+      query += ' WHERE ' + where.join(' AND ');
     }
 
-    const result = await request.query(baseQuery);
+    const result = await request.query(query);
     res.status(200).json(result.recordset);
   } catch (error) {
     console.error('Ошибка при получении задач:', error);
@@ -48,7 +43,7 @@ exports.getAllTasks = async (req, res) => {
   }
 };
 
-// Создание задачи
+// 🔹 Создание задачи
 exports.createTask = async (req, res) => {
   const { Task_Name, Description, Time_Norm, Status_Name, ID_Order, Employee_Name } = req.body;
 
@@ -57,7 +52,7 @@ exports.createTask = async (req, res) => {
       .input('Status_Name', sql.NVarChar, Status_Name)
       .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
 
-    if (statusResult.recordset.length === 0) {
+    if (!statusResult.recordset.length) {
       return res.status(400).json({ message: 'Недопустимый статус' });
     }
 
@@ -84,7 +79,7 @@ exports.createTask = async (req, res) => {
         .input('Last_Name', sql.NVarChar, Last_Name)
         .query('SELECT ID_User FROM Users WHERE First_Name = @First_Name AND Last_Name = @Last_Name');
 
-      if (userResult.recordset.length > 0) {
+      if (userResult.recordset.length) {
         const ID_User = userResult.recordset[0].ID_User;
         await pool.request()
           .input('ID_Task', sql.Int, ID_Task)
@@ -104,55 +99,67 @@ exports.createTask = async (req, res) => {
   }
 };
 
-// Обновление задачи
+// 🔹 Обновление задачи
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
-  const { Status_Name } = req.body;
+  const { Task_Name, Description, Time_Norm, Status_Name, ID_Order } = req.body;
 
   try {
     const statusResult = await pool.request()
       .input('Status_Name', sql.NVarChar, Status_Name)
       .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
 
-    if (statusResult.recordset.length === 0) {
+    if (!statusResult.recordset.length) {
       return res.status(400).json({ message: 'Недопустимый статус' });
     }
 
     const ID_Status = statusResult.recordset[0].ID_Status;
 
     await pool.request()
-      .input('ID_Status', sql.Int, ID_Status)
       .input('ID_Task', sql.Int, id)
+      .input('Task_Name', sql.NVarChar, Task_Name)
+      .input('Description', sql.NVarChar, Description)
+      .input('Time_Norm', sql.Int, Time_Norm)
+      .input('ID_Status', sql.Int, ID_Status)
+      .input('ID_Order', sql.Int, ID_Order)
       .query(`
         UPDATE Tasks
-        SET ID_Status = @ID_Status
+        SET Task_Name = @Task_Name,
+            Description = @Description,
+            Time_Norm = @Time_Norm,
+            ID_Status = @ID_Status,
+            ID_Order = @ID_Order
         WHERE ID_Task = @ID_Task
       `);
 
-    res.status(200).json({ message: 'Статус задачи успешно обновлен' });
+    res.status(200).json({ message: 'Задача успешно обновлена' });
   } catch (error) {
     console.error('Ошибка при обновлении задачи:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
 
-// Удаление задачи
+// 🔹 Удаление задачи (с удалением назначений)
 exports.deleteTask = async (req, res) => {
   const { id } = req.params;
 
   try {
     await pool.request()
       .input('ID_Task', sql.Int, id)
+      .query('DELETE FROM Assignment WHERE ID_Task = @ID_Task');
+
+    await pool.request()
+      .input('ID_Task', sql.Int, id)
       .query('DELETE FROM Tasks WHERE ID_Task = @ID_Task');
 
-    res.status(200).json({ message: 'Задача успешно удалена' });
+    res.status(200).json({ message: 'Задача и назначения успешно удалены' });
   } catch (error) {
     console.error('Ошибка при удалении задачи:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
 
-// Получение задач по ID сотрудника
+// 🔹 Получение задач по ID сотрудника
 exports.getTasksByEmployee = async (req, res) => {
   const { id } = req.params;
 

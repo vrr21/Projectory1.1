@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, ConfigProvider, theme, message } from 'antd';
+import { Table, ConfigProvider, theme, message, TableColumnsType } from 'antd';
 import Header from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/TeamManagementPage.css';
@@ -45,14 +45,34 @@ const MyCommandsEmployee: React.FC = () => {
     fetchTeams();
   }, [messageApi]);
 
-  const columns = [
-    { title: 'Название команды', dataIndex: 'Team_Name', key: 'Team_Name' },
+  const getTeamFilters = () => {
+    const unique = Array.from(new Set(teams.map(t => t.Team_Name)));
+    return unique.map(name => ({ text: name, value: name }));
+  };
+
+  const getRoleFilters = () => {
+    const roles = teams.flatMap(t => t.members.map(m => m.role));
+    const unique = Array.from(new Set(roles));
+    return unique.map(role => ({ text: role, value: role }));
+  };
+
+  const columns: TableColumnsType<Team> = [
     {
-      title: 'Участники',
+      title: 'Название команды',
+      dataIndex: 'Team_Name',
+      key: 'Team_Name',
+      filters: getTeamFilters(),
+      onFilter: (value, record) => record.Team_Name === value,
+    },
+    {
+      title: 'Роль участника',
       key: 'members',
-      render: (_: unknown, team: Team) =>
+      filters: getRoleFilters(),
+      onFilter: (value, record) =>
+        record.members.some(m => m.role === value),
+      render: (_, team) =>
         team.members.map((m, index) => (
-          <div key={m.ID_User || index} style={{ marginBottom: 8 }}>
+          <div key={`${m.ID_User}-${index}`} style={{ marginBottom: 6 }}>
             {m.fullName} ({m.role}) — {m.email}
           </div>
         )),
@@ -68,7 +88,13 @@ const MyCommandsEmployee: React.FC = () => {
           <Sidebar role="employee" />
           <main className="main-content">
             <h1>Мои команды</h1>
-            <Table dataSource={teams} columns={columns} rowKey="ID_Team" style={{ marginTop: 20 }} />
+            <Table
+              dataSource={teams}
+              columns={columns}
+              rowKey="ID_Team"
+              style={{ marginTop: 20 }}
+              pagination={{ pageSize: 5 }}
+            />
           </main>
         </div>
       </div>

@@ -14,6 +14,12 @@ import {
   Legend,
 } from 'chart.js';
 import { useAuth } from '../contexts/useAuth';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import * as XLSX from 'xlsx';
+// @ts-ignore
+import { saveAs } from 'file-saver';
+
 
 ChartJS.register(
   CategoryScale,
@@ -76,6 +82,38 @@ const Reports: React.FC = () => {
       console.error('Ошибка при экспорте отчета:', error);
       message.error('Ошибка при экспорте отчета');
     }
+  };
+
+  const exportToPDF = async () => {
+    const reportElement = document.querySelector('.reports');
+    if (!reportElement) return;
+
+    try {
+      const canvas = await html2canvas(reportElement as HTMLElement, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const ratio = canvas.width / canvas.height;
+      const pdfWidth = pageWidth;
+      const pdfHeight = pageWidth / ratio;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save('employee-report.pdf');
+    } catch (error) {
+      console.error('Ошибка при экспорте в PDF:', error);
+    }
+  };
+
+  const exportToExcel = () => {
+    const worksheet = XLSX.utils.json_to_sheet(reportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+    saveAs(blob, 'employee-report.xlsx');
   };
 
   const lineChartData = {
@@ -172,9 +210,17 @@ const Reports: React.FC = () => {
         <Doughnut data={doughnutChartData} options={chartOptions} />
       </Card>
 
-      <Button type="primary" onClick={exportToWord} className="export-button">
-        Экспортировать в Word
-      </Button>
+      <div style={{ marginTop: 16 }}>
+        <Button type="primary" onClick={exportToWord}>
+          Экспорт в Word
+        </Button>
+        <Button type="default" onClick={exportToPDF} style={{ marginLeft: 12 }}>
+          Экспорт в PDF
+        </Button>
+        <Button type="default" onClick={exportToExcel} style={{ marginLeft: 12 }}>
+          Экспорт в Excel
+        </Button>
+      </div>
     </div>
   );
 };

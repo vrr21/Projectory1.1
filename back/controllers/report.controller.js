@@ -1,6 +1,8 @@
 const { pool, sql } = require('../config/db');
 const docx = require('docx');
-const { Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun } = docx;
+const {
+  Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun
+} = docx;
 
 exports.getEmployeeReport = async (req, res) => {
   const { id } = req.params;
@@ -45,28 +47,42 @@ exports.exportToWord = async (req, res) => {
       `);
 
     const rows = result.recordset;
-    const doc = new Document();
+    const children = [];
 
-    doc.addSection({
-      children: [
-        new Paragraph({ text: 'Отчёт по задачам сотрудника', heading: 'Heading1' }),
-        new Table({
-          rows: [
-            new TableRow({
-              children: Object.keys(rows[0]).map(key =>
-                new TableCell({ children: [new Paragraph({ text: key, bold: true })] })
-              ),
-            }),
-            ...rows.map(row =>
-              new TableRow({
-                children: Object.values(row).map(val =>
-                  new TableCell({ children: [new Paragraph(String(val ?? ''))] })
-                ),
-              })
-            ),
-          ],
-        }),
-      ],
+    children.push(new Paragraph({
+      text: "Отчёт по задачам сотрудника",
+      heading: "Heading1",
+      spacing: { after: 300 }
+    }));
+
+    if (rows && rows.length > 0) {
+      const tableHeader = new TableRow({
+        children: Object.keys(rows[0]).map(key =>
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: key, bold: true })] })],
+          })
+        ),
+      });
+
+      const tableRows = rows.map(row =>
+        new TableRow({
+          children: Object.values(row).map(val =>
+            new TableCell({
+              children: [new Paragraph({ text: String(val ?? '') })],
+            })
+          ),
+        })
+      );
+
+      children.push(new Table({ rows: [tableHeader, ...tableRows] }));
+    } else {
+      children.push(new Paragraph({
+        children: [new TextRun({ text: "Нет данных для отображения", bold: true })],
+      }));
+    }
+
+    const doc = new Document({
+      sections: [{ children }],
     });
 
     const buffer = await Packer.toBuffer(doc);
@@ -74,7 +90,7 @@ exports.exportToWord = async (req, res) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.send(buffer);
   } catch (error) {
-    console.error('Ошибка экспорта в Word:', error);
-    res.status(500).json({ message: 'Ошибка сервера' });
+    console.error('Ошибка экспорта Word для сотрудника:', error);
+    res.status(500).json({ message: 'Ошибка при экспорте отчета' });
   }
 };
