@@ -10,6 +10,7 @@ import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
 import HeaderManager from '../components/HeaderManager';
 import HeaderEmployee from '../components/HeaderEmployee';
+import Reports from '../components/Reports';
 import '../styles/pages/EmployeeAccount.css';
 
 const { Title, Text } = Typography;
@@ -58,7 +59,6 @@ const EmployeeAccount: React.FC = () => {
         if (!res.ok) throw new Error();
         const allTeams: Team[] = await res.json();
         const userEmail = user?.email;
-
         const userTeams = allTeams.filter(team =>
           team.members.some(m => m.email === userEmail)
         );
@@ -108,8 +108,7 @@ const EmployeeAccount: React.FC = () => {
       if (!response.ok) throw new Error('Ошибка при загрузке аватара');
       const data = await response.json();
       const newAvatar = data.filename;
-      const fullAvatarUrl = `${API_URL}/uploads/${newAvatar}`;
-      setAvatarUrl(fullAvatarUrl);
+      setAvatarUrl(`${API_URL}/uploads/${newAvatar}`);
       if (user) setUser({ ...user, avatar: newAvatar });
       message.success('Аватар обновлён');
     } catch (error) {
@@ -129,13 +128,14 @@ const EmployeeAccount: React.FC = () => {
     {
       title: 'Участники',
       key: 'members',
-      render: (_: unknown, team: Team) =>
-        team.members.map(m => (
-          <div key={m.ID_User}>
-            {m.fullName} ({m.role}) — {m.email}
-          </div>
-        )),
-    },
+      render: (_: unknown, team: Team) => (
+        <div>
+          {team.members.map((m) => (
+            <div key={`${team.ID_Team}-${m.email}`}>{m.fullName} ({m.role}) — {m.email}</div>
+          ))}
+        </div>
+      )
+    }
   ];
 
   const taskColumns = [
@@ -216,7 +216,11 @@ const EmployeeAccount: React.FC = () => {
                                   {tasks
                                     .filter(task => task.Status_Name === status)
                                     .map(task => (
-                                      <Card key={task.ID_Task} className="kanban-task-card" bordered={false}>
+                                      <Card
+                                        key={task.ID_Task}
+                                        className="kanban-task-card"
+                                        variant="outlined"
+                                      >
                                         <Title level={5} className="text-color">{task.Task_Name}</Title>
                                         <p><b>Проект:</b> {task.Order_Name}</p>
                                         <p><b>Команда:</b> {task.Team_Name}</p>
@@ -234,13 +238,7 @@ const EmployeeAccount: React.FC = () => {
                     {
                       key: 'reports',
                       label: 'Мои отчёты',
-                      children: (
-                        <div>
-                          <Title level={4} className="text-color">Отчёты по выполненным задачам</Title>
-                          {/* Здесь подключим отображение графиков и таблиц из представлений + кнопки экспорта */}
-                          <p>Графики и таблицы загружаются...</p>
-                        </div>
-                      )
+                      children: <Reports />
                     }
                   ]}
                 />

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+// src/pages/ManagerAccount.tsx
+import React, { useEffect, useState } from 'react';
 import {
   Card,
   Typography,
@@ -6,6 +7,7 @@ import {
   Divider,
   Upload,
   message,
+  Tabs,
   List,
 } from 'antd';
 import {
@@ -19,6 +21,7 @@ import type { UploadChangeParam } from 'antd/es/upload';
 import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
 import HeaderEmployee from '../components/HeaderEmployee';
+import ManagerReports from '../components/ManagerReports';
 import '../styles/pages/EmployeeAccount.css';
 
 const { Title, Text } = Typography;
@@ -54,8 +57,8 @@ const ManagerAccount: React.FC = () => {
         const res = await fetch(`${API_URL}/api/teams`);
         if (!res.ok) throw new Error();
         const allTeams: Team[] = await res.json();
-        const teams = allTeams.filter(t =>
-          t.members.some(m => m.email === user?.email)
+        const teams = allTeams.filter((t) =>
+          t.members.some((m) => m.email === user?.email)
         );
         setUserTeams(teams);
       } catch {
@@ -66,7 +69,9 @@ const ManagerAccount: React.FC = () => {
     if (user?.email) fetchUserTeams();
   }, [user]);
 
-  const handleAvatarUpload = async (info: UploadChangeParam<UploadFile<RcFile>>) => {
+  const handleAvatarUpload = async (
+    info: UploadChangeParam<UploadFile<RcFile>>
+  ) => {
     const file = info.file.originFileObj;
     if (!file) {
       message.error('Не удалось получить файл');
@@ -90,8 +95,7 @@ const ManagerAccount: React.FC = () => {
 
       const data = await response.json();
       const newAvatar = data.filename;
-      const fullAvatarUrl = `${API_URL}/uploads/${newAvatar}`;
-      setAvatarUrl(fullAvatarUrl);
+      setAvatarUrl(`${API_URL}/uploads/${newAvatar}`);
 
       if (user) {
         setUser({ ...user, avatar: newAvatar });
@@ -106,7 +110,8 @@ const ManagerAccount: React.FC = () => {
 
   if (!user) return <div className="dashboard">Загрузка...</div>;
 
-  const fullName = user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
+  const fullName =
+    user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
 
   return (
     <div className="dashboard">
@@ -123,13 +128,19 @@ const ManagerAccount: React.FC = () => {
             />
           </div>
 
-          <Upload showUploadList={false} beforeUpload={() => false} onChange={handleAvatarUpload}>
+          <Upload
+            showUploadList={false}
+            beforeUpload={() => false}
+            onChange={handleAvatarUpload}
+          >
             <label className="upload-label">
               <UploadOutlined /> Загрузить аватар
             </label>
           </Upload>
 
-          <Title level={3} className="text-color">{fullName}</Title>
+          <Title level={3} className="text-color">
+            {fullName}
+          </Title>
           <Text className="role-text">{user.role}</Text>
           <Divider className="accent-divider" />
 
@@ -139,27 +150,36 @@ const ManagerAccount: React.FC = () => {
           </div>
           <div className="info-item">
             <PhoneOutlined className="icon" />
-            <Text className="info-text">{user.phone ?? '+7 (999) 999-99-99'}</Text>
+            <Text className="info-text">
+              {user.phone ?? '+7 (999) 999-99-99'}
+            </Text>
           </div>
         </Card>
 
         <div className="bottom-content">
-          <Title level={4} className="text-color">Обзор активности</Title>
-          <p className="text-color">Можно добавить информацию о проектах, задачах и показателях.</p>
-
-          <Divider />
-
-          <Title level={4} className="text-color"><TeamOutlined /> Мои команды</Title>
+        <Tabs
+  defaultActiveKey="teams"
+  items={[
+    {
+      key: 'teams',
+      label: 'Мои команды',
+      children: (
+        <>
+          <Title level={4} className="text-color">
+            <TeamOutlined /> Мои команды
+          </Title>
           <List
             dataSource={userTeams}
-            renderItem={team => (
-              <List.Item key={team.id}>
+            renderItem={(team) => (
+              <List.Item key={`team-${team.id}`}>
                 <List.Item.Meta
                   title={<span className="text-color">{team.name}</span>}
                   description={
                     <div>
-                      {team.members.map(m => (
-                        <div key={m.id}>{m.fullName} ({m.role})</div>
+                      {team.members.map((m) => (
+                        <div key={`member-${team.id}-${m.email}`}>
+                          {m.fullName} ({m.role})
+                        </div>
                       ))}
                     </div>
                   }
@@ -167,6 +187,17 @@ const ManagerAccount: React.FC = () => {
               </List.Item>
             )}
           />
+        </>
+      ),
+    },
+    {
+      key: 'reports',
+      label: 'Общие отчёты', // ✅ Исправлено название вкладки
+      children: <ManagerReports />, // ✅ Здесь подгружается компонент с отчётами по всем сотрудникам
+    },
+  ]}
+/>
+
         </div>
       </div>
     </div>

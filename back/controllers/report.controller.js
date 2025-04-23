@@ -7,12 +7,27 @@ exports.getEmployeeReport = async (req, res) => {
   try {
     const result = await pool.request()
       .input('ID_User', sql.Int, id)
-      .query(`SELECT * FROM EmployeeTaskExecution WHERE Employee_Name IN (
-        SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
-      )`);
+      .query(`
+        SELECT * FROM EmployeeTaskExecution 
+        WHERE Employee_Name IN (
+          SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
+        )
+      `);
     res.json(result.recordset);
   } catch (error) {
     console.error('Ошибка получения отчёта:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+};
+
+exports.getManagerReport = async (req, res) => {
+  try {
+    const result = await pool.request().query(`
+      SELECT * FROM EmployeeTaskExecution
+    `);
+    res.json(result.recordset); // Для менеджера получаем все данные
+  } catch (error) {
+    console.error('Ошибка получения отчёта для менеджера:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
@@ -22,9 +37,12 @@ exports.exportToWord = async (req, res) => {
   try {
     const result = await pool.request()
       .input('ID_User', sql.Int, id)
-      .query(`SELECT * FROM EmployeeTaskExecution WHERE Employee_Name IN (
-        SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
-      )`);
+      .query(`
+        SELECT * FROM EmployeeTaskExecution 
+        WHERE Employee_Name IN (
+          SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
+        )
+      `);
 
     const rows = result.recordset;
     const doc = new Document();

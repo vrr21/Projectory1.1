@@ -198,3 +198,43 @@
 .export-button:hover {
   background-color: #00bcd4;
 }
+
+
+.reports {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  width: 100%;
+}
+
+.reports .ant-card .ant-table-wrapper {
+  margin-bottom: 16px;
+}
+
+.reports canvas {
+  background-color: transparent;
+}
+
+.reports .chartjs-render-monitor {
+  --chart-grid-color: rgba(255, 255, 255, 0.2);
+}
+
+.reports .chartjs-render-monitor line,
+.reports .chartjs-render-monitor path {
+  stroke: rgba(255, 255, 255, 0.25) !important;
+}
+
+.export-button {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background-color: var(--accent-color);
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.export-button:hover {
+  background-color: #00bcd4;
+}

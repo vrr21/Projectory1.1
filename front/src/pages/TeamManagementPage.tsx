@@ -206,9 +206,16 @@ const TeamManagementPage: React.FC = () => {
           <SidebarManager />
           <main className="main-content">
             <h1>Управление командами</h1>
-            <Button type="primary" onClick={() => setIsTeamModalVisible(true)}>
-              Создать команду
-            </Button>
+            <div className="button-wrapper">
+  <Button
+    type="primary"
+    className="create-team-button"
+    onClick={() => setIsTeamModalVisible(true)}
+  >
+    Создать команду
+  </Button>
+</div>
+
             <Table
               dataSource={teams}
               columns={columns}

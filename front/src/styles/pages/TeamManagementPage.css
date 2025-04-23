@@ -19,4 +19,15 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid #444;
   }
+  .button-wrapper {
+    display: flex;
+    justify-content: flex-start; /* или center / flex-end */
+    margin-bottom: 1rem;
+  }
+  
+  .create-team-button {
+    width: auto !important;
+    min-width: 160px;
+    padding: 0 1.5rem;
+  }
   

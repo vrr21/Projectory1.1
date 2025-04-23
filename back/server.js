@@ -13,12 +13,15 @@ const projectRoutes = require('./routes/projects.routes');
 const taskRoutes = require('./routes/tasks.routes');
 const taskDetailsRoutes = require('./routes/tasks.details.routes');
 const employeeRoutes = require('./routes/employees.routes');
+const reportsRoutes = require('./routes/reports');
+
 const app = express();
 const PORT = process.env.PORT || 3002;
 
 app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
+// Роуты API
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/teams', teamRoutes);
@@ -26,6 +29,8 @@ app.use('/api/orders', projectRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/tasks', taskDetailsRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/reports', reportsRoutes);
+
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 app.listen(PORT, () => {

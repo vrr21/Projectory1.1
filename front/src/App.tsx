@@ -14,6 +14,8 @@ import MyTasksEmployee from './pages/MyTasksEmployee';
 import TeamManagementPage from './pages/TeamManagementPage';
 import MyCommandsEmployee from './pages/MyCommandsEmployee';
 import MyCommandsManager from './pages/MyCommandsManager';
+import EmployeeReports from './components/Reports';
+import ManagerReports from './components/ManagerReports';
 
 import { AuthProvider } from './contexts/AuthProvider';
 
@@ -36,6 +38,8 @@ const App: React.FC = () => {
               <Route path="/team-management" element={<TeamManagementPage />} />
               <Route path="/teams" element={<MyCommandsEmployee />} />
               <Route path="/myteams" element={<MyCommandsManager />} />
+              <Route path="/reports" element={<EmployeeReports />} />
+              <Route path="/manager-reports" element={<ManagerReports />} />
             </Routes>
           </Router>
         </AntdApp>
