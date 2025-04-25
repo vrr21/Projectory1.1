@@ -1,4 +1,3 @@
-// src/pages/ManagerAccount.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Card,
@@ -8,7 +7,7 @@ import {
   Upload,
   message,
   Tabs,
-  List,
+  Table,
 } from 'antd';
 import {
   UserOutlined,
@@ -16,13 +15,14 @@ import {
   PhoneOutlined,
   UploadOutlined,
   TeamOutlined,
+  BarChartOutlined,
 } from '@ant-design/icons';
 import type { UploadChangeParam } from 'antd/es/upload';
 import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
-import HeaderEmployee from '../components/HeaderEmployee';
+import HeaderManager from '../components/HeaderManager';
 import ManagerReports from '../components/ManagerReports';
-import '../styles/pages/EmployeeAccount.css';
+import '../styles/pages/ManagerAccount.css';
 
 const { Title, Text } = Typography;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -89,10 +89,7 @@ const ManagerAccount: React.FC = () => {
         credentials: 'include',
       });
 
-      if (!response.ok) {
-        throw new Error('Ошибка при загрузке аватара');
-      }
-
+      if (!response.ok) throw new Error('Ошибка при загрузке аватара');
       const data = await response.json();
       const newAvatar = data.filename;
       setAvatarUrl(`${API_URL}/uploads/${newAvatar}`);
@@ -113,9 +110,26 @@ const ManagerAccount: React.FC = () => {
   const fullName =
     user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
 
+  const teamColumns = [
+    { title: 'Команда', dataIndex: 'name', key: 'name' },
+    {
+      title: 'Участники',
+      key: 'members',
+      render: (_: unknown, team: Team) => (
+        <div>
+          {team.members.map((m, idx) => (
+            <div key={`${team.id}-${m.email}-${m.role}-${idx}`}>
+              {m.fullName} ({m.role}) — {m.email}
+            </div>
+          ))}
+        </div>
+      )
+    }
+  ];
+
   return (
     <div className="dashboard">
-      <HeaderEmployee />
+      <HeaderManager />
       <div className="account-container">
         <Card className="account-card" variant="outlined">
           <div className="avatar-wrapper">
@@ -157,47 +171,40 @@ const ManagerAccount: React.FC = () => {
         </Card>
 
         <div className="bottom-content">
-        <Tabs
-  defaultActiveKey="teams"
-  items={[
-    {
-      key: 'teams',
-      label: 'Мои команды',
-      children: (
-        <>
-          <Title level={4} className="text-color">
-            <TeamOutlined /> Мои команды
-          </Title>
-          <List
-            dataSource={userTeams}
-            renderItem={(team) => (
-              <List.Item key={`team-${team.id}`}>
-                <List.Item.Meta
-                  title={<span className="text-color">{team.name}</span>}
-                  description={
-                    <div>
-                      {team.members.map((m) => (
-                        <div key={`member-${team.id}-${m.email}`}>
-                          {m.fullName} ({m.role})
-                        </div>
-                      ))}
-                    </div>
-                  }
-                />
-              </List.Item>
-            )}
+          <Tabs
+            defaultActiveKey="teams"
+            type="card"
+            items={[
+              {
+                key: 'teams',
+                label: (
+                  <>
+                    <TeamOutlined /> Мои команды
+                  </>
+                ),
+                children: (
+                  <>
+                    <Title level={4} className="text-color">Мои команды</Title>
+                    <Table
+                      dataSource={userTeams}
+                      columns={teamColumns}
+                      rowKey="id"
+                      pagination={false}
+                    />
+                  </>
+                ),
+              },
+              {
+                key: 'reports',
+                label: (
+                  <>
+                    <BarChartOutlined /> Все отчёты
+                  </>
+                ),
+                children: <ManagerReports />,
+              },
+            ]}
           />
-        </>
-      ),
-    },
-    {
-      key: 'reports',
-      label: 'Общие отчёты', // ✅ Исправлено название вкладки
-      children: <ManagerReports />, // ✅ Здесь подгружается компонент с отчётами по всем сотрудникам
-    },
-  ]}
-/>
-
         </div>
       </div>
     </div>

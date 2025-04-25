@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Table, ConfigProvider, theme, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
@@ -20,7 +21,6 @@ interface Team {
   members: TeamMember[];
 }
 
-// Типы данных от API (без приведения)
 interface RawTeamMember {
   ID_User?: number;
   fullName: string;
@@ -76,16 +76,29 @@ const MyCommandsManager: React.FC = () => {
     fetchTeams();
   }, [messageApi]);
 
-  const columns = [
+  const getTeamFilters = () =>
+    Array.from(new Set(teams.map(team => team.name)))
+      .map(name => ({ text: name, value: name }));
+
+  const getRoleFilters = () =>
+    Array.from(new Set(teams.flatMap(team => team.members.map(member => member.role))))
+      .map(role => ({ text: role, value: role }));
+
+  const columns: ColumnsType<Team> = [
     {
       title: 'Название команды',
       dataIndex: 'name',
       key: 'name',
+      filters: getTeamFilters(),
+      onFilter: (value, record) => record.name === value,
     },
     {
       title: 'Участники',
       key: 'members',
-      render: (_: unknown, team: Team) => (
+      filters: getRoleFilters(),
+      onFilter: (value, record) =>
+        record.members.some(member => member.role === value),
+      render: (_, team) => (
         <>
           {team.members?.map((m) => (
             <div key={`member-${team.id}-${m.email}-${m.role}`}>
@@ -111,6 +124,7 @@ const MyCommandsManager: React.FC = () => {
               columns={columns}
               rowKey="id"
               style={{ marginTop: 20 }}
+              pagination={{ pageSize: 5 }}
             />
           </main>
         </div>

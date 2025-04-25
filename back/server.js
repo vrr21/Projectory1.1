@@ -14,6 +14,7 @@ const taskRoutes = require('./routes/tasks.routes');
 const taskDetailsRoutes = require('./routes/tasks.details.routes');
 const employeeRoutes = require('./routes/employees.routes');
 const reportsRoutes = require('./routes/reports');
+const statusRoutes = require('./routes/status.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -30,6 +31,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/tasks', taskDetailsRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/statuses', statusRoutes);
 
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 

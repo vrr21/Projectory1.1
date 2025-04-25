@@ -1,3 +1,9 @@
+:root {
+  --bg-color: #121212;
+  --text-color: #f0f0f0;
+  --accent-color: #00bcd4;
+}
+
 .dashboard {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -15,17 +21,19 @@
 
 .main-content.account-content {
   width: 100%;
-  max-width: 900px;
-  margin: 0 auto;
+  max-width: 100%;
+  padding: 0 2rem;
+  box-sizing: border-box;
 }
 
 .account-container {
-  margin-top: 2rem; /* уменьшено с var(--header-height) */
+  margin-top: 2rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 1.5rem; /* уменьшено */
-  gap: 1.5rem; /* уменьшено */
+  align-items: stretch;
+  padding: 0;
+  gap: 1.5rem;
+  width: 100%;
 }
 
 .account-card {
@@ -37,6 +45,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   color: var(--text-color);
+  align-self: center;
 }
 
 .avatar-wrapper {
@@ -51,17 +60,21 @@
   font-weight: bold;
   transition: color 0.3s;
 }
-
 .upload-label:hover {
   color: #00bcd4;
 }
 
-.text-color {
+.text-color,
+.role-text,
+.info-text,
+.bottom-content p,
+.bottom-content h4,
+.table-block p,
+.table-block h4 {
   color: var(--text-color) !important;
 }
 
 .role-text {
-  color: var(--text-color) !important;
   display: block;
   margin-bottom: 16px;
 }
@@ -83,42 +96,7 @@
   font-size: 18px;
 }
 
-.info-text {
-  color: var(--text-color) !important;
-}
-
-.bottom-content {
-  max-width: 900px;
-  width: 100%;
-  background-color: #2c2c2c;
-  padding: 24px;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  color: var(--text-color);
-}
-
-/* Тёмная таблица */
-.bottom-content .ant-table,
-.bottom-content .ant-table-container,
-.bottom-content .ant-table-content,
-.bottom-content .ant-table-thead > tr > th,
-.bottom-content .ant-table-tbody > tr > td {
-  background-color: #2c2c2c !important;
-  color: var(--text-color) !important;
-}
-
-.bottom-content .ant-table-thead > tr > th {
-  border-bottom: 1px solid #444 !important;
-}
-
-.bottom-content .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #333 !important;
-}
-
-.bottom-content p,
-.bottom-content h4 {
-  color: var(--text-color) !important;
-}
+/* Расширяем таблицы и контент полностью */
 .table-block {
   background-color: #2c2c2c;
   padding: 24px;
@@ -126,46 +104,35 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   color: var(--text-color);
   width: 100%;
-  margin-top: 1.5rem;
+  overflow-x: hidden; /* Убираем скролл */
 }
 
+/* Стили для таблиц */
 .table-block .ant-table,
 .table-block .ant-table-container,
-.table-block .ant-table-content,
-.table-block .ant-table-thead > tr > th,
-.table-block .ant-table-tbody > tr > td {
+.table-block .ant-table-content {
+  width: 100% !important;
   background-color: #2c2c2c !important;
   color: var(--text-color) !important;
 }
 
 .table-block .ant-table-thead > tr > th {
   border-bottom: 1px solid #444 !important;
+  white-space: nowrap;
 }
 
 .table-block .ant-table-tbody > tr > td {
   border-bottom: 1px solid #333 !important;
+  white-space: nowrap;
 }
 
-.table-block p,
-.table-block h4 {
-  color: var(--text-color) !important;
-}
-
-
+/* Канбан */
 .kanban-column {
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
   margin-top: 12px;
-  justify-content: flex-start; /* Можно поставить center для центрирования */
-}
-
-.kanban-column {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 12px;
-  justify-content: flex-start; /* Можно поставить center для центрирования */
+  justify-content: flex-start;
 }
 
 .kanban-task-card {
@@ -174,8 +141,8 @@
   border: 1px solid #444;
   border-radius: 10px;
   padding: 16px;
-  width: 100%; /* растягиваем на всю доступную ширину */
-  max-width: 100%; /* отключаем ограничение */
+  width: 100%;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
   word-wrap: break-word;
@@ -184,22 +151,7 @@
   box-sizing: border-box;
 }
 
-.export-button {
-  margin-top: 16px;
-  padding: 8px 16px;
-  background-color: var(--accent-color);
-  border: none;
-  color: #fff;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-.export-button:hover {
-  background-color: #00bcd4;
-}
-
-
+/* Отчёты и графики */
 .reports {
   display: flex;
   flex-direction: column;
@@ -207,23 +159,26 @@
   width: 100%;
 }
 
+.reports .ant-card {
+  width: 100%;
+}
+
 .reports .ant-card .ant-table-wrapper {
   margin-bottom: 16px;
+  overflow-x: auto;
 }
 
 .reports canvas {
   background-color: transparent;
+  max-width: 100%;
 }
 
-.reports .chartjs-render-monitor {
-  --chart-grid-color: rgba(255, 255, 255, 0.2);
-}
-
-.reports .chartjs-render-monitor line,
-.reports .chartjs-render-monitor path {
+.chartjs-render-monitor line,
+.chartjs-render-monitor path {
   stroke: rgba(255, 255, 255, 0.25) !important;
 }
 
+/* Кнопки экспорта */
 .export-button {
   margin-top: 16px;
   padding: 8px 16px;

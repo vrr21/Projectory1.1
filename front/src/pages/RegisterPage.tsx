@@ -1,6 +1,8 @@
 import React from "react";
 import { Button, Checkbox, Form, Input, Typography, message } from "antd";
 import { useNavigate, Link } from "react-router-dom";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 import { registerUser } from "../api/auth";
 import "../styles/pages/RegisterPage.css";
 
@@ -18,6 +20,7 @@ type RegisterForm = {
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
+  const [form] = Form.useForm<RegisterForm>();
 
   const onFinish = async (values: RegisterForm) => {
     try {
@@ -25,7 +28,16 @@ const RegisterPage: React.FC = () => {
         return message.warning("Пароли не совпадают!");
       }
 
-      await registerUser(values);
+      if (!values.phone || values.phone.length < 10) {
+        return message.error("Введите корректный номер телефона!");
+      }
+
+      // Принудительное добавление +
+      await registerUser({
+        ...values,
+        phone: values.phone.startsWith("+") ? values.phone : `+${values.phone}`,
+      });
+
       message.success("Регистрация успешна! Вход...");
       setTimeout(() => navigate("/login"), 1000);
     } catch {
@@ -36,8 +48,8 @@ const RegisterPage: React.FC = () => {
   return (
     <div className="auth-container">
       <div className="auth-form">
-        <Title level={2} style={{ textAlign: "center" }}>Регистрация</Title>
-        <Form layout="vertical" onFinish={onFinish}>
+        <Title level={2}>Регистрация</Title>
+        <Form<RegisterForm> form={form} layout="vertical" onFinish={onFinish}>
           <Form.Item
             label="Имя"
             name="firstName"
@@ -57,9 +69,29 @@ const RegisterPage: React.FC = () => {
           <Form.Item
             label="Телефон"
             name="phone"
-            rules={[{ required: true, message: "Введите номер телефона!" }]}
+            rules={[
+              { required: true, message: "Введите номер телефона!" },
+              {
+                validator: (_, value) =>
+                  value && value.length >= 10
+                    ? Promise.resolve()
+                    : Promise.reject(new Error("Некорректный номер телефона")),
+              },
+            ]}
           >
-            <Input />
+            <PhoneInput
+              country={"by"}
+              inputClass="custom-phone-input"
+              buttonClass="custom-phone-button"
+              containerClass="custom-phone-container"
+              inputProps={{
+                name: "phone",
+                required: true,
+                autoFocus: false,
+                autoComplete: "off",
+              }}
+              enableSearch
+            />
           </Form.Item>
 
           <Form.Item

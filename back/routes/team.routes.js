@@ -11,6 +11,8 @@ const {
 router.get('/', getAllTeams);
 router.post('/', createTeam);
 router.post('/add', addTeamMember);
+
+// ✅ Путь должен быть с `/teams` (не `/team`)
 router.delete('/:teamId/remove/:memberId', removeTeamMember);
 router.delete('/:teamId', deleteTeam);
 

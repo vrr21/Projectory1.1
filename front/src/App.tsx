@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import EmployeeAccount from './pages/EmployeeAccount';
+import ManagerAccount from './pages/ManagerAccount'; // <-- добавлен
 import ProjectManagementPage from './pages/ProjectManagementPage';
 import TasksPageManagement from './pages/TasksPageManagement';
 import MyTasksEmployee from './pages/MyTasksEmployee';
@@ -18,6 +19,14 @@ import EmployeeReports from './components/Reports';
 import ManagerReports from './components/ManagerReports';
 
 import { AuthProvider } from './contexts/AuthProvider';
+import { useAuth } from './contexts/useAuth';
+
+const ProtectedProfileRoute = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  const isManager = user.role?.toLowerCase().includes('менеджер');
+  return isManager ? <ManagerAccount /> : <EmployeeAccount />;
+};
 
 const App: React.FC = () => {
   return (
@@ -31,7 +40,7 @@ const App: React.FC = () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/manager" element={<ManagerDashboard />} />
               <Route path="/employee" element={<EmployeeDashboard />} />
-              <Route path="/profile" element={<EmployeeAccount />} />
+              <Route path="/profile" element={<ProtectedProfileRoute />} />
               <Route path="/projects" element={<ProjectManagementPage />} />
               <Route path="/tasks" element={<TasksPageManagement />} />
               <Route path="/mytasks" element={<MyTasksEmployee />} />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card, Typography, Avatar, Divider, Upload, message, Table, ConfigProvider, theme, Tabs
+  Card, Typography, Avatar, Divider, Upload, message, Table, Tabs
 } from 'antd';
 import {
   UserOutlined, MailOutlined, PhoneOutlined, UploadOutlined
@@ -8,13 +8,11 @@ import {
 import type { UploadChangeParam } from 'antd/es/upload';
 import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
-import HeaderManager from '../components/HeaderManager';
 import HeaderEmployee from '../components/HeaderEmployee';
 import Reports from '../components/Reports';
 import '../styles/pages/EmployeeAccount.css';
 
 const { Title, Text } = Typography;
-const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
@@ -120,8 +118,6 @@ const EmployeeAccount: React.FC = () => {
   if (!user) return <div className="dashboard">Загрузка...</div>;
 
   const fullName = user.name || `${user.lastName ?? ''} ${user.firstName ?? ''}`.trim();
-  const normalizedRole = String(user.role).toLowerCase();
-  const isManager = normalizedRole === 'менеджер' || normalizedRole === 'менеджер (администратор)';
 
   const teamColumns = [
     { title: 'Команда', dataIndex: 'Team_Name', key: 'Team_Name' },
@@ -130,8 +126,10 @@ const EmployeeAccount: React.FC = () => {
       key: 'members',
       render: (_: unknown, team: Team) => (
         <div>
-          {team.members.map((m) => (
-            <div key={`${team.ID_Team}-${m.email}`}>{m.fullName} ({m.role}) — {m.email}</div>
+          {team.members.map((m, idx) => (
+            <div key={`${team.ID_Team}-${m.email}-${m.role}-${idx}`}>
+              {m.fullName} ({m.role}) — {m.email}
+            </div>
           ))}
         </div>
       )
@@ -148,106 +146,73 @@ const EmployeeAccount: React.FC = () => {
   ];
 
   return (
-    <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
-      <div className="dashboard">
-        {isManager ? <HeaderManager /> : <HeaderEmployee />}
-        <div className="dashboard-body account-page-centered">
-          <main className="main-content account-content">
-            <div className="account-container">
-              <Card className="account-card" variant="outlined">
-                <div className="avatar-wrapper">
-                  <Avatar
-                    size={100}
-                    src={avatarUrl || undefined}
-                    icon={!avatarUrl ? <UserOutlined /> : undefined}
-                    alt="User Avatar"
-                    style={{ backgroundColor: '#444' }}
-                  />
-                </div>
-
-                <Upload showUploadList={false} beforeUpload={() => false} onChange={handleAvatarUpload}>
-                  <label className="upload-label">
-                    <UploadOutlined /> Загрузить аватар
-                  </label>
-                </Upload>
-
-                <Title level={3} className="text-color">{fullName}</Title>
-                <Text className="role-text">{user.role}</Text>
-                <Divider className="accent-divider" />
-                <div className="info-item">
-                  <MailOutlined className="icon" />
-                  <Text className="info-text">{user.email}</Text>
-                </div>
-                <div className="info-item">
-                  <PhoneOutlined className="icon" />
-                  <Text className="info-text">{user.phone ?? '+7 (999) 999-99-99'}</Text>
-                </div>
-              </Card>
-
-              <div className="table-block">
-                <Tabs
-                  defaultActiveKey="progress"
-                  type="card"
-                  items={[
-                    {
-                      key: 'progress',
-                      label: 'Мой прогресс',
-                      children: (
-                        <>
-                          <Title level={4} className="text-color">Мои команды</Title>
-                          <Table dataSource={teams} columns={teamColumns} rowKey="ID_Team" className="dark-table" pagination={false} />
-
-                          <Divider />
-
-                          <Title level={4} className="text-color">Мои задачи</Title>
-                          <Table dataSource={tasks} columns={taskColumns} rowKey="ID_Task" className="dark-table" pagination={{ pageSize: 5 }} />
-
-                          <Divider />
-
-                          <Title level={4} className="text-color">Kanban-доска задач</Title>
-                          <Tabs
-                            defaultActiveKey="Новая"
-                            type="card"
-                            items={['Новая', 'В работе', 'Завершена', 'Выполнена'].map(status => ({
-                              key: status,
-                              label: status,
-                              children: (
-                                <div className="kanban-column">
-                                  {tasks
-                                    .filter(task => task.Status_Name === status)
-                                    .map(task => (
-                                      <Card
-                                        key={task.ID_Task}
-                                        className="kanban-task-card"
-                                        variant="outlined"
-                                      >
-                                        <Title level={5} className="text-color">{task.Task_Name}</Title>
-                                        <p><b>Проект:</b> {task.Order_Name}</p>
-                                        <p><b>Команда:</b> {task.Team_Name}</p>
-                                        <p><b>Описание:</b> {task.Description}</p>
-                                        <p><b>Норма времени:</b> {task.Time_Norm} ч.</p>
-                                      </Card>
-                                    ))}
-                                </div>
-                              )
-                            }))}
-                          />
-                        </>
-                      )
-                    },
-                    {
-                      key: 'reports',
-                      label: 'Мои отчёты',
-                      children: <Reports />
-                    }
-                  ]}
+    <div className="dashboard">
+      <HeaderEmployee />
+      <div className="dashboard-body account-page-centered">
+        <main className="main-content account-content">
+          <div className="account-container">
+            <Card className="account-card" variant="outlined">
+              <div className="avatar-wrapper">
+                <Avatar
+                  size={100}
+                  src={avatarUrl || undefined}
+                  icon={!avatarUrl ? <UserOutlined /> : undefined}
+                  alt="User Avatar"
+                  style={{ backgroundColor: '#444' }}
                 />
               </div>
+
+              <Upload showUploadList={false} beforeUpload={() => false} onChange={handleAvatarUpload}>
+                <label className="upload-label">
+                  <UploadOutlined /> Загрузить аватар
+                </label>
+              </Upload>
+
+              <Title level={3} className="text-color">{fullName}</Title>
+              <Text className="role-text">{user.role}</Text>
+              <Divider className="accent-divider" />
+              <div className="info-item">
+                <MailOutlined className="icon" />
+                <Text className="info-text">{user.email}</Text>
+              </div>
+              <div className="info-item">
+                <PhoneOutlined className="icon" />
+                <Text className="info-text">{user.phone ?? '+7 (999) 999-99-99'}</Text>
+              </div>
+            </Card>
+
+            <div className="table-block">
+              <Tabs
+                defaultActiveKey="progress"
+                type="card"
+                items={[
+                  {
+                    key: 'progress',
+                    label: 'Мой прогресс',
+                    children: (
+                      <>
+                        <Title level={4} className="text-color">Мои команды</Title>
+                        <Table dataSource={teams} columns={teamColumns} rowKey="ID_Team" pagination={false} />
+
+                        <Divider />
+
+                        <Title level={4} className="text-color">Мои задачи</Title>
+                        <Table dataSource={tasks} columns={taskColumns} rowKey="ID_Task" pagination={{ pageSize: 5 }} />
+                      </>
+                    )
+                  },
+                  {
+                    key: 'reports',
+                    label: 'Мои отчёты',
+                    children: <Reports />
+                  }
+                ]}
+              />
             </div>
-          </main>
-        </div>
+          </div>
+        </main>
       </div>
-    </ConfigProvider>
+    </div>
   );
 };
 

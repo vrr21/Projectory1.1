@@ -74,3 +74,28 @@
 .auth-form a {
   color: #00bcd4;
 }
+/* Кастомные стили поля ввода номера телефона */
+.custom-phone-input {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  width: 100% !important;
+  height: 40px !important;
+  padding-left: 48px !important;
+  border-radius: 4px;
+}
+
+.custom-phone-input::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+.custom-phone-button {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border: none !important;
+  border-right: 1px solid #444 !important;
+}
+
+.custom-phone-container {
+  width: 100%;
+}

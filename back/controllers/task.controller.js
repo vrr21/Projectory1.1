@@ -99,39 +99,71 @@ exports.createTask = async (req, res) => {
   }
 };
 
-// 🔹 Обновление задачи
+// 🔹 Обновление задачи (исправлено!)
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
-  const { Task_Name, Description, Time_Norm, Status_Name, ID_Order } = req.body;
+  const {
+    Task_Name,
+    Description,
+    Time_Norm,
+    Status_Name,
+    ID_Status,
+    ID_Order
+  } = req.body;
 
   try {
-    const statusResult = await pool.request()
-      .input('Status_Name', sql.NVarChar, Status_Name)
-      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+    let resolvedStatusId = ID_Status;
 
-    if (!statusResult.recordset.length) {
-      return res.status(400).json({ message: 'Недопустимый статус' });
+    if (!resolvedStatusId && Status_Name) {
+      const statusResult = await pool.request()
+        .input('Status_Name', sql.NVarChar, Status_Name)
+        .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+
+      if (!statusResult.recordset.length) {
+        return res.status(400).json({ message: 'Недопустимый статус' });
+      }
+
+      resolvedStatusId = statusResult.recordset[0].ID_Status;
     }
 
-    const ID_Status = statusResult.recordset[0].ID_Status;
+    if (!resolvedStatusId) {
+      return res.status(400).json({ message: 'Статус задачи обязателен (ID_Status или Status_Name)' });
+    }
 
-    await pool.request()
-      .input('ID_Task', sql.Int, id)
-      .input('Task_Name', sql.NVarChar, Task_Name)
-      .input('Description', sql.NVarChar, Description)
-      .input('Time_Norm', sql.Int, Time_Norm)
-      .input('ID_Status', sql.Int, ID_Status)
-      .input('ID_Order', sql.Int, ID_Order)
-      .query(`
-        UPDATE Tasks
-        SET Task_Name = @Task_Name,
-            Description = @Description,
-            Time_Norm = @Time_Norm,
-            ID_Status = @ID_Status,
-            ID_Order = @ID_Order
-        WHERE ID_Task = @ID_Task
-      `);
+    const fields = [];
+    const request = pool.request().input('ID_Task', sql.Int, id);
 
+    if (Task_Name !== undefined) {
+      fields.push('Task_Name = @Task_Name');
+      request.input('Task_Name', sql.NVarChar, Task_Name);
+    }
+    if (Description !== undefined) {
+      fields.push('Description = @Description');
+      request.input('Description', sql.NVarChar, Description);
+    }
+    if (Time_Norm !== undefined) {
+      fields.push('Time_Norm = @Time_Norm');
+      request.input('Time_Norm', sql.Int, Time_Norm);
+    }
+    if (ID_Order !== undefined) {
+      fields.push('ID_Order = @ID_Order');
+      request.input('ID_Order', sql.Int, ID_Order);
+    }
+
+    fields.push('ID_Status = @ID_Status');
+    request.input('ID_Status', sql.Int, resolvedStatusId);
+
+    if (!fields.length) {
+      return res.status(400).json({ message: 'Нет полей для обновления' });
+    }
+
+    const query = `
+      UPDATE Tasks
+      SET ${fields.join(', ')}
+      WHERE ID_Task = @ID_Task
+    `;
+
+    await request.query(query);
     res.status(200).json({ message: 'Задача успешно обновлена' });
   } catch (error) {
     console.error('Ошибка при обновлении задачи:', error);
@@ -144,12 +176,10 @@ exports.deleteTask = async (req, res) => {
   const { id } = req.params;
 
   try {
-    await pool.request()
-      .input('ID_Task', sql.Int, id)
+    await pool.request().input('ID_Task', sql.Int, id)
       .query('DELETE FROM Assignment WHERE ID_Task = @ID_Task');
 
-    await pool.request()
-      .input('ID_Task', sql.Int, id)
+    await pool.request().input('ID_Task', sql.Int, id)
       .query('DELETE FROM Tasks WHERE ID_Task = @ID_Task');
 
     res.status(200).json({ message: 'Задача и назначения успешно удалены' });

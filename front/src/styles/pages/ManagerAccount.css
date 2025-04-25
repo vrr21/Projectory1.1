@@ -1,0 +1,59 @@
+/* ОБНОВЛЕНО: Центровка и ограничение ширины */
+.dashboard-body.account-page-centered {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.main-content.account-content {
+  width: 100%;
+  max-width: 1280px; /* увеличено чтобы вмещать графики */
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Контейнер с контентом */
+.account-container {
+  width: 100%;
+  padding: 1.5rem;
+  gap: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* Карточка пользователя по центру */
+.account-card {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+/* Таблицы не ломают блок */
+.table-block,
+.bottom-content {
+  width: 100%;
+  overflow-x: auto;
+  background-color: #2c2c2c;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: var(--text-color);
+  box-sizing: border-box;
+}
+
+/* Таблица */
+.table-block .ant-table,
+.bottom-content .ant-table {
+  min-width: 960px;
+}
+
+/* Скролл появляется только у таблиц, не у всей страницы */
+.ant-table-wrapper {
+  overflow-x: auto;
+}
+
+/* Канбан, отчёты */
+.reports, .manager-reports {
+  width: 100%;
+  box-sizing: border-box;
+}
