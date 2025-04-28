@@ -17,6 +17,7 @@ import '../styles/pages/ProjectManagementPage.css';
 
 const { Option } = Select;
 const { darkAlgorithm } = theme;
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Task {
   ID_Task: number;
@@ -49,7 +50,7 @@ const TasksPageManagement: React.FC = () => {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/tasks/with-details');
+      const response = await fetch(`${API_URL}/api/taskdetails/with-details`);
       if (!response.ok) throw new Error(`Ошибка при загрузке задач: ${response.status}`);
       const data: Task[] = await response.json();
       setTasks(data);
@@ -61,7 +62,7 @@ const TasksPageManagement: React.FC = () => {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/orders');
+      const response = await fetch(`${API_URL}/api/projects`);
       if (!response.ok) throw new Error(`Ошибка при загрузке проектов: ${response.status}`);
       const data = await response.json();
       setOrders(data);
@@ -73,7 +74,7 @@ const TasksPageManagement: React.FC = () => {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3002/api/employees');
+      const response = await fetch(`${API_URL}/api/employees`);
       if (!response.ok) throw new Error(`Ошибка при загрузке сотрудников: ${response.status}`);
       const data = await response.json();
       setUsers(data);
@@ -131,8 +132,8 @@ const TasksPageManagement: React.FC = () => {
 
     try {
       const url = editingTask
-        ? `http://localhost:3002/api/tasks/${editingTask.ID_Task}`
-        : 'http://localhost:3002/api/tasks';
+        ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
+        : `${API_URL}/api/tasks`;
       const method = editingTask ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -153,7 +154,7 @@ const TasksPageManagement: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:3002/api/tasks/${id}`, {
+      const response = await fetch(`${API_URL}/api/tasks/${id}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Ошибка при удалении задачи');

@@ -1,29 +1,110 @@
+/* Главный контейнер */
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  transition: all 0.3s ease;
+}
+
+/* Сайдбар */
 .sidebar {
   position: fixed;
   top: var(--header-height);
   left: 0;
   width: var(--sidebar-width);
   height: calc(100vh - var(--header-height));
+  background-color: var(--sidebar-bg-color);
+  color: var(--text-color);
+  border-right: 1px solid var(--border-color);
+  transition: width 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+/* Свёрнутый сайдбар */
+.collapsed .sidebar {
+  width: 80px;
+}
+
+/* Контент */
+.content {
+  margin-top: var(--header-height);
+  margin-left: var(--sidebar-width);
+  padding: 24px;
+  width: calc(100% - var(--sidebar-width));
   background-color: var(--bg-color);
   color: var(--text-color);
-  border-right: 1px solid #333;
-  z-index: 999;
-  padding-top: 16px;
+  transition: margin-left 0.3s ease, width 0.3s ease, background-color 0.3s ease, color 0.3s ease;
 }
 
-.sidebar .ant-menu {
-  background-color: transparent;
-  border-right: none;
+/* Контент при свёрнутом сайдбаре */
+.collapsed .content {
+  margin-left: 80px;
+  width: calc(100% - 80px);
 }
 
-.sidebar .ant-menu-item {
+/* Кнопка бургерного меню */
+/* Кнопка бургерного меню */
+.toggle-button {
+  display: flex;
+  align-items: center;
+  height: 64px;
+  font-size: 22px;
+  padding-left: 31px; /* Отступ слева для красивого расположения */
+  cursor: pointer;
   color: var(--text-color);
+  transition: transform 0.3s ease, color 0.3s ease;
+  justify-content: flex-start; /* ВЫРАВНИВАЕМ ВЛЕВО */
 }
 
+.toggle-button:hover {
+  transform: scale(1.1);
+  color: var(--accent-color);
+}
+
+
+
+/* Меню */
+.sidebar .ant-menu {
+  background-color: transparent !important;
+  border-right: none !important;
+}
+
+/* Пункты меню */
+.sidebar .ant-menu-item {
+  color: var(--text-color) !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Ссылки в меню */
 .sidebar .ant-menu-item a {
   color: var(--text-color);
+  transition: color 0.3s ease;
 }
 
+/* Активный пункт */
 .sidebar .ant-menu-item-selected {
-  background-color: var(--accent-color);
+  background-color: var(--accent-color) !important;
+}
+
+/* Иконки */
+.sidebar .ant-menu-item .anticon {
+  font-size: 20px;
+  transition: transform 0.3s ease;
+}
+
+/* При наведении на иконки */
+.sidebar .ant-menu-item:hover .anticon {
+  transform: scale(1.2);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .sidebar {
+    width: 80px;
+  }
+  .content {
+    margin-left: 80px;
+    width: calc(100% - 80px);
+  }
 }

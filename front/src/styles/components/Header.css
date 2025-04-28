@@ -10,29 +10,14 @@
   justify-content: space-between;
   padding: 0 24px;
   z-index: 1000;
-  border-bottom: 1px solid #2a2a2a; /* 💡 Разделительная линия */
+  border-bottom: 1px solid #2a2a2a;
 }
-
 
 .logo {
   color: var(--text-color);
   font-size: 20px;
   font-weight: bold;
-}
-
-.menu {
-  flex: 1;
-  margin-left: 24px;
-  background-color: transparent;
-}
-
-.menu .ant-menu-item a {
-  color: var(--text-color);
-}
-
-.menu .ant-menu-item-selected,
-.menu .ant-menu-item:hover {
-  background-color: transparent !important;
+  cursor: pointer;
 }
 
 .right-section {
@@ -40,28 +25,100 @@
   align-items: center;
 }
 
+/* === СТИЛИ ПОИСКА === */
 .search-input {
-  width: 200px;
+  width: 250px;
   margin-right: 16px;
 }
 
+.search-input .ant-select {
+  width: 100%;
+}
+
+.search-input .ant-select-selector {
+  background-color: var(--input-bg-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  height: 40px !important;
+  padding: 0 8px !important;
+  display: flex;
+  align-items: center;
+  box-shadow: none !important;
+  transition: all 0.3s ease !important;
+}
+
+.search-input .ant-select-selector:hover,
+.search-input .ant-select-selector:focus {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 6px var(--accent-color) !important;
+}
+
+.search-input input {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--text-color) !important;
+  font-size: 14px;
+  height: 100%;
+}
+
+.search-input .anticon-search {
+  color: var(--text-color) !important;
+}
+
+/* Стили для выпадающего списка */
+.autocomplete-dropdown {
+  background-color: var(--card-bg-color) !important;
+  border-radius: 8px !important;
+  padding: 8px 0;
+}
+
+.autocomplete-dropdown .ant-select-item {
+  color: var(--text-color) !important;
+  padding: 8px 16px;
+}
+
+.autocomplete-dropdown .ant-select-item:hover {
+  background-color: var(--hover-bg-color) !important;
+}
+
+/* === СТИЛИ ИКОНОК === */
 .icon {
   margin-right: 16px;
 }
-.dark-modal .ant-modal-content {
+
+/* Модалки */
+.dark-modal .ant-modal-content,
+.dark-modal .ant-modal-header,
+.dark-modal .ant-modal-footer {
   background-color: #1f1f1f;
   color: #fff;
 }
 
 .dark-modal .ant-modal-header {
-  background-color: #1f1f1f;
   border-bottom: 1px solid #333;
-}
-
-.dark-modal .ant-modal-title {
-  color: #fff;
 }
 
 .dark-modal .ant-modal-footer {
   border-top: 1px solid #333;
+}
+
+/* Меню профиля */
+.ant-dropdown-menu {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="light"] .ant-dropdown-menu {
+  background-color: var(--card-bg-color) !important;
+  color: #000 !important;
+}
+
+[data-theme="dark"] .ant-dropdown-menu {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.ant-dropdown-menu-item:hover {
+  background-color: var(--hover-bg-color) !important;
 }

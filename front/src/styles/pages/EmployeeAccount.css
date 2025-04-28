@@ -1,9 +1,4 @@
-:root {
-  --bg-color: #121212;
-  --text-color: #f0f0f0;
-  --accent-color: #00bcd4;
-}
-
+/* Основной фон и цвет текста */
 .dashboard {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -12,6 +7,7 @@
   flex-direction: column;
 }
 
+/* Структура страницы аккаунта */
 .dashboard-body.account-page-centered {
   display: flex;
   justify-content: center;
@@ -19,6 +15,7 @@
   padding: 0 1rem;
 }
 
+/* Контентная часть */
 .main-content.account-content {
   width: 100%;
   max-width: 100%;
@@ -26,6 +23,7 @@
   box-sizing: border-box;
 }
 
+/* Контейнер аккаунта */
 .account-container {
   margin-top: 2rem;
   display: flex;
@@ -36,22 +34,26 @@
   width: 100%;
 }
 
+/* Карточка пользователя */
 .account-card {
   max-width: 500px;
   width: 100%;
   text-align: center;
-  background-color: #2c2c2c;
+  background-color: var(--card-bg-color);
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   color: var(--text-color);
   align-self: center;
+  transition: background-color var(--transition-time), color var(--transition-time);
 }
 
+/* Аватар */
 .avatar-wrapper {
   margin-bottom: 16px;
 }
 
+/* Кнопка загрузки аватара */
 .upload-label {
   display: inline-block;
   margin-top: 10px;
@@ -64,6 +66,7 @@
   color: #00bcd4;
 }
 
+/* Основные текстовые элементы */
 .text-color,
 .role-text,
 .info-text,
@@ -74,15 +77,18 @@
   color: var(--text-color) !important;
 }
 
+/* Роль */
 .role-text {
   display: block;
   margin-bottom: 16px;
 }
 
+/* Разделительная линия */
 .accent-divider {
   border-color: var(--accent-color);
 }
 
+/* Элементы информации */
 .info-item {
   display: flex;
   align-items: center;
@@ -91,67 +97,98 @@
   margin-top: 12px;
 }
 
+/* Иконки */
 .icon {
   color: var(--accent-color);
   font-size: 18px;
 }
 
-/* Расширяем таблицы и контент полностью */
+/* Блок с таблицами, вкладками, отчётами */
 .table-block {
-  background-color: #2c2c2c;
+  background-color: var(--card-bg-color);
   padding: 24px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   color: var(--text-color);
   width: 100%;
-  overflow-x: hidden; /* Убираем скролл */
+  overflow-x: hidden;
+  transition: background-color var(--transition-time), color var(--transition-time);
 }
 
-/* Стили для таблиц */
+/* Заголовки внутри table-block */
+.table-block h1,
+.table-block h2,
+.table-block h3,
+.table-block h4,
+.reports h1,
+.reports h2,
+.reports h3,
+.reports h4 {
+  color: var(--text-color);
+  transition: color var(--transition-time);
+}
+
+/* Таблицы */
 .table-block .ant-table,
 .table-block .ant-table-container,
 .table-block .ant-table-content {
   width: 100% !important;
-  background-color: #2c2c2c !important;
+  background-color: var(--card-bg-color) !important;
   color: var(--text-color) !important;
 }
 
 .table-block .ant-table-thead > tr > th {
-  border-bottom: 1px solid #444 !important;
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
   white-space: nowrap;
 }
 
 .table-block .ant-table-tbody > tr > td {
-  border-bottom: 1px solid #333 !important;
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
   white-space: nowrap;
 }
 
-/* Канбан */
-.kanban-column {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-top: 12px;
-  justify-content: flex-start;
-}
-
-.kanban-task-card {
-  background-color: #2c2c2c !important;
+/* Табы */
+.table-block .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  background: var(--card-bg-color) !important;
   color: var(--text-color) !important;
-  border: 1px solid #444;
-  border-radius: 10px;
-  padding: 16px;
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: column;
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
-  box-sizing: border-box;
+  border: 1px solid var(--border-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
 }
 
-/* Отчёты и графики */
+.table-block .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+
+/* Пагинация */
+.table-block .ant-pagination-item {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid var(--border-color);
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+.table-block .ant-pagination-item-active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.table-block .ant-pagination-prev .anticon,
+.table-block .ant-pagination-next .anticon {
+  color: var(--text-color);
+}
+
+.table-block .ant-pagination-prev:hover .anticon,
+.table-block .ant-pagination-next:hover .anticon {
+  color: var(--accent-color);
+}
+
+/* Блок отчетов */
 .reports {
   display: flex;
   flex-direction: column;
@@ -161,6 +198,9 @@
 
 .reports .ant-card {
   width: 100%;
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
 }
 
 .reports .ant-card .ant-table-wrapper {
@@ -173,23 +213,25 @@
   max-width: 100%;
 }
 
+/* Линии и пути в графиках */
 .chartjs-render-monitor line,
 .chartjs-render-monitor path {
   stroke: rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Кнопки экспорта */
+/* Кнопка экспорта */
 .export-button {
   margin-top: 16px;
   padding: 8px 16px;
   background-color: var(--accent-color);
   border: none;
-  color: #fff;
+  color: #ffffff;
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
   transition: background 0.3s;
 }
+
 .export-button:hover {
   background-color: #00bcd4;
 }

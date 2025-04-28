@@ -8,7 +8,7 @@ import LoginPage from './pages/LoginPage';
 import ManagerDashboard from './pages/ManagerDashboard';
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import EmployeeAccount from './pages/EmployeeAccount';
-import ManagerAccount from './pages/ManagerAccount'; // <-- добавлен
+import ManagerAccount from './pages/ManagerAccount';
 import ProjectManagementPage from './pages/ProjectManagementPage';
 import TasksPageManagement from './pages/TasksPageManagement';
 import MyTasksEmployee from './pages/MyTasksEmployee';
@@ -41,12 +41,25 @@ const App: React.FC = () => {
               <Route path="/manager" element={<ManagerDashboard />} />
               <Route path="/employee" element={<EmployeeDashboard />} />
               <Route path="/profile" element={<ProtectedProfileRoute />} />
+
+              {/* Проекты */}
               <Route path="/projects" element={<ProjectManagementPage />} />
+              <Route path="/projects/:id" element={<ProjectManagementPage />} /> {/* ✅ чтобы открывать один проект */}
+
+              {/* Задачи */}
               <Route path="/tasks" element={<TasksPageManagement />} />
+              <Route path="/tasks/:id" element={<MyTasksEmployee />} /> {/* ✅ чтобы открывать задачу пользователя */}
+
+              {/* Мои задачи */}
               <Route path="/mytasks" element={<MyTasksEmployee />} />
+
+              {/* Команды */}
               <Route path="/team-management" element={<TeamManagementPage />} />
               <Route path="/teams" element={<MyCommandsEmployee />} />
+              <Route path="/teams/:id" element={<MyCommandsEmployee />} /> {/* ✅ чтобы открывать одну команду */}
               <Route path="/myteams" element={<MyCommandsManager />} />
+
+              {/* Отчёты */}
               <Route path="/reports" element={<EmployeeReports />} />
               <Route path="/manager-reports" element={<ManagerReports />} />
             </Routes>

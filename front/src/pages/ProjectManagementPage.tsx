@@ -68,7 +68,7 @@ const ProjectManagementPage: React.FC = () => {
 
   const fetchProjects = useCallback(async (): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/api/orders`);
+      const response = await fetch(`${API_URL}/api/projects`);
       if (!response.ok) throw new Error('Ошибка при загрузке проектов');
       const data: Project[] = await response.json();
 
@@ -149,8 +149,8 @@ const ProjectManagementPage: React.FC = () => {
       };
 
       const url = editingProject
-        ? `${API_URL}/api/orders/${editingProject.ID_Order}`
-        : `${API_URL}/api/orders`;
+        ? `${API_URL}/api/projects/${editingProject.ID_Order}`
+        : `${API_URL}/api/projects`;
       const method = editingProject ? 'PUT' : 'POST';
 
       const response = await fetch(url, {
@@ -170,7 +170,7 @@ const ProjectManagementPage: React.FC = () => {
 
   const handleDelete = async (id: number): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/api/orders/${id}`, {
+      const response = await fetch(`${API_URL}/api/projects/${id}`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Ошибка при удалении проекта');

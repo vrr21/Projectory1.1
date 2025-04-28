@@ -26,15 +26,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/teams', teamRoutes);
-app.use('/api/orders', projectRoutes);
+app.use('/api/projects', projectRoutes); // ✅ исправлено! Было orders → должно быть projects
 app.use('/api/tasks', taskRoutes);
-app.use('/api/tasks', taskDetailsRoutes);
+app.use('/api/taskdetails', taskDetailsRoutes); // ✅ исправлено! Уникальный путь для task details
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/statuses', statusRoutes);
 
+// Базовый маршрут для проверки сервера
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
+// Запуск сервера
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен: http://localhost:${PORT}`);
 });

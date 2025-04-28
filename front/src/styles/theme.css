@@ -1,26 +1,243 @@
+/* Основные переменные */
 :root {
-  --bg-color: #1e1e1e;
-  --text-color: #ffffff;
   --accent-color: #006F7A;
   --sidebar-width: 240px;
   --header-height: 64px;
+  --transition-time: 0.3s;
 }
 
-body {
+/* Темная тема */
+[data-theme="dark"] {
+  --bg-color: #1e1e1e;
+  --text-color: #ffffff;
+  --card-bg-color: #2c2c2c;
+  --input-bg-color: rgba(255, 255, 255, 0.15);
+  --border-color: #555;
+  --hover-bg-color: #333;
+  --scrollbar-thumb-color: #666;
+}
+
+/* Светлая тема */
+[data-theme="light"] {
+  --bg-color: #ffffff;
+  --text-color: #000000;
+  --card-bg-color: #f9f9f9;
+  --input-bg-color: #f0f0f0;
+  --border-color: #ccc;
+  --hover-bg-color: #eaeaea;
+  --scrollbar-thumb-color: #bbb;
+}
+
+/* Базовые стили страницы */
+html, body {
   margin: 0;
   padding: 0;
+  font-family: 'Arial', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-color);
-  font-family: Arial, sans-serif;
+  transition: background-color var(--transition-time), color var(--transition-time);
+  min-height: 100vh;
 }
 
+/* Заголовки */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-color);
+  transition: color var(--transition-time);
+}
+
+/* Ссылки */
 a {
   color: var(--text-color);
   text-decoration: none;
+  transition: color var(--transition-time);
 }
 
-ul {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* Основные контейнеры страниц */
+.layout, .content, 
+.dashboard, .main-content, .account-container, .project-management-page, 
+.team-management-page, .tasks-page, .profile-page, .reports-page, 
+.page-wrapper, .page-content, .kanban-board {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color var(--transition-time), color var(--transition-time);
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* Дополнительные секции */
+.section, .panel, .widget, .chart-card {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+/* Хэдер и сайдбар */
+.header, .sidebar, .sidebar-manager {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+/* Поисковая строка */
+.search-input {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+/* Модальные окна */
+.ant-modal-content, .ant-modal-header, .ant-modal-body {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+/* Кнопки */
+.ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  transition: background-color var(--transition-time), border-color var(--transition-time);
+}
+
+.ant-btn-primary:hover, .ant-btn-primary:focus, .ant-btn-primary:active {
+  background-color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+}
+
+/* Вводы, селекты */
+.ant-input, .ant-input-password, .ant-select-selector, .ant-picker-input > input {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* ✅ Обновлённые таблицы */
+.ant-table {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+.ant-table-thead > tr > th {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 2px solid var(--border-color) !important;
+  font-weight: bold;
+  font-size: 14px;
+  text-align: center;
+}
+
+.ant-table-tbody > tr > td {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  text-align: center;
+}
+
+.ant-table-tbody > tr:hover > td {
+  background-color: var(--hover-bg-color) !important;
+}
+
+/* Чёткое разделение ячеек */
+.ant-table-tbody > tr > td:not(:last-child),
+.ant-table-thead > tr > th:not(:last-child) {
+  border-right: 1px solid var(--border-color) !important;
+}
+
+/* Дропдауны */
+.ant-picker-panel, .ant-dropdown-menu, .ant-select-dropdown {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Доски задач */
+.kanban-column, .kanban-task, .task-card {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb-color);
+  border-radius: 4px;
+}
+
+/* Меню в сайдбаре */
+.sidebar .ant-menu, .sidebar-manager .ant-menu {
+  background-color: transparent !important;
+}
+
+.sidebar .ant-menu-item, .sidebar-manager .ant-menu-item {
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+.sidebar .ant-menu-item a, .sidebar-manager .ant-menu-item a {
+  color: var(--text-color) !important;
+}
+
+.sidebar .ant-menu-item-selected, .sidebar-manager .ant-menu-item-selected {
+  background-color: var(--accent-color) !important;
+}
+
+/* Пагинация */
+.ant-pagination {
+  background-color: transparent;
+  color: #ffffff;
+}
+
+.ant-pagination-item {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid var(--border-color);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+.ant-pagination-item-active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.ant-pagination-item:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.ant-pagination-prev, 
+.ant-pagination-next {
+  background-color: transparent;
+  border: none;
+}
+
+.ant-pagination-prev .anticon, 
+.ant-pagination-next .anticon {
+  transition: color var(--transition-time);
+}
+
+[data-theme="light"] .ant-pagination-prev .anticon, 
+[data-theme="light"] .ant-pagination-next .anticon {
+  color: #000000;
+}
+
+[data-theme="dark"] .ant-pagination-prev .anticon, 
+[data-theme="dark"] .ant-pagination-next .anticon {
+  color: #ffffff;
+}
+
+.ant-pagination-prev:hover .anticon, 
+.ant-pagination-next:hover .anticon {
+  color: var(--accent-color);
 }

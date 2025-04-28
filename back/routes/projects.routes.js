@@ -33,17 +33,14 @@ router.post('/', async (req, res) => {
   try {
     await poolConnect;
 
-    // Check if the project type exists
     let projectTypeResult = await pool.request()
       .input('typeName', sql.NVarChar, Type_Name)
       .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @typeName');
 
     let ID_ProjectType;
-
     if (projectTypeResult.recordset.length > 0) {
       ID_ProjectType = projectTypeResult.recordset[0].ID_ProjectType;
     } else {
-      // Insert new project type
       const insertResult = await pool.request()
         .input('typeName', sql.NVarChar, Type_Name)
         .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)');
@@ -76,17 +73,14 @@ router.put('/:id', async (req, res) => {
   try {
     await poolConnect;
 
-    // Check if the project type exists
     let projectTypeResult = await pool.request()
       .input('typeName', sql.NVarChar, Type_Name)
       .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @typeName');
 
     let ID_ProjectType;
-
     if (projectTypeResult.recordset.length > 0) {
       ID_ProjectType = projectTypeResult.recordset[0].ID_ProjectType;
     } else {
-      // Insert new project type
       const insertResult = await pool.request()
         .input('typeName', sql.NVarChar, Type_Name)
         .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)');
@@ -131,6 +125,25 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Ошибка при удалении проекта:', error);
     res.status(500).json({ message: 'Ошибка сервера при удалении проекта' });
+  }
+});
+
+// 🔥 Поиск проектов
+router.get('/search', async (req, res) => {
+  const { q } = req.query;
+  try {
+    await poolConnect;
+    const result = await pool.request()
+      .input('query', sql.NVarChar, `%${q}%`)
+      .query(`
+        SELECT ID_Order, Order_Name 
+        FROM Orders 
+        WHERE Order_Name LIKE @query
+      `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Ошибка поиска проектов:', error);
+    res.status(500).json({ message: 'Ошибка поиска проектов' });
   }
 });
 
