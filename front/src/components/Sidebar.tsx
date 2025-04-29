@@ -1,6 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, ProjectOutlined, TeamOutlined } from '@ant-design/icons';
+import { 
+  MenuFoldOutlined, 
+  MenuUnfoldOutlined, 
+  DashboardOutlined, 
+  ProjectOutlined, 
+  TeamOutlined 
+} from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
 
@@ -32,6 +38,17 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   ];
 
   const menuItems = role === 'manager' ? managerMenuItems : employeeMenuItems;
+
+  useEffect(() => {
+    const layoutElement = document.querySelector('.layout');
+    if (layoutElement) {
+      if (collapsed) {
+        layoutElement.classList.add('collapsed');
+      } else {
+        layoutElement.classList.remove('collapsed');
+      }
+    }
+  }, [collapsed]);
 
   return (
     <Sider

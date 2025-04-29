@@ -15,6 +15,8 @@ const taskDetailsRoutes = require('./routes/tasks.details.routes');
 const employeeRoutes = require('./routes/employees.routes');
 const reportsRoutes = require('./routes/reports');
 const statusRoutes = require('./routes/status.routes');
+const employeeFullSearchRouter = require('./routes/employeeFullSearch.router');
+const managerRoutes = require('./routes/manager.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -32,6 +34,8 @@ app.use('/api/taskdetails', taskDetailsRoutes); // ✅ исправлено! У�
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/statuses', statusRoutes);
+app.use('/api/employee', employeeFullSearchRouter);
+app.use('/api/manager', managerRoutes);
 
 // Базовый маршрут для проверки сервера
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));

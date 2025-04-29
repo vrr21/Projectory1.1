@@ -5,11 +5,12 @@ const { poolConnect, pool, sql } = require('../config/db');
 // Получить всех сотрудников
 router.get('/', async (req, res) => {
   try {
-    await poolConnect; // ✅
+    await poolConnect;
     const result = await pool.request().query(`
       SELECT 
         ID_User,
-        First_Name + ' ' + Last_Name AS FullName
+        First_Name + ' ' + Last_Name AS FullName,
+        Email
       FROM Users
     `);
     res.json(result.recordset);
@@ -23,11 +24,14 @@ router.get('/', async (req, res) => {
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {
-    await poolConnect; // ✅
+    await poolConnect;
     const result = await pool.request()
       .input('query', sql.NVarChar, `%${q}%`)
       .query(`
-        SELECT ID_User AS id, First_Name + ' ' + Last_Name AS fullName
+        SELECT 
+          ID_User AS id,
+          First_Name + ' ' + Last_Name AS fullName,
+          Email
         FROM Users
         WHERE First_Name LIKE @query OR Last_Name LIKE @query OR Email LIKE @query
       `);

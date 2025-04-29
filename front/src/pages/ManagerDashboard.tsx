@@ -4,18 +4,18 @@ import {
   ConfigProvider,
   theme,
   Select,
-  Row,
-  Col,
   Button,
   Modal,
   Form,
   Input,
-  App
+  App,
+  Avatar,
+  Tooltip
 } from 'antd';
+import { UserOutlined } from '@ant-design/icons';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { useNavigate } from 'react-router-dom';
 import '../styles/pages/ManagerDashboard.css';
 
 const { darkAlgorithm } = theme;
@@ -28,6 +28,7 @@ interface Task {
   Time_Norm: number;
   Status_Name: string;
   Order_Name: string;
+  ID_Order: number;
   Employee_Name: string | null;
 }
 
@@ -40,6 +41,7 @@ interface Team {
 interface TeamMember {
   id: number;
   fullName: string;
+  avatar?: string;
 }
 
 interface Status {
@@ -47,13 +49,9 @@ interface Status {
   Status_Name: string;
 }
 
-interface NewTaskFormData {
-  Task_Name: string;
-  Description: string;
-  Time_Norm: number;
-  ID_Status: number;
+interface Project {
   ID_Order: number;
-  Employee_Name: string;
+  Order_Name: string;
 }
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
@@ -62,12 +60,10 @@ const ManagerDashboard: React.FC = () => {
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
   const [teams, setTeams] = useState<Team[]>([]);
   const [statusesData, setStatusesData] = useState<Status[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
-  const [messageApi, contextHolder] = message.useMessage();
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [form] = Form.useForm();
-  const navigate = useNavigate();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const fetchTeams = useCallback(async () => {
     try {
@@ -76,6 +72,16 @@ const ManagerDashboard: React.FC = () => {
       setTeams(data);
     } catch {
       messageApi.error('Не удалось загрузить команды');
+    }
+  }, [messageApi]);
+
+  const fetchProjects = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/projects`);
+      const data = await res.json();
+      setProjects(data);
+    } catch {
+      messageApi.error('Не удалось загрузить проекты');
     }
   }, [messageApi]);
 
@@ -91,11 +97,7 @@ const ManagerDashboard: React.FC = () => {
 
   const fetchTasks = useCallback(async () => {
     try {
-      let url = `${API_URL}/api/tasks?`;
-      if (selectedEmployee) url += `employee=${selectedEmployee}&`;
-      if (selectedTeam) url += `team=${selectedTeam}&`;
-
-      const res = await fetch(url);
+      const res = await fetch(`${API_URL}/api/taskdetails/with-details`);
       const data: Task[] = await res.json();
 
       const grouped: Record<string, Task[]> = {};
@@ -106,16 +108,14 @@ const ManagerDashboard: React.FC = () => {
     } catch {
       messageApi.error('Не удалось загрузить задачи');
     }
-  }, [selectedEmployee, selectedTeam, messageApi]);
+  }, [messageApi]);
 
   useEffect(() => {
     fetchTeams();
+    fetchProjects();
     fetchStatuses();
-  }, [fetchTeams, fetchStatuses]);
-
-  useEffect(() => {
     fetchTasks();
-  }, [selectedEmployee, selectedTeam, fetchTasks]);
+  }, [fetchTeams, fetchProjects, fetchStatuses, fetchTasks]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -125,49 +125,43 @@ const ManagerDashboard: React.FC = () => {
     const updatedStatusName = destination.droppableId;
     const statusObj = statusesData.find((s) => s.Status_Name === updatedStatusName);
 
-    if (!statusObj) {
-      messageApi.error('Ошибка: не удалось определить статус');
-      return;
-    }
+    if (!statusObj) return messageApi.error('Ошибка: не удалось определить статус');
 
     try {
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
+      await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ID_Status: statusObj.ID_Status }),
       });
-
-      if (!response.ok) throw new Error();
       fetchTasks();
     } catch {
-      messageApi.error('Ошибка при изменении статуса задачи');
+      messageApi.error('Ошибка при изменении статуса');
     }
   };
 
-  const handleCancel = () => {
-    setIsModalVisible(false);
-    form.resetFields();
-  };
-
-  const handleFinish = async (values: NewTaskFormData) => {
+  const handleFinish = async (values: {
+    Task_Name: string;
+    Description: string;
+    Time_Norm: number;
+    ID_Status: number;
+    ID_Order: number;
+    Employee_Name: string;
+  }) => {
     try {
-      const response = await fetch(`${API_URL}/api/tasks`, {
+      const res = await fetch(`${API_URL}/api/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       });
 
-      if (!response.ok) throw new Error();
+      if (!res.ok) throw new Error();
       messageApi.success('Задача создана');
+      form.resetFields();
+      setIsModalVisible(false);
       fetchTasks();
-      handleCancel();
     } catch {
       messageApi.error('Ошибка при создании задачи');
     }
-  };
-
-  const goToTaskPage = () => {
-    navigate('/tasks');
   };
 
   return (
@@ -178,49 +172,11 @@ const ManagerDashboard: React.FC = () => {
           <div className="dashboard-body">
             <SidebarManager />
             <main className="main-content kanban-board">
-              <h2 className="dashboard-title">
-                Управление задачами
-                <Button type="primary" size="small" onClick={goToTaskPage} style={{ marginLeft: '20px' }}>
-                  Перейти к задачам
-                </Button>
-              </h2>
+              <h2 className="dashboard-title">Управление задачами</h2>
               {contextHolder}
-
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Select
-                    placeholder="Выберите команду"
-                    value={selectedTeam ?? -1}
-                    onChange={(value) => setSelectedTeam(value === -1 ? null : value)}
-                    style={{ width: '100%' }}
-                  >
-                    <Select.Option value={-1}>Все команды</Select.Option>
-                    {teams.map((team) => (
-                      <Select.Option key={team.ID_Team} value={team.ID_Team}>
-                        {team.Team_Name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col span={12}>
-                  <Select
-                    placeholder="Выберите сотрудника"
-                    value={selectedEmployee ?? -1}
-                    onChange={(value) => setSelectedEmployee(value === -1 ? null : value)}
-                    style={{ width: '100%' }}
-                  >
-                    <Select.Option value={-1}>Все сотрудники</Select.Option>
-                    {teams
-                      .filter(team => selectedTeam === null || team.ID_Team === selectedTeam)
-                      .flatMap(team => Array.isArray(team.members) ? team.members : [])
-                      .map(member => (
-                        <Select.Option key={member.id} value={member.id}>
-                          {member.fullName}
-                        </Select.Option>
-                      ))}
-                  </Select>
-                </Col>
-              </Row>
+              <Button type="primary" onClick={() => setIsModalVisible(true)} style={{ margin: '12px 0' }}>
+                ➕ Добавить задачу
+              </Button>
 
               <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="kanban-columns">
@@ -230,11 +186,7 @@ const ManagerDashboard: React.FC = () => {
                         <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
                           <h3>{status}</h3>
                           {(columns[status] || []).map((task, index) => (
-                            <Draggable
-                              key={`${task.ID_Task}-${status}`}
-                              draggableId={`${task.ID_Task}-${status}`}
-                              index={index}
-                            >
+                            <Draggable key={task.ID_Task} draggableId={`${task.ID_Task}`} index={index}>
                               {(providedDraggable) => (
                                 <div
                                   className="kanban-task"
@@ -246,8 +198,17 @@ const ManagerDashboard: React.FC = () => {
                                     <strong>{task.Task_Name}</strong>
                                     <p>{task.Description}</p>
                                     <p><i>Проект:</i> {task.Order_Name}</p>
-                                    <p><i>Норма времени:</i> {task.Time_Norm} ч</p>
                                     <p><i>Сотрудник:</i> {task.Employee_Name ?? 'Не назначен'}</p>
+                                    <div className="kanban-avatars">
+                                      {teams
+                                        .flatMap((t) => t.members)
+                                        .filter((m) => m.fullName === task.Employee_Name)
+                                        .map((m) => (
+                                          <Tooltip key={m.id} title={m.fullName}>
+                                            <Avatar icon={<UserOutlined />} src={m.avatar || undefined} />
+                                          </Tooltip>
+                                        ))}
+                                    </div>
                                   </div>
                                 </div>
                               )}
@@ -262,22 +223,22 @@ const ManagerDashboard: React.FC = () => {
               </DragDropContext>
 
               <Modal
-                title="Создание задачи"
+                title="Создание задачи проекта"
                 open={isModalVisible}
-                onCancel={handleCancel}
+                onCancel={() => setIsModalVisible(false)}
                 onOk={() => form.submit()}
               >
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
-                  <Form.Item label="Название задачи" name="Task_Name" rules={[{ required: true }]}>
+                  <Form.Item name="Task_Name" label="Название задачи" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
-                  <Form.Item label="Описание" name="Description" rules={[{ required: true }]}>
-                    <Input />
+                  <Form.Item name="Description" label="Описание" rules={[{ required: true }]}>
+                    <Input.TextArea />
                   </Form.Item>
-                  <Form.Item label="Норма времени" name="Time_Norm" rules={[{ required: true }]}>
+                  <Form.Item name="Time_Norm" label="Норма времени (ч)" rules={[{ required: true }]}>
                     <Input type="number" />
                   </Form.Item>
-                  <Form.Item label="Статус" name="ID_Status" rules={[{ required: true }]}>
+                  <Form.Item name="ID_Status" label="Статус" rules={[{ required: true }]}>
                     <Select>
                       {statusesData.map((s) => (
                         <Select.Option key={s.ID_Status} value={s.ID_Status}>
@@ -286,11 +247,25 @@ const ManagerDashboard: React.FC = () => {
                       ))}
                     </Select>
                   </Form.Item>
-                  <Form.Item label="Проект" name="ID_Order" rules={[{ required: true }]}>
-                    <Input />
+                  <Form.Item name="ID_Order" label="Проект" rules={[{ required: true }]}>
+                    <Select placeholder="Выберите проект">
+                      {projects.map((proj) => (
+                        <Select.Option key={proj.ID_Order} value={proj.ID_Order}>
+                          {proj.Order_Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </Form.Item>
-                  <Form.Item label="Сотрудник" name="Employee_Name" rules={[{ required: true }]}>
-                    <Input />
+                  <Form.Item name="Employee_Name" label="Сотрудник">
+                    <Select placeholder="Выберите сотрудника (опц.)">
+                      {teams
+                        .flatMap((t) => t.members)
+                        .map((m) => (
+                          <Select.Option key={m.id} value={m.fullName}>
+                            {m.fullName}
+                          </Select.Option>
+                        ))}
+                    </Select>
                   </Form.Item>
                 </Form>
               </Modal>

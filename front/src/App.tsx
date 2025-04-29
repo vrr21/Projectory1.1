@@ -1,7 +1,10 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
+import { AnimatePresence, motion } from 'framer-motion';
+
 import './styles/theme.css';
+import Loader from './components/Loader'; // Новый компонент загрузки
 
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -28,41 +31,66 @@ const ProtectedProfileRoute = () => {
   return isManager ? <ManagerAccount /> : <EmployeeAccount />;
 };
 
+// Обёртка для анимированного появления страниц
+const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    transition={{ duration: 0.4 }}
+    style={{ minHeight: '100vh' }}
+  >
+    {children}
+  </motion.div>
+);
+
+const AnimatedRoutes: React.FC = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/register" element={<PageWrapper><RegisterPage /></PageWrapper>} />
+        <Route path="/login" element={<PageWrapper><LoginPage /></PageWrapper>} />
+        <Route path="/manager" element={<PageWrapper><ManagerDashboard /></PageWrapper>} />
+        <Route path="/employee" element={<PageWrapper><EmployeeDashboard /></PageWrapper>} />
+        <Route path="/profile" element={<PageWrapper><ProtectedProfileRoute /></PageWrapper>} />
+
+        {/* Проекты */}
+        <Route path="/projects" element={<PageWrapper><ProjectManagementPage /></PageWrapper>} />
+        <Route path="/projects/:id" element={<PageWrapper><ProjectManagementPage /></PageWrapper>} />
+
+        {/* Задачи */}
+        <Route path="/tasks" element={<PageWrapper><TasksPageManagement /></PageWrapper>} />
+        <Route path="/tasks/:id" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
+
+        {/* Мои задачи */}
+        <Route path="/mytasks" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
+
+        {/* Команды */}
+        <Route path="/team-management" element={<PageWrapper><TeamManagementPage /></PageWrapper>} />
+        <Route path="/teams" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
+        <Route path="/teams/:id" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
+        <Route path="/myteams" element={<PageWrapper><MyCommandsManager /></PageWrapper>} />
+
+        {/* Отчёты */}
+        <Route path="/reports" element={<PageWrapper><EmployeeReports /></PageWrapper>} />
+        <Route path="/manager-reports" element={<PageWrapper><ManagerReports /></PageWrapper>} />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <ConfigProvider theme={{ algorithm: theme.darkAlgorithm }}>
         <AntdApp>
           <Router>
-            <Routes>
-              <Route path="/" element={<Navigate to="/login" />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/manager" element={<ManagerDashboard />} />
-              <Route path="/employee" element={<EmployeeDashboard />} />
-              <Route path="/profile" element={<ProtectedProfileRoute />} />
-
-              {/* Проекты */}
-              <Route path="/projects" element={<ProjectManagementPage />} />
-              <Route path="/projects/:id" element={<ProjectManagementPage />} /> {/* ✅ чтобы открывать один проект */}
-
-              {/* Задачи */}
-              <Route path="/tasks" element={<TasksPageManagement />} />
-              <Route path="/tasks/:id" element={<MyTasksEmployee />} /> {/* ✅ чтобы открывать задачу пользователя */}
-
-              {/* Мои задачи */}
-              <Route path="/mytasks" element={<MyTasksEmployee />} />
-
-              {/* Команды */}
-              <Route path="/team-management" element={<TeamManagementPage />} />
-              <Route path="/teams" element={<MyCommandsEmployee />} />
-              <Route path="/teams/:id" element={<MyCommandsEmployee />} /> {/* ✅ чтобы открывать одну команду */}
-              <Route path="/myteams" element={<MyCommandsManager />} />
-
-              {/* Отчёты */}
-              <Route path="/reports" element={<EmployeeReports />} />
-              <Route path="/manager-reports" element={<ManagerReports />} />
-            </Routes>
+            <Suspense fallback={<Loader />}>
+              <AnimatedRoutes />
+            </Suspense>
           </Router>
         </AntdApp>
       </ConfigProvider>

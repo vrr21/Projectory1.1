@@ -9,7 +9,7 @@ import {
   message,
   ConfigProvider,
   theme,
-  App as AntdApp
+  App as AntdApp,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import Header from '../components/HeaderManager';
@@ -24,6 +24,12 @@ interface TeamMember {
   fullName: string;
   email: string;
   role: string;
+}
+
+interface User {
+  id: number;
+  fullName: string;
+  email: string;
 }
 
 interface Team {
@@ -43,6 +49,7 @@ const roleOptions = [
 
 const TeamManagementPage: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [isTeamModalVisible, setIsTeamModalVisible] = useState(false);
   const [isAddMembersModalVisible, setIsAddMembersModalVisible] = useState(false);
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(null);
@@ -62,9 +69,29 @@ const TeamManagementPage: React.FC = () => {
     }
   }, [messageApi]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/employees`);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      // Приводим данные сотрудников к нужному виду
+      const formattedUsers: User[] = data.map((u: { ID_User: number; FullName: string; Email?: string }) => ({
+        id: u.ID_User,
+        fullName: u.FullName,
+        email: u.Email ?? 'no-email@example.com',
+      }));
+      
+      setUsers(formattedUsers);
+    } catch (err) {
+      console.error(err);
+      messageApi.error('Ошибка при загрузке сотрудников');
+    }
+  }, [messageApi]);
+
   useEffect(() => {
     fetchTeams();
-  }, [fetchTeams]);
+    fetchUsers();
+  }, [fetchTeams, fetchUsers]);
 
   const getTeamNameFilters = () => {
     const unique = Array.from(new Set(teams.map(t => t.Team_Name)));
@@ -78,12 +105,10 @@ const TeamManagementPage: React.FC = () => {
   };
 
   const handleCreateTeam = async (values: { name: string }) => {
-    const teamName = values?.name?.trim();
+    const teamName = values.name.trim();
     if (!teamName) return messageApi.error('Название команды не может быть пустым');
 
-    const duplicate = teams.some(team =>
-      team.Team_Name.trim().toLowerCase() === teamName.toLowerCase()
-    );
+    const duplicate = teams.some(team => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase());
     if (duplicate) return messageApi.error('Команда с таким названием уже существует');
 
     try {
@@ -104,13 +129,25 @@ const TeamManagementPage: React.FC = () => {
     }
   };
 
-  const handleAddMember = async (values: Omit<TeamMember, 'id'>) => {
+  const handleAddMember = async (values: { userId: number; role: string }) => {
     if (!currentTeamId) return;
+
+    const user = users.find(u => u.id === values.userId);
+    if (!user) {
+      messageApi.error('Пользователь не найден');
+      return;
+    }
+
     try {
       const res = await fetch(`${API_URL}/api/teams/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...values, teamId: currentTeamId }),
+        body: JSON.stringify({
+          teamId: currentTeamId,
+          fullName: user.fullName,
+          email: user.email,
+          role: values.role,
+        }),
       });
 
       if (res.status === 400) {
@@ -168,12 +205,11 @@ const TeamManagementPage: React.FC = () => {
       title: 'Участники',
       key: 'members',
       filters: getRoleFilters(),
-      onFilter: (value, record) =>
-        record.members.some(m => m.role === value),
+      onFilter: (value, record) => record.members.some(m => m.role === value),
       render: (_, team) => (
         <div>
           {team.members.map(m => (
-            <div key={`${team.ID_Team}-${m.email}-${m.role}`}>
+            <div key={`${team.ID_Team}-${m.id}`}>
               {m.fullName} ({m.role}) — {m.email}{' '}
               <Button
                 type="link"
@@ -254,6 +290,7 @@ const TeamManagementPage: React.FC = () => {
                   </Form.Item>
                 </Form>
               </Modal>
+
               <Modal
                 title="Добавление участника"
                 open={isAddMembersModalVisible}
@@ -265,26 +302,37 @@ const TeamManagementPage: React.FC = () => {
               >
                 <Form form={memberForm} layout="vertical" onFinish={handleAddMember}>
                   <Form.Item
-                    name="fullName"
-                    label="Полное имя"
-                    rules={[{ required: true, message: 'Введите имя' }]}
+                    name="userId"
+                    label="Сотрудник"
+                    rules={[{ required: true, message: 'Выберите сотрудника' }]}
                   >
-                    <Input />
+                    <Select
+                      showSearch
+                      placeholder="Выберите сотрудника"
+                      optionFilterProp="children"
+                      allowClear
+                    >
+                      {users.map(user => (
+                        <Select.Option key={user.id} value={user.id}>
+                          {user.fullName} — {user.email}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </Form.Item>
-                  <Form.Item
-                    name="email"
-                    label="Email"
-                    rules={[{ required: true, message: 'Введите email' }, { type: 'email' }]}
-                  >
-                    <Input />
-                  </Form.Item>
+
                   <Form.Item
                     name="role"
                     label="Должность"
                     rules={[{ required: true, message: 'Выберите должность' }]}
                   >
-                    <Select options={roleOptions} showSearch optionFilterProp="label" allowClear />
+                    <Select
+                      options={roleOptions}
+                      showSearch
+                      optionFilterProp="label"
+                      allowClear
+                    />
                   </Form.Item>
+
                   <Form.Item>
                     <Button type="dashed" htmlType="submit" block>
                       Добавить участника

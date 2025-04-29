@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Layout, Input, Badge, Avatar, Dropdown, Modal, Tooltip, AutoComplete, Spin } from 'antd';
-import { BellOutlined, UserOutlined, SearchOutlined, BulbOutlined } from '@ant-design/icons';
+import { Layout, Badge, Avatar, Dropdown, Modal, Tooltip, AutoComplete, Input, Spin } from 'antd';
+import { BellOutlined, UserOutlined, BulbOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,31 +9,16 @@ import '../styles/components/Header.css';
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface Task {
-  ID_Task: number;
-  Task_Name: string;
-}
-
-interface Project {
-  ID_Order: number;
-  Order_Name: string;
-}
-
-interface Employee {
+interface SearchResult {
   id: number;
-  fullName: string;
+  name: string;
+  type: 'task' | 'order' | 'team';
 }
 
-interface Team {
-  ID_Team: number;
-  Team_Name: string;
-}
-
-interface SearchResultItem {
-  id: number;
+interface OptionType {
   label: string;
   value: string;
-  type: 'task' | 'order' | 'employee' | 'team';
+  type: 'task' | 'order' | 'team';
 }
 
 const HeaderEmployee: React.FC = () => {
@@ -41,8 +26,8 @@ const HeaderEmployee: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [searchOptions, setSearchOptions] = useState<SearchResultItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [searchOptions, setSearchOptions] = useState<OptionType[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const handleConfirmLogout = () => {
     localStorage.removeItem('user');
@@ -57,87 +42,67 @@ const HeaderEmployee: React.FC = () => {
     ],
   };
 
-  const onSearch = async (query: string) => {
-    if (!query.trim()) {
+  const handleSearch = async (value: string) => {
+    if (!value.trim()) {
       setSearchOptions([]);
       return;
     }
 
-    setLoading(true);
+    setSearchLoading(true);
+
     try {
-      const [tasksResponse, projectsResponse, employeesResponse, teamsResponse] = await Promise.all([
-        fetch(`${API_URL}/api/tasks/search?q=${encodeURIComponent(query)}`),
-        fetch(`${API_URL}/api/projects/search?q=${encodeURIComponent(query)}`),
-        fetch(`${API_URL}/api/employees/search?q=${encodeURIComponent(query)}`),
-        fetch(`${API_URL}/api/teams/search?q=${encodeURIComponent(query)}`),
-      ]);
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-      const tasks: Task[] = tasksResponse.ok ? await tasksResponse.json() : [];
-      const projects: Project[] = projectsResponse.ok ? await projectsResponse.json() : [];
-      const employees: Employee[] = employeesResponse.ok ? await employeesResponse.json() : [];
-      const teams: Team[] = teamsResponse.ok ? await teamsResponse.json() : [];
+      const res = await fetch(`${API_URL}/api/employee/fullsearch?q=${encodeURIComponent(value)}&employeeEmail=${currentUser.email}`);
+      if (!res.ok) throw new Error('Ошибка поиска');
+      const data: SearchResult[] = await res.json();
 
-      const options: SearchResultItem[] = [
-        ...tasks.map((t) => ({ id: t.ID_Task, label: `Задача: ${t.Task_Name}`, value: t.Task_Name, type: 'task' as const })),
-        ...projects.map((p) => ({ id: p.ID_Order, label: `Проект: ${p.Order_Name}`, value: p.Order_Name, type: 'order' as const })),
-        ...employees.map((e) => ({ id: e.id, label: `Сотрудник: ${e.fullName}`, value: e.fullName, type: 'employee' as const })),
-        ...teams.map((tm) => ({ id: tm.ID_Team, label: `Команда: ${tm.Team_Name}`, value: tm.Team_Name, type: 'team' as const })),
-      ];
+      const options = data.map((item) => ({
+        label: `${item.name} (${item.type === 'task' ? 'Задача' : item.type === 'order' ? 'Проект' : 'Команда'})`,
+        value: item.name,
+        type: item.type,
+      }));
 
       setSearchOptions(options);
     } catch (error) {
-      console.error('Ошибка поиска:', error);
+      console.error('Ошибка при поиске:', error);
     } finally {
-      setLoading(false);
+      setSearchLoading(false);
     }
   };
 
-  const onSelect = (value: string) => {
-    const selectedItem = searchOptions.find((item) => item.value === value);
-    if (!selectedItem) return;
+  const handleSelect = (value: string, option: OptionType) => {
+    const { type } = option;
 
-    switch (selectedItem.type) {
-      case 'task':
-        navigate('/mytasks');
-        break;
-      case 'order':
-        navigate('/employee');
-        break;
-      case 'employee':
-        navigate('/profile');
-        break;
-      case 'team':
-        navigate('/teams');
-        break;
-      default:
-        break;
+    if (type === 'task') {
+      navigate('/mytasks');
+    } else if (type === 'order') {
+      navigate('/employee');
+    } else if (type === 'team') {
+      navigate('/teams');
     }
   };
 
   return (
     <>
       <Header className="header">
-        <div className="logo" onClick={() => navigate('/employee')} style={{ cursor: 'pointer' }}>
+        <div className="logo" onClick={() => navigate('/employee')}>
           Projectory
         </div>
 
         <div className="right-section">
           <AutoComplete
-            className="search-input"
-            popupClassName="autocomplete-dropdown"
-            options={searchOptions.map((item) => ({
-              value: item.value,
-              label: item.label,
-            }))}
-            onSearch={onSearch}
-            onSelect={onSelect}
-            notFoundContent={loading ? <Spin size="small" /> : 'Ничего не найдено'}
-            filterOption={false}
+            options={searchOptions}
+            onSearch={handleSearch}
+            onSelect={handleSelect}
+            style={{ width: 250, marginRight: '16px' }}
+            notFoundContent={searchLoading ? <Spin size="small" /> : 'Ничего не найдено'}
           >
             <Input
               prefix={<SearchOutlined />}
               placeholder="Поиск..."
               allowClear
+              className="search-input"
             />
           </AutoComplete>
 
@@ -159,8 +124,8 @@ const HeaderEmployee: React.FC = () => {
             />
           </Tooltip>
 
-          <Dropdown menu={profileMenu} placement="bottomRight">
-            <Avatar style={{ backgroundColor: '#006F7A', marginLeft: '16px' }} icon={<UserOutlined />} />
+          <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
+            <Avatar style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }} icon={<UserOutlined />} />
           </Dropdown>
         </div>
       </Header>
@@ -172,7 +137,7 @@ const HeaderEmployee: React.FC = () => {
         onCancel={() => setIsModalVisible(false)}
         okText="Да"
         cancelText="Отмена"
-        className="dark-modal"
+        className="logout-modal"
       >
         <p>Вы действительно хотите выйти из аккаунта?</p>
       </Modal>

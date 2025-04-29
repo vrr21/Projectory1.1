@@ -1,6 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, DashboardOutlined, ProjectOutlined, TeamOutlined } from '@ant-design/icons';
+import { 
+  MenuFoldOutlined, 
+  MenuUnfoldOutlined, 
+  DashboardOutlined, 
+  ProjectOutlined, 
+  TeamOutlined, 
+  DeploymentUnitOutlined 
+} from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
 
@@ -15,12 +22,63 @@ const SidebarManager: React.FC = () => {
   };
 
   const menuItems = [
-    { key: '/manager', icon: <DashboardOutlined />, label: <Link to="/manager">Главная</Link> },
-    { key: '/projects', icon: <ProjectOutlined />, label: <Link to="/projects">Проекты</Link> },
-    { key: '/tasks', icon: <ProjectOutlined />, label: <Link to="/tasks">Распределение задач</Link> },
-    { key: '/myteams', icon: <TeamOutlined />, label: <Link to="/myteams">Мои команды</Link> },
-    { key: '/team-management', icon: <TeamOutlined />, label: <Link to="/team-management">Команды</Link> },
+    {
+      key: '/manager',
+      icon: <DashboardOutlined />,
+      label: <Link to="/manager">Главная</Link>,
+    },
+    {
+      key: '/projects',
+      icon: <ProjectOutlined />,
+      label: <Link to="/projects">Проекты</Link>,
+    },
+    {
+      key: '/tasks',
+      icon: <DeploymentUnitOutlined />,
+      label: <Link to="/tasks">Распределение задач</Link>,
+    },
+    {
+      key: 'teams',
+      icon: <TeamOutlined style={{ fontSize: '20px' }} />,
+      label: 'Команды',
+      children: [
+        {
+          key: '/team-management',
+          label: (
+            <span style={{ fontSize: '13px' }}>
+              <Link to="/team-management">Все команды</Link>
+            </span>
+          ),
+        },
+        {
+          key: '/myteams',
+          label: (
+            <span style={{ fontSize: '13px' }}>
+              <Link to="/myteams">Мои команды</Link>
+            </span>
+          ),
+        },
+      ],
+    },
   ];
+
+  const getOpenKeys = () => {
+    if (location.pathname.startsWith('/team-management') || location.pathname.startsWith('/myteams')) {
+      return ['teams'];
+    }
+    return [];
+  };
+
+  useEffect(() => {
+    const layoutElement = document.querySelector('.layout');
+    if (layoutElement) {
+      if (collapsed) {
+        layoutElement.classList.add('collapsed');
+      } else {
+        layoutElement.classList.remove('collapsed');
+      }
+    }
+  }, [collapsed]);
 
   return (
     <Sider
@@ -40,6 +98,7 @@ const SidebarManager: React.FC = () => {
           theme="dark"
           mode="inline"
           selectedKeys={[location.pathname]}
+          defaultOpenKeys={getOpenKeys()}
           items={menuItems}
         />
       </div>

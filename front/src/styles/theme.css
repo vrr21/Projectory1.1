@@ -15,6 +15,7 @@
   --border-color: #555;
   --hover-bg-color: #333;
   --scrollbar-thumb-color: #666;
+  --pagination-bg-color: #2c2c2c;
 }
 
 /* Светлая тема */
@@ -26,6 +27,7 @@
   --border-color: #ccc;
   --hover-bg-color: #eaeaea;
   --scrollbar-thumb-color: #bbb;
+  --pagination-bg-color: #ffffff;
 }
 
 /* Базовые стили страницы */
@@ -95,6 +97,46 @@ a {
   transition: background-color var(--transition-time), color var(--transition-time);
 }
 
+/* Модальное окно выхода */
+.logout-modal .ant-modal-content,
+.logout-modal .ant-modal-header,
+.logout-modal .ant-modal-body,
+.logout-modal .ant-modal-footer {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+.logout-modal .ant-modal-title {
+  color: var(--text-color) !important;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.logout-modal .ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+
+.logout-modal .ant-btn-primary:hover, 
+.logout-modal .ant-btn-primary:focus, 
+.logout-modal .ant-btn-primary:active {
+  background-color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+}
+
+.logout-modal .ant-btn-default {
+  background-color: transparent !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-color) !important;
+}
+
+.logout-modal .ant-btn-default:hover {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+}
+
 /* Кнопки */
 .ant-btn-primary {
   background-color: var(--accent-color) !important;
@@ -145,7 +187,7 @@ a {
   background-color: var(--hover-bg-color) !important;
 }
 
-/* Чёткое разделение ячеек */
+/* Четкое разделение ячеек */
 .ant-table-tbody > tr > td:not(:last-child),
 .ant-table-thead > tr > th:not(:last-child) {
   border-right: 1px solid var(--border-color) !important;
@@ -179,9 +221,10 @@ a {
   background-color: transparent !important;
 }
 
-.sidebar .ant-menu-item, .sidebar-manager .ant-menu-item {
+.sidebar .ant-menu-item, .sidebar-manager .ant-menu-item,
+.sidebar .ant-menu-submenu-title, .sidebar-manager .ant-menu-submenu-title {
   color: var(--text-color) !important;
-  transition: background-color var(--transition-time), color var(--transition-time);
+  transition: all var(--transition-time);
 }
 
 .sidebar .ant-menu-item a, .sidebar-manager .ant-menu-item a {
@@ -190,54 +233,70 @@ a {
 
 .sidebar .ant-menu-item-selected, .sidebar-manager .ant-menu-item-selected {
   background-color: var(--accent-color) !important;
+  border-radius: 8px;
 }
 
 /* Пагинация */
 .ant-pagination {
   background-color: transparent;
-  color: #ffffff;
 }
 
 .ant-pagination-item {
-  background-color: transparent;
-  color: #ffffff;
-  border: 1px solid var(--border-color);
+  background-color: var(--pagination-bg-color) !important;
+  border: 1px solid var(--border-color) !important;
   transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
 }
 
+/* Ненажатые цифры */
+[data-theme="dark"] .ant-pagination-item a {
+  color: #ffffff !important;
+}
+[data-theme="light"] .ant-pagination-item a {
+  color: #000000 !important;
+}
+
+/* Активная страница */
 .ant-pagination-item-active {
-  background-color: var(--accent-color);
-  border-color: var(--accent-color);
-  color: #ffffff;
+  background-color: var(--accent-color) !important;
+  border-color: #ffffff !important;
 }
 
+.ant-pagination-item-active a {
+  color: #ffffff !important;
+}
+
+/* Наведение */
 .ant-pagination-item:hover {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
+  border-color: var(--accent-color) !important;
 }
 
-.ant-pagination-prev, 
+[data-theme="dark"] .ant-pagination-item:hover a,
+[data-theme="light"] .ant-pagination-item:hover a {
+  color: var(--accent-color) !important;
+}
+
+/* Стрелки */
+.ant-pagination-prev,
 .ant-pagination-next {
   background-color: transparent;
   border: none;
 }
 
-.ant-pagination-prev .anticon, 
+.ant-pagination-prev .anticon,
 .ant-pagination-next .anticon {
   transition: color var(--transition-time);
 }
 
-[data-theme="light"] .ant-pagination-prev .anticon, 
+[data-theme="dark"] .ant-pagination-prev .anticon,
+[data-theme="dark"] .ant-pagination-next .anticon {
+  color: #ffffff;
+}
+[data-theme="light"] .ant-pagination-prev .anticon,
 [data-theme="light"] .ant-pagination-next .anticon {
   color: #000000;
 }
 
-[data-theme="dark"] .ant-pagination-prev .anticon, 
-[data-theme="dark"] .ant-pagination-next .anticon {
-  color: #ffffff;
-}
-
-.ant-pagination-prev:hover .anticon, 
+.ant-pagination-prev:hover .anticon,
 .ant-pagination-next:hover .anticon {
-  color: var(--accent-color);
+  color: var(--accent-color) !important;
 }

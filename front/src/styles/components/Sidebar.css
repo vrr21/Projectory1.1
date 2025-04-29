@@ -44,17 +44,16 @@
 }
 
 /* Кнопка бургерного меню */
-/* Кнопка бургерного меню */
 .toggle-button {
   display: flex;
   align-items: center;
   height: 64px;
   font-size: 22px;
-  padding-left: 31px; /* Отступ слева для красивого расположения */
+  padding-left: 31px;
   cursor: pointer;
   color: var(--text-color);
   transition: transform 0.3s ease, color 0.3s ease;
-  justify-content: flex-start; /* ВЫРАВНИВАЕМ ВЛЕВО */
+  justify-content: flex-start;
 }
 
 .toggle-button:hover {
@@ -62,7 +61,12 @@
   color: var(--accent-color);
 }
 
-
+/* Содержимое сайдбара */
+.sidebar-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
 /* Меню */
 .sidebar .ant-menu {
@@ -98,7 +102,7 @@
   transform: scale(1.2);
 }
 
-/* Адаптивность */
+/* Адаптивность для маленьких экранов */
 @media (max-width: 768px) {
   .sidebar {
     width: 80px;
