@@ -12,26 +12,27 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
-    return savedTheme || 'dark';
+    const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    return saved ?? 'dark';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
 
-    // Динамически обновляем стили html и body
+    // Применение переменных вручную
     const root = document.documentElement;
-    const computedStyles = getComputedStyle(root);
+    const bg = getComputedStyle(root).getPropertyValue('--bg-color');
+    const text = getComputedStyle(root).getPropertyValue('--text-color');
 
-    document.body.style.backgroundColor = computedStyles.getPropertyValue('--bg-color');
-    document.body.style.color = computedStyles.getPropertyValue('--text-color');
-    document.documentElement.style.backgroundColor = computedStyles.getPropertyValue('--bg-color');
-    document.documentElement.style.color = computedStyles.getPropertyValue('--text-color');
+    document.body.style.backgroundColor = bg;
+    document.body.style.color = text;
+    root.style.backgroundColor = bg;
+    root.style.color = text;
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === 'dark' ? 'light' : 'dark'));
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
   };
 
   return (

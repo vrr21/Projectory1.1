@@ -3,10 +3,9 @@ import { Layout, Menu } from 'antd';
 import { 
   MenuFoldOutlined, 
   MenuUnfoldOutlined, 
-  DashboardOutlined, 
+  TableOutlined, // Используем иконку таблицы для доски задач
   ProjectOutlined, 
-  TeamOutlined, 
-  DeploymentUnitOutlined 
+  TeamOutlined 
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -24,18 +23,13 @@ const SidebarManager: React.FC = () => {
   const menuItems = [
     {
       key: '/manager',
-      icon: <DashboardOutlined />,
-      label: <Link to="/manager">Главная</Link>,
+      icon: <TableOutlined />,  // Иконка таблицы для "Доски задач"
+      label: <Link to="/manager">Доски задач</Link>,
     },
     {
       key: '/projects',
       icon: <ProjectOutlined />,
       label: <Link to="/projects">Проекты</Link>,
-    },
-    {
-      key: '/tasks',
-      icon: <DeploymentUnitOutlined />,
-      label: <Link to="/tasks">Распределение задач</Link>,
     },
     {
       key: 'teams',

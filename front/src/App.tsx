@@ -13,7 +13,6 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import EmployeeAccount from './pages/EmployeeAccount';
 import ManagerAccount from './pages/ManagerAccount';
 import ProjectManagementPage from './pages/ProjectManagementPage';
-import TasksPageManagement from './pages/TasksPageManagement';
 import MyTasksEmployee from './pages/MyTasksEmployee';
 import TeamManagementPage from './pages/TeamManagementPage';
 import MyCommandsEmployee from './pages/MyCommandsEmployee';
@@ -62,10 +61,6 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/projects/:id" element={<PageWrapper><ProjectManagementPage /></PageWrapper>} />
 
         {/* Задачи */}
-        <Route path="/tasks" element={<PageWrapper><TasksPageManagement /></PageWrapper>} />
-        <Route path="/tasks/:id" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
-
-        {/* Мои задачи */}
         <Route path="/mytasks" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
 
         {/* Команды */}

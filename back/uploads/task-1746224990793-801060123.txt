@@ -1,0 +1,88 @@
+PROJECT-MANAGEMENT-APP/
+│
+├── back/                          # Серверная часть (Node.js + Express)
+│   ├── config/
+│   │   └── db.js                  # Конфигурация подключения к БД
+│   ├── controllers/              # Контроллеры для обработки логики
+│   │   ├── auth.controller.js
+│   │   ├── employees.controller.js
+│   │   ├── member.controller.js
+│   │   ├── project.controller.js
+│   │   ├── report.controller.js
+│   │   ├── status.controller.js
+│   │   ├── task.controller.js
+│   │   └── team.controller.js
+│   ├── middleware/
+│   │   └── authMiddleware.js     # Промежуточное ПО для аутентификации
+│   ├── models/
+│   │   └── user_models.js
+│   ├── routes/                   # Роутинг
+│   │   ├── auth.routes.js
+│   │   ├── employees.routes.js
+│   │   ├── member.routes.js
+│   │   ├── projects.routes.js
+│   │   ├── reports.js
+│   │   ├── status.routes.js
+│   │   ├── tasks.routes.js
+│   │   ├── tasks.details.routes.js
+│   │   └── team.routes.js
+│   ├── .env
+│   ├── package.json
+│   ├── package-lock.json
+│   └── server.js                 # Точка входа сервера
+│
+├── front/                         # Клиентская часть (React + TypeScript)
+│   ├── public/
+│   ├── src/
+│   │   ├── api/                  # API-запросы (если есть)
+│   │   ├── assets/               # Статические ресурсы
+│   │   ├── components/           # Компоненты UI
+│   │   │   ├── EmployeeTasks.tsx
+│   │   │   ├── HeaderEmployee.tsx
+│   │   │   ├── HeaderManager.tsx
+│   │   │   ├── KanbanBoard.tsx
+│   │   │   ├── ManagerReports.tsx
+│   │   │   ├── ProjectManagement.tsx
+│   │   │   ├── Register.tsx
+│   │   │   ├── Sidebar.tsx
+│   │   │   └── SidebarManager.tsx
+│   │   ├── contexts/
+│   │   │   ├── AuthContext.tsx
+│   │   │   ├── AuthProvider.tsx
+│   │   │   └── useAuth.ts
+│   │   ├── pages/                # Страницы
+│   │   │   ├── EmployeeAccount.tsx
+│   │   │   ├── EmployeeDashboard.tsx
+│   │   │   ├── LoginPage.tsx
+│   │   │   ├── ManagerAccount.tsx
+│   │   │   ├── ManagerDashboard.tsx
+│   │   │   ├── MyCommandsEmployee.tsx
+│   │   │   ├── MyTaskEmployee.tsx
+│   │   │   ├── ProjectManagementPage.tsx
+│   │   │   ├── RegisterPage.tsx
+│   │   │   ├── TasksPageManagement.tsx
+│   │   │   └── TeamManagementPage.tsx
+│   │   ├── styles/               # Стили
+│   │   │   ├── components/
+│   │   │   │   ├── Header.css
+│   │   │   │   ├── KanbanBoard.css
+│   │   │   │   └── Sidebar.css
+│   │   │   ├── pages/
+│   │   │   │   ├── EmployeeAccount.css
+│   │   │   │   ├── EmployeeDashboard.css
+│   │   │   │   ├── LoginPage.css
+│   │   │   │   ├── ManagerDashboard.css
+│   │   │   │   ├── ProjectManagementPage.css
+│   │   │   │   ├── RegisterPage.css
+│   │   │   │   └── TeamManagementPage.css
+│   │   │   └── theme.css
+│   │   ├── types/
+│   │   ├── App.css
+│   │   ├── App.tsx
+│   │   ├── index.css
+│   │   ├── main.tsx
+│   │   └── vite-env.d.ts
+│   ├── .env
+│   ├── tsconfig.json
+│   ├── vite.config.ts
+│   └── package.json

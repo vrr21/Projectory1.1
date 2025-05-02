@@ -1,13 +1,41 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { message, ConfigProvider, theme, Select, Row, Col, App } from 'antd';
+import {
+  message,
+  ConfigProvider,
+  theme,
+  App,
+  Tabs,
+  Table,
+  Avatar,
+  Tooltip,
+  Modal,
+  Button,
+} from 'antd';
+import {
+  EyeOutlined,
+  ClockCircleOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useAuth } from '../contexts/useAuth';
 import HeaderEmployee from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+} from '@hello-pangea/dnd';
+import dayjs from 'dayjs';
 import '../styles/pages/EmployeeDashboard.css';
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
+
+interface Employee {
+  ID_Employee: number;
+  Full_Name?: string;
+  Avatar?: string;
+}
 
 interface Task {
   ID_Task: number;
@@ -16,50 +44,28 @@ interface Task {
   Time_Norm: number;
   Status_Name: string;
   Order_Name: string;
-}
-
-interface Team {
-  ID_Team: number;
   Team_Name: string;
-  members: TeamMember[];
-}
-
-interface TeamMember {
-  id: number;
-  fullName: string;
+  Deadline?: string | null;
+  Employees: Employee[];
 }
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
-const EmployeeDashboard: React.FC = () => {
+const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
-  const [selectedTeam, setSelectedTeam] = useState<number | null>(null);
-  const [selectedEmployee, setSelectedEmployee] = useState<number | null>(user?.id ?? null);
-  const [teams, setTeams] = useState<Team[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const [activeTab, setActiveTab] = useState('kanban');
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
 
-  const fetchTeams = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/teams`);
-      const data = await response.json();
-      setTeams(data);
-    } catch {
-      messageApi.error('Не удалось загрузить команды');
-    }
+  const getInitials = (fullName: string = '') => {
+    const [first, second] = fullName.split(' ');
+    return `${first?.[0] ?? ''}${second?.[0] ?? ''}`.toUpperCase();
   };
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
 
   const fetchTasks = useCallback(async () => {
     try {
-      let url = `${API_URL}/api/tasks?`;
-
-      if (selectedEmployee) url += `employee=${selectedEmployee}&`;
-      if (selectedTeam) url += `team=${selectedTeam}&`;
-
+      const url = `${API_URL}/api/tasks?employee=${user?.id}`;
       const response = await fetch(url);
       const data: Task[] = await response.json();
 
@@ -71,42 +77,109 @@ const EmployeeDashboard: React.FC = () => {
     } catch {
       messageApi.error('Не удалось загрузить задачи');
     }
-  }, [selectedEmployee, selectedTeam, messageApi]);
+  }, [user?.id, messageApi]);
 
   useEffect(() => {
     fetchTasks();
-  }, [selectedEmployee, selectedTeam, fetchTasks]);
+  }, [fetchTasks]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
-
     if (!destination || source.droppableId === destination.droppableId) return;
 
     const taskId = parseInt(draggableId, 10);
     const updatedStatus = destination.droppableId;
 
-    if (!statuses.includes(updatedStatus)) {
-      console.error(`Недопустимый статус: ${updatedStatus}`);
-      messageApi.error('Ошибка: Невалидный статус задачи');
-      return;
-    }
-
     try {
-      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
+      await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ Status_Name: updatedStatus }),
       });
-
-      if (!response.ok) {
-        throw new Error('Ошибка при изменении статуса задачи');
-      }
       fetchTasks();
-    } catch (error) {
+    } catch {
       messageApi.error('Ошибка при изменении статуса задачи');
-      console.error(error);
     }
   };
+
+  const renderEmployees = (employees: Employee[]) => {
+    if (!employees?.length) return '—';
+    return (
+      <Avatar.Group max={{ count: 3 }}>
+        {employees.map((emp) => (
+          <Tooltip key={emp.ID_Employee} title={emp.Full_Name || '—'}>
+            <Avatar
+              src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
+              style={{ backgroundColor: emp.Avatar ? 'transparent' : '#777' }}
+              icon={!emp.Avatar ? <UserOutlined /> : undefined}
+            >
+              {!emp.Avatar && getInitials(emp.Full_Name || '')}
+            </Avatar>
+          </Tooltip>
+        ))}
+      </Avatar.Group>
+    );
+  };
+
+  const getDeadlineClass = (deadline: string) => {
+    const now = dayjs();
+    const time = dayjs(deadline);
+    if (time.isBefore(now)) return 'expired';
+    if (time.diff(now, 'hour') <= 24) return 'warning';
+    return 'safe';
+  };
+
+  const renderDeadlineBox = (deadline: string | null | undefined) => {
+    if (!deadline) {
+      return (
+        <div className="deadline-box undefined">
+          <ClockCircleOutlined style={{ marginRight: 6 }} />
+          Дедлайн: не назначено
+        </div>
+      );
+    }
+
+    const time = dayjs(deadline);
+    const now = dayjs();
+    const diffDays = time.diff(now, 'day');
+    const diffHours = time.diff(now, 'hour');
+
+    let label = '';
+    if (diffDays > 0) label = `Осталось ${diffDays} дн`;
+    else if (diffHours > 0) label = `Осталось ${diffHours} ч`;
+    else label = 'Срок истёк';
+
+    return (
+      <div className={`deadline-box ${getDeadlineClass(deadline)}`}>
+        <ClockCircleOutlined style={{ marginRight: 6 }} />
+        {label}
+      </div>
+    );
+  };
+
+  const tableColumns = [
+    { title: 'Проект', dataIndex: 'Order_Name', key: 'Order_Name' },
+    { title: 'Название задачи', dataIndex: 'Task_Name', key: 'Task_Name' },
+    { title: 'Описание', dataIndex: 'Description', key: 'Description' },
+    { title: 'Норма времени (часы)', dataIndex: 'Time_Norm', key: 'Time_Norm' },
+    { title: 'Статус', dataIndex: 'Status_Name', key: 'Status_Name' },
+    {
+      title: 'Дедлайн',
+      dataIndex: 'Deadline',
+      key: 'Deadline',
+      render: (val: string | null) =>
+        val ? dayjs(val).format('YYYY-MM-DD HH:mm') : '—',
+    },
+    {
+      title: 'Сотрудники',
+      dataIndex: 'Employees',
+      key: 'Employees',
+      render: renderEmployees,
+    },
+  ];
+
+  const openViewModal = (task: Task) => setViewingTask(task);
+  const closeViewModal = () => setViewingTask(null);
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -118,88 +191,124 @@ const EmployeeDashboard: React.FC = () => {
             <main className="main-content kanban-board">
               <h2 className="dashboard-title">Мои доски задач</h2>
               {contextHolder}
-
-              <Row gutter={[16, 16]}>
-                <Col span={12}>
-                  <Select
-                    placeholder="Выберите команду"
-                    value={selectedTeam ?? -1}
-                    onChange={(value) => setSelectedTeam(value === -1 ? null : value)}
-                    style={{ width: '100%' }}
-                  >
-                    <Select.Option value={-1}>Все команды</Select.Option>
-                    {teams.map((team) => (
-                      <Select.Option key={team.ID_Team} value={team.ID_Team}>
-                        {team.Team_Name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Col>
-                <Col span={12}>
-                  <Select
-                    placeholder="Выберите сотрудника"
-                    value={selectedEmployee ?? -1}
-                    onChange={(value) => setSelectedEmployee(value === -1 ? null : value)}
-                    style={{ width: '100%' }}
-                  >
-                    <Select.Option value={-1}>Все сотрудники</Select.Option>
-                    {teams
-                      .filter(team => selectedTeam === null || team.ID_Team === selectedTeam)
-                      .flatMap(team => Array.isArray(team.members) ? team.members : [])
-                      .map((member) => (
-                        <Select.Option key={member.id} value={member.id}>
-                          {member.fullName}
-                        </Select.Option>
-                      ))}
-                  </Select>
-                </Col>
-              </Row>
-
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <div className="kanban-columns">
-                  {statuses.map((status) => (
-                    <Droppable key={status} droppableId={status}>
-                      {(provided) => (
-                        <div
-                          className="kanban-column"
-                          ref={provided.innerRef}
-                          {...provided.droppableProps}
-                        >
-                          <h3>{status}</h3>
-                          {(columns[status] || []).map((task, index) => (
-                            <Draggable
-                              key={`${task.ID_Task}-${status}`}
-                              draggableId={`${task.ID_Task}-${status}`}
-                              index={index}
-                            >
-                              {(providedDraggable) => (
+              <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                type="card"
+                items={[
+                  {
+                    label: 'Kanban-доска',
+                    key: 'kanban',
+                    children: (
+                      <DragDropContext onDragEnd={handleDragEnd}>
+                        <div className="kanban-columns">
+                          {statuses.map((status) => (
+                            <Droppable key={status} droppableId={status}>
+                              {(provided) => (
                                 <div
-                                  className="kanban-task"
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  {...providedDraggable.dragHandleProps}
+                                  className="kanban-column"
+                                  ref={provided.innerRef}
+                                  {...provided.droppableProps}
                                 >
-                                  <div className="kanban-task-content">
-                                    <strong>{task.Task_Name}</strong>
-                                    <p>{task.Description}</p>
-                                    <p>
-                                      <i>Проект:</i> {task.Order_Name}
-                                    </p>
-                                    <p>
-                                      <i>Норма времени:</i> {task.Time_Norm} ч
-                                    </p>
-                                  </div>
+                                  <h3>{status}</h3>
+                                  {(columns[status] || []).map((task, index) => (
+                                    <Draggable
+                                      key={`${task.ID_Task}`}
+                                      draggableId={`${task.ID_Task}`}
+                                      index={index}
+                                    >
+                                      {(providedDraggable) => (
+                                        <div
+                                          className="kanban-task"
+                                          ref={providedDraggable.innerRef}
+                                          {...providedDraggable.draggableProps}
+                                          {...providedDraggable.dragHandleProps}
+                                        >
+                                          <div className="kanban-task-content">
+                                            <strong>{task.Task_Name}</strong>
+                                            <p>{task.Description}</p>
+                                            <p><i>Проект:</i> {task.Order_Name}</p>
+                                            <p><i>Норма времени:</i> {task.Time_Norm} ч</p>
+
+                                            <div className="task-footer">
+  <button
+    type="button"
+    className="eye-button"
+    onClick={() => openViewModal(task)}
+  >
+    <EyeOutlined className="kanban-icon kanban-icon--big" />
+  </button>
+  {renderDeadlineBox(task.Deadline)}
+</div>
+
+
+                                            <div className="kanban-avatars">
+                                              {renderEmployees(task.Employees)}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  ))}
+                                  {provided.placeholder}
                                 </div>
                               )}
-                            </Draggable>
+                            </Droppable>
                           ))}
-                          {provided.placeholder}
                         </div>
-                      )}
-                    </Droppable>
-                  ))}
-                </div>
-              </DragDropContext>
+                      </DragDropContext>
+                    ),
+                  },
+                  {
+                    label: 'Список задач (таблица)',
+                    key: 'table',
+                    children: (
+                      <Table
+                        dataSource={Object.values(columns).flat()}
+                        columns={tableColumns}
+                        rowKey="ID_Task"
+                      />
+                    ),
+                  },
+                ]}
+              />
+
+              <Modal
+                title="Информация о задаче"
+                open={!!viewingTask}
+                onCancel={closeViewModal}
+                footer={[
+                  <Button key="close" onClick={closeViewModal}>
+                    Закрыть
+                  </Button>,
+                ]}
+              >
+                {viewingTask && (
+                  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                    <p><strong>Название:</strong> {viewingTask.Task_Name}</p>
+                    <p><strong>Описание:</strong> {viewingTask.Description}</p>
+                    <p><strong>Проект:</strong> {viewingTask.Order_Name}</p>
+                    <p><strong>Команда:</strong> {viewingTask.Team_Name || '—'}</p>
+                    <p><strong>Статус:</strong> {viewingTask.Status_Name}</p>
+                    <p><strong>Дедлайн:</strong> {viewingTask.Deadline ? dayjs(viewingTask.Deadline).format('YYYY-MM-DD HH:mm') : '—'}</p>
+                    <p><strong>Норма времени:</strong> {viewingTask.Time_Norm} ч.</p>
+                    <p><strong>Сотрудники:</strong></p>
+                    <div className="kanban-avatars">
+                      {viewingTask.Employees.map((emp, idx) => (
+                        <Tooltip key={`emp-view-${emp.ID_Employee}-${idx}`} title={emp.Full_Name}>
+                          <Avatar
+                            src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
+                            icon={!emp.Avatar ? <UserOutlined /> : undefined}
+                            style={{ backgroundColor: emp.Avatar ? 'transparent' : '#777', marginRight: 4 }}
+                          >
+                            {!emp.Avatar && getInitials(emp.Full_Name)}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </Modal>
             </main>
           </div>
         </div>

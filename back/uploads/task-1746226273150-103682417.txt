@@ -1,0 +1,96 @@
+PROJECT-MANAGEMENT-APP/  
+├── **backend/**  
+│   ├── config/  
+│   ├── db.js  
+│   ├── **controllers/**  
+│   │   ├── authController.js  
+│   │   ├── employeeController.js  
+│   │   ├── membersController.js  
+│   │   ├── projectController.js  
+│   │   ├── reportController.js  
+│   │   ├── statusController.js  
+│   │   ├── taskController.js  
+│   │   └── teamController.js  
+│   ├── **middleware/**  
+│   │   └── (возможные middleware-файлы)  
+│   ├── **models/**  
+│   │   └── (модели данных)  
+│   ├── **routes/**  
+│   │   ├── authRouter.js  
+│   │   ├── employeeFullSearchRouter.js  
+│   │   ├── employeeRouter.js  
+│   │   ├── managerRouter.js  
+│   │   ├── memberRouter.js  
+│   │   ├── projectRouter.js  
+│   │   ├── reporter.js  
+│   │   ├── statusRouter.js  
+│   │   ├── taskControllerRouter.js  
+│   │   ├── teamRouter.js  
+│   │   └── uploadRouter.js  
+│   ├── .env  
+│   ├── package.json  
+│   ├── package-lock.json  
+│   └── server.js  
+│  
+├── **frontend/**  
+│   ├── public/  
+│   ├── **src/**  
+│   │   ├── **api/**  
+│   │   ├── **assets/**  
+│   │   ├── **components/**  
+│   │   │   ├── EmployeeTask.tax  
+│   │   │   ├── HeaderEmployee.tax  
+│   │   │   ├── HeaderManager.tax  
+│   │   │   ├── KanbanBoard.tax  
+│   │   │   ├── ManagedReport.tax  
+│   │   │   ├── ProjectManagement.tax  
+│   │   │   ├── Report.tax  
+│   │   │   ├── Sidebar.tax  
+│   │   │   └── SidebarManager.tax  
+│   │   ├── **contexts/**  
+│   │   │   ├── AuthContext.tax  
+│   │   │   ├── AuthProvider.tax  
+│   │   │   ├── SearchContext.tax  
+│   │   │   └── ThemeContext.tax  
+│   │   ├── **pages/**  
+│   │   │   ├── EmployeeAccounts.cs  
+│   │   │   ├── EmployeeDashboard.tcs  
+│   │   │   ├── LoginPages/  
+│   │   │   ├── ManageAccounts.cs  
+│   │   │   ├── ManageDashboard.tcs  
+│   │   │   ├── MyTasksEmployee.tcs  
+│   │   │   ├── MyTasksManager.tcs  
+│   │   │   ├── ProjectManagementPage.tcs  
+│   │   │   ├── RegisterPages.tcs  
+│   │   │   ├── TaskManagementPage.tcs  
+│   │   │   └── TeamManagementPage.tcs  
+│   │   ├── **styles/**  
+│   │   │   ├── **components/**  
+│   │   │   │   ├── Headers.cs  
+│   │   │   │   ├── Loader.cs  
+│   │   │   │   └── Sidebar.cs  
+│   │   │   ├── **pages/**  
+│   │   │   │   ├── EmployeeAccounts.cs  
+│   │   │   │   ├── EmployeeDashboard.tcs  
+│   │   │   │   ├── LoginPages.cs  
+│   │   │   │   ├── ManageAccounts.cs  
+│   │   │   │   ├── ManageDashboard.tcs  
+│   │   │   │   ├── ProjectManagementPage.tcs  
+│   │   │   │   ├── RegisterPages.cs  
+│   │   │   │   └── TeamManagementPage.cs  
+│   │   │   ├── App.css  
+│   │   │   └── themes.css  
+│   │   ├── App.js  
+│   │   ├── index.js  
+│   │   └── main.tax  
+│   ├── .env  
+│   ├── .gitignore  
+│   ├── admin.config.js  
+│   ├── index.html  
+│   ├── package.json  
+│   ├── package-lock.json  
+│   ├── tsconfig.json  
+│   ├── tsconfig.node.json  
+│   ├── vite.config.js  
+│   └── README.md  
+└── **README.md**  

@@ -1,33 +1,55 @@
+/* Стили для команды (фон, цвет текста) */
 .team-management-page {
-    padding: 2rem;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    min-height: calc(100vh - var(--header-height));
-    box-sizing: border-box;
-  }
-  
-  .team-form {
-    max-width: 600px;
-    margin-bottom: 2rem;
-  }
-  
-  .member-list {
-    margin-top: 2rem;
-  }
-  
-  .member-item {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #444;
-  }
-  .button-wrapper {
-    display: flex;
-    justify-content: flex-start; /* или center / flex-end */
-    margin-bottom: 1rem;
-  }
-  
-  .create-team-button {
-    width: auto !important;
-    min-width: 160px;
-    padding: 0 1.5rem;
-  }
-  
+  padding: 2rem;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: calc(100vh - var(--header-height));
+  box-sizing: border-box;
+}
+
+.team-form {
+  max-width: 600px;
+  margin-bottom: 2rem;
+}
+
+.member-list {
+  margin-top: 2rem;
+}
+
+.member-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #444;
+}
+
+.button-wrapper {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 1rem;
+}
+
+.create-team-button {
+  width: auto !important;
+  min-width: 160px;
+  padding: 0 1.5rem;
+}
+
+/* Убираем фон и обводку для кнопки "Добавить участников" */
+.team-management-page .ant-btn-link {
+  background-color: transparent !important; /* Убирает фон */
+  border: none !important; /* Убирает обводку */
+  padding: 0 !important; /* Убирает отступы */
+  text-decoration: none; /* Убирает подчеркивание */
+  color: #006F7A !important; /* Цвет текста для кнопки "Добавить участников" */
+}
+
+/* Устанавливаем цвет иконки для кнопки "Добавить участников" */
+.team-management-page .ant-btn-link .anticon {
+  font-size: 16px; /* Размер иконки */
+  color: #006F7A !important; /* Цвет иконки */
+}
+
+/* Убираем изменения для корзины */
+.team-management-page .ant-btn-link .anticon-delete {
+  color: inherit !important; /* Иконка корзины будет с цветом по умолчанию */
+}
+

@@ -11,12 +11,13 @@ const uploadRoutes = require('./routes/upload.routes');
 const teamRoutes = require('./routes/team.routes');
 const projectRoutes = require('./routes/projects.routes');
 const taskRoutes = require('./routes/tasks.routes');
-const taskDetailsRoutes = require('./routes/tasks.details.routes');
+const taskDetailsRoutes = require('./routes/tasks.details.routes'); // Для GET /with-details
 const employeeRoutes = require('./routes/employees.routes');
 const reportsRoutes = require('./routes/reports');
 const statusRoutes = require('./routes/status.routes');
 const employeeFullSearchRouter = require('./routes/employeeFullSearch.router');
 const managerRoutes = require('./routes/manager.routes');
+const uploadTaskFileRouter = require('./routes/uploadTaskFile.routes');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -28,16 +29,17 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/teams', teamRoutes);
-app.use('/api/projects', projectRoutes); // ✅ исправлено! Было orders → должно быть projects
+app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/taskdetails', taskDetailsRoutes); // ✅ исправлено! Уникальный путь для task details
+app.use('/api/taskdetails', taskDetailsRoutes); // 🔹 /api/taskdetails/with-details
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/statuses', statusRoutes);
 app.use('/api/employee', employeeFullSearchRouter);
 app.use('/api/manager', managerRoutes);
+app.use('/api', uploadTaskFileRouter);
 
-// Базовый маршрут для проверки сервера
+// Базовый маршрут для проверки
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 // Запуск сервера

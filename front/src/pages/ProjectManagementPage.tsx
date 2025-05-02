@@ -13,6 +13,7 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';  // Импортируем иконки
 
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
@@ -207,8 +208,21 @@ const ProjectManagementPage: React.FC = () => {
       key: 'actions',
       render: (_text, record) => (
         <>
-          <Button type="link" onClick={() => showModal(record)}>Редактировать</Button>
-          <Button type="link" danger onClick={() => handleDelete(record.ID_Order)}>Удалить</Button>
+          <Button
+            type="link"
+            onClick={() => showModal(record)}
+            icon={<EditOutlined style={{ color: '#006F7A' }} />}
+          >
+            Редактировать
+          </Button>
+          <Button
+            type="link"
+            danger
+            onClick={() => handleDelete(record.ID_Order)}
+            icon={<DeleteOutlined style={{ color: '#FF4D4F' }} />}
+          >
+            Удалить
+          </Button>
         </>
       ),
     },

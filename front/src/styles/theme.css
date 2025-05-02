@@ -30,6 +30,7 @@
   --pagination-bg-color: #ffffff;
 }
 
+
 /* Базовые стили страницы */
 html, body {
   margin: 0;
@@ -299,4 +300,46 @@ a {
 .ant-pagination-prev:hover .anticon,
 .ant-pagination-next:hover .anticon {
   color: var(--accent-color) !important;
+}
+/* Карточка задачи */
+.kanban-task {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+.kanban-task:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Заголовок колонки */
+.kanban-status-header {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border-left: 4px solid var(--accent-color);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+/* Аватары */
+.kanban-avatars .ant-avatar {
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+/* Иконки */
+.kanban-icon.anticon {
+  color: var(--text-color);
+  background-color: transparent;
+  opacity: 0.7;
+  transition: opacity var(--transition-time), color var(--transition-time);
+}
+
+.kanban-icon.anticon:hover {
+  color: var(--accent-color);
+  opacity: 1;
 }

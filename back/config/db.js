@@ -11,6 +11,12 @@ const config = {
     encrypt: false,
     trustServerCertificate: true,
   },
+  requestTimeout: 60000, // ⬅️ Увеличен с 15000 до 60000 мс
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
 };
 
 const pool = new sql.ConnectionPool(config);

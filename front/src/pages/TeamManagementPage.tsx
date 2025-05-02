@@ -12,6 +12,7 @@ import {
   App as AntdApp,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
@@ -74,13 +75,11 @@ const TeamManagementPage: React.FC = () => {
       const res = await fetch(`${API_URL}/api/employees`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      // Приводим данные сотрудников к нужному виду
       const formattedUsers: User[] = data.map((u: { ID_User: number; FullName: string; Email?: string }) => ({
         id: u.ID_User,
         fullName: u.FullName,
         email: u.Email ?? 'no-email@example.com',
       }));
-      
       setUsers(formattedUsers);
     } catch (err) {
       console.error(err);
@@ -216,6 +215,7 @@ const TeamManagementPage: React.FC = () => {
                 danger
                 size="small"
                 onClick={() => handleDeleteMember(team.ID_Team, m.id)}
+                icon={<DeleteOutlined />}
               >
                 Удалить
               </Button>
@@ -235,10 +235,16 @@ const TeamManagementPage: React.FC = () => {
               setCurrentTeamId(team.ID_Team);
               setIsAddMembersModalVisible(true);
             }}
+            icon={<EditOutlined />}
           >
             Добавить участников
           </Button>
-          <Button type="link" danger onClick={() => handleDeleteTeam(team.ID_Team)}>
+          <Button
+            type="link"
+            danger
+            onClick={() => handleDeleteTeam(team.ID_Team)}
+            icon={<DeleteOutlined />}
+          >
             Удалить команду
           </Button>
         </>

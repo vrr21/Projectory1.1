@@ -3,22 +3,26 @@ const router = express.Router();
 const taskController = require('../controllers/task.controller');
 const { poolConnect, pool, sql } = require('../config/db');
 
-// Получить все задачи (или отфильтрованные)
+// 🔹 Получить все задачи (с фильтрами: ?employee=2&team=1)
 router.get('/', taskController.getAllTasks);
 
-// CRUD задачи
+// 🔹 Создать задачу
 router.post('/', taskController.createTask);
+
+// 🔹 Обновить задачу
 router.put('/:id', taskController.updateTask);
+
+// 🔹 Удалить задачу
 router.delete('/:id', taskController.deleteTask);
 
-// Получить задачи по сотруднику
+// 🔹 Получить задачи конкретного сотрудника
 router.get('/employee/:id', taskController.getTasksByEmployee);
 
-// Поиск задач
+// 🔹 Поиск задач по имени или описанию
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {
-    await poolConnect; // ✅ Используем готовое подключение
+    await poolConnect;
     const result = await pool.request()
       .input('query', sql.NVarChar, `%${q}%`)
       .query(`

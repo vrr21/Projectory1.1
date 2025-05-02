@@ -1,23 +1,23 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  message,
-  ConfigProvider,
-  theme,
-  Select,
-  Button,
-  Modal,
-  Form,
-  Input,
-  App,
-  Avatar,
-  Tooltip
+  App, Button, ConfigProvider, Form, Input, Modal, Select, Table, Tooltip, message,
+  theme, Avatar, Tabs, DatePicker, InputNumber, Upload // ✅ Добавлено сюда
 } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+
+import {
+  UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined // ✅ Добавлено сюда
+} from '@ant-design/icons';
+
+import dayjs from 'dayjs';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import '../styles/pages/ManagerDashboard.css';
+import '@ant-design/v5-patch-for-react-19';
+import type { UploadFile } from 'antd/es/upload';
 
+
+const { Option } = Select;
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -29,8 +29,16 @@ interface Task {
   Status_Name: string;
   Order_Name: string;
   ID_Order: number;
-  Employee_Name: string | null;
+  Team_Name?: string;
+  Deadline?: string | null;
+  Employees: {
+    id: number;
+    fullName: string;
+    avatar?: string | null;
+  }[];
+  attachments?: string[]; // Добавлено свойство attachments
 }
+
 
 interface Team {
   ID_Team: number;
@@ -52,222 +60,661 @@ interface Status {
 interface Project {
   ID_Order: number;
   Order_Name: string;
+  ID_Team: number;
 }
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
 const ManagerDashboard: React.FC = () => {
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [statusesData, setStatusesData] = useState<Status[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [form] = Form.useForm();
+  const [activeTab, setActiveTab] = useState('kanban');
   const [messageApi, contextHolder] = message.useMessage();
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
-  const fetchTeams = useCallback(async () => {
+  const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
+
+
+
+  const getInitials = (fullName: string) => {
+    const [first, second] = fullName.split(' ');
+    return `${first?.[0] ?? ''}${second?.[0] ?? ''}`.toUpperCase();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !viewingTask?.ID_Task) return;
+  
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('taskId', viewingTask.ID_Task.toString());
+  
+    setSelectedFileName(file.name); // ✅ Добавлено
+  
     try {
-      const res = await fetch(`${API_URL}/api/teams`);
-      const data = await res.json();
-      setTeams(data);
-    } catch {
-      messageApi.error('Не удалось загрузить команды');
-    }
-  }, [messageApi]);
-
-  const fetchProjects = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/projects`);
-      const data = await res.json();
-      setProjects(data);
-    } catch {
-      messageApi.error('Не удалось загрузить проекты');
-    }
-  }, [messageApi]);
-
-  const fetchStatuses = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/statuses`);
-      const data = await res.json();
-      setStatusesData(data);
-    } catch {
-      messageApi.error('Ошибка при загрузке статусов');
-    }
-  }, [messageApi]);
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/taskdetails/with-details`);
-      const data: Task[] = await res.json();
-
-      const grouped: Record<string, Task[]> = {};
-      statuses.forEach((status) => {
-        grouped[status] = data.filter((task) => task.Status_Name === status);
+      const response = await fetch('http://localhost:3002/api/upload-task', {
+        method: 'POST',
+        body: formData
       });
-      setColumns(grouped);
+  
+      if (!response.ok) throw new Error('Ошибка загрузки');
+  
+      const data = await response.json();
+      alert('Файл загружен: ' + data.filename);
+    } catch (err) {
+      console.error('Ошибка загрузки файла:', err);
+      alert('Ошибка загрузки файла');
+    }
+  };
+  
+  const tableColumns = [
+    { title: 'Проект', dataIndex: 'Order_Name', key: 'Order_Name' },
+    { title: 'Название задачи', dataIndex: 'Task_Name', key: 'Task_Name' },
+    { title: 'Описание', dataIndex: 'Description', key: 'Description' },
+    { title: 'Норма времени (часы)', dataIndex: 'Time_Norm', key: 'Time_Norm' },
+    {
+      title: 'Дедлайн',
+      dataIndex: 'Deadline',
+      key: 'Deadline',
+      render: (date: string) => {
+        return date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '—';
+      }
+    },
+    {
+      title: 'Сотрудники',
+      key: 'Employees',
+      render: (_: unknown, task: Task) => (
+        <div className="kanban-avatars">
+          {task.Employees?.length
+            ? task.Employees.map(emp => (
+                <Tooltip key={emp.id} title={emp.fullName}>
+                 <Avatar
+  src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+  style={{ backgroundColor: emp.avatar ? 'transparent' : '#777' }}
+>
+  {!emp.avatar && getInitials(emp.fullName)}
+</Avatar>
+
+                </Tooltip>
+              ))
+            : 'Не назначен'}
+        </div>
+      ),
+    },
+    { title: 'Статус', dataIndex: 'Status_Name', key: 'Status_Name' },
+    {
+      title: 'Действия',
+      key: 'actions',
+      render: (_: unknown, task: Task) => (
+        <div className="task-actions">
+          <Tooltip title="Редактировать">
+            <Button
+              icon={<EditOutlined />}
+              onClick={() => showModal(task)}
+              size="small"
+              style={{
+                marginRight: 8,
+                backgroundColor: 'transparent', // Убирает фон
+                border: 'none', // Убирает обводку
+                color: 'inherit', // Устанавливает цвет текста по умолчанию
+                padding: 0 // Убирает лишние отступы
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Удалить">
+            <Button
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(task.ID_Task)}
+              size="small"
+              danger
+              style={{
+                backgroundColor: 'transparent', // Убирает фон
+                border: 'none', // Убирает обводку
+                color: 'inherit', // Устанавливает цвет текста по умолчанию
+                padding: 0 // Убирает лишние отступы
+              }}
+            />
+          </Tooltip>
+        </div>
+      ),
+    }
+    
+  ];
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [resTasks, resTeams, resStatuses, resProjects] = await Promise.all([
+        fetch(`${API_URL}/api/taskdetails/with-details`),
+        fetch(`${API_URL}/api/teams`),
+        fetch(`${API_URL}/api/statuses`),
+        fetch(`${API_URL}/api/projects`)
+      ]);
+  
+      const [tasksData, teamsData, statusesData, projectsData] = await Promise.all([
+        resTasks.json(), resTeams.json(), resStatuses.json(), resProjects.json()
+      ]);
+  
+      // 👇 Приведение attachments к массиву, если они приходят строкой
+      const parsedTasks = tasksData.map((task: Task) => ({
+        ...task,
+        attachments: typeof task.attachments === 'string'
+          ? JSON.parse(task.attachments)
+          : task.attachments ?? []
+      }));
+  
+      const groupedMap: Record<string, Task[]> = {};
+      parsedTasks.forEach((task: Task) => {
+        if (!groupedMap[task.Status_Name]) {
+          groupedMap[task.Status_Name] = [];
+        }
+        groupedMap[task.Status_Name].push(task);
+      });
+  
+      setTasks(parsedTasks);
+      setTeams(teamsData);
+      setStatusesData(statusesData);
+      setProjects(projectsData);
+      setColumns(groupedMap);
     } catch {
-      messageApi.error('Не удалось загрузить задачи');
+      messageApi.error('Ошибка при загрузке данных');
     }
   }, [messageApi]);
-
+  
   useEffect(() => {
-    fetchTeams();
-    fetchProjects();
-    fetchStatuses();
-    fetchTasks();
-  }, [fetchTeams, fetchProjects, fetchStatuses, fetchTasks]);
+    fetchAll();
+  }, [fetchAll]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination || source.droppableId === destination.droppableId) return;
 
-    const taskId = parseInt(draggableId.split('-')[0], 10);
+    const taskId = parseInt(draggableId.split('-')[1], 10);
     const updatedStatusName = destination.droppableId;
     const statusObj = statusesData.find((s) => s.Status_Name === updatedStatusName);
-
-    if (!statusObj) return messageApi.error('Ошибка: не удалось определить статус');
+    if (!statusObj) return;
 
     try {
       await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ID_Status: statusObj.ID_Status }),
+        body: JSON.stringify({ ID_Status: statusObj.ID_Status })
       });
-      fetchTasks();
+      fetchAll();
     } catch {
       messageApi.error('Ошибка при изменении статуса');
     }
   };
 
+  const handleDelete = async (taskId: number) => {
+    try {
+      await fetch(`${API_URL}/api/tasks/${taskId}`, {
+        method: 'DELETE',
+      });
+      messageApi.success('Задача удалена');
+      fetchAll();
+    } catch {
+      messageApi.error('Ошибка при удалении задачи');
+    }
+  };
+
+  const showModal = (task?: Task) => {
+    setEditingTask(task || null);
+    setIsModalVisible(true);
+  
+    if (task) {
+      const team = teams.find((t) => t.Team_Name === task.Team_Name);
+      setSelectedTeamId(team?.ID_Team || null);
+      setFilteredProjects(projects.filter((proj) => proj.ID_Team === team?.ID_Team));
+      setSelectedMembers(task.Employees.map(e => e.fullName));
+  
+      form.setFieldsValue({
+        Task_Name: task.Task_Name,
+        Description: task.Description,
+        ID_Status: statusesData.find((s) => s.Status_Name === task.Status_Name)?.ID_Status,
+        ID_Order: task.ID_Order,
+        Time_Norm: task.Time_Norm,
+        Deadline: task.Deadline ? dayjs(task.Deadline) : null
+      });
+      
+      if (task.attachments?.length) {
+        setSelectedFiles(
+          task.attachments.map((filename, idx) => ({
+            uid: `existing-${idx}`,
+            name: filename,
+            status: 'done',
+            url: `${API_URL}/uploads/${filename}`,
+            originFileObj: undefined // 👈 ДОБАВЬ ЭТО
+          }))
+        );
+        
+      } else {
+        setSelectedFiles([]);
+      }
+      
+    } else {
+      form.resetFields();
+      setSelectedTeamId(null);
+      setFilteredProjects([]);
+      setSelectedMembers([]);
+      setSelectedFiles([]); // сбрасываем
+    }
+  };
+  
   const handleFinish = async (values: {
     Task_Name: string;
     Description: string;
-    Time_Norm: number;
     ID_Status: number;
     ID_Order: number;
-    Employee_Name: string;
+    Time_Norm: number;
+    Deadline?: dayjs.Dayjs;
   }) => {
-    try {
-      const res = await fetch(`${API_URL}/api/tasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-
-      if (!res.ok) throw new Error();
-      messageApi.success('Задача создана');
-      form.resetFields();
-      setIsModalVisible(false);
-      fetchTasks();
-    } catch {
-      messageApi.error('Ошибка при создании задачи');
+    if (values.Deadline && dayjs(values.Deadline).isBefore(dayjs(), 'day')) {
+      messageApi.error('Дедлайн не может быть назначен прошедшей датой!');
+      return;
     }
+  
+    const uploadedFilenames: string[] = [];
+  
+    for (const file of selectedFiles) {
+      if (file.originFileObj) {
+        const formData = new FormData();
+        formData.append('file', file.originFileObj);
+  
+        try {
+          const res = await fetch(`${API_URL}/api/upload-task`, {
+            method: 'POST',
+            body: formData,
+          });
+  
+          if (res.ok) {
+            const data = await res.json();
+            uploadedFilenames.push(data.filename); // или data.path — зависит от backend API
+          } else {
+            messageApi.error(`Ошибка при загрузке файла: ${file.name}`);
+          }
+        } catch {
+          messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name}`);
+        }
+      } else if (file.url) {
+        uploadedFilenames.push(file.name); // уже загруженный файл
+      }
+    }
+  
+    const payload = {
+      ...values,
+      Employee_Names: selectedMembers,
+      Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
+      attachments: uploadedFilenames, // ✅ если API требует JSON строку — оберни JSON.stringify
+    };
+  
+    try {
+      const url = editingTask
+        ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
+        : `${API_URL}/api/tasks`;
+      const method = editingTask ? 'PUT' : 'POST';
+  
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+  
+      if (!res.ok) throw new Error();
+      messageApi.success(editingTask ? 'Задача обновлена' : 'Задача создана');
+      setIsModalVisible(false);
+      fetchAll();
+    } catch {
+      messageApi.error('Ошибка при сохранении задачи');
+    }
+  };
+  
+  
+
+  const handleTeamChange = (teamId: number) => {
+    setSelectedTeamId(teamId);
+    setSelectedMembers([]);
+    setFilteredProjects(projects.filter((proj) => proj.ID_Team === teamId));
+    form.setFieldsValue({ ID_Order: undefined });
+  };
+
+  const openViewModal = (task: Task) => {
+    setViewingTask(task);
+    setIsViewModalVisible(true);
   };
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
+        {contextHolder}
         <div className="dashboard">
           <HeaderManager />
           <div className="dashboard-body">
             <SidebarManager />
-            <main className="main-content kanban-board">
-              <h2 className="dashboard-title">Управление задачами</h2>
-              {contextHolder}
-              <Button type="primary" onClick={() => setIsModalVisible(true)} style={{ margin: '12px 0' }}>
-                ➕ Добавить задачу
-              </Button>
+            <main className="main-content">
+              <h2 className="dashboard-title">Задачи</h2>
+              <Tabs
+                activeKey={activeTab}
+                onChange={setActiveTab}
+                type="card"
+                items={[
+                  {
+                    label: 'Kanban-доска',
+                    key: 'kanban',
+                    children: (
+                      <>
+                        <Button
+                          className="add-task-button"
+                          onClick={() => showModal()}
+                          style={{ marginBottom: 16 }}
+                        >
+                          ➕ Добавить задачу
+                        </Button>
 
-              <DragDropContext onDragEnd={handleDragEnd}>
-                <div className="kanban-columns">
-                  {statuses.map((status) => (
-                    <Droppable key={status} droppableId={status}>
-                      {(provided) => (
-                        <div className="kanban-column" ref={provided.innerRef} {...provided.droppableProps}>
-                          <h3>{status}</h3>
-                          {(columns[status] || []).map((task, index) => (
-                            <Draggable key={task.ID_Task} draggableId={`${task.ID_Task}`} index={index}>
-                              {(providedDraggable) => (
-                                <div
-                                  className="kanban-task"
-                                  ref={providedDraggable.innerRef}
-                                  {...providedDraggable.draggableProps}
-                                  {...providedDraggable.dragHandleProps}
-                                >
-                                  <div className="kanban-task-content">
-                                    <strong>{task.Task_Name}</strong>
-                                    <p>{task.Description}</p>
-                                    <p><i>Проект:</i> {task.Order_Name}</p>
-                                    <p><i>Сотрудник:</i> {task.Employee_Name ?? 'Не назначен'}</p>
-                                    <div className="kanban-avatars">
-                                      {teams
-                                        .flatMap((t) => t.members)
-                                        .filter((m) => m.fullName === task.Employee_Name)
-                                        .map((m) => (
-                                          <Tooltip key={m.id} title={m.fullName}>
-                                            <Avatar icon={<UserOutlined />} src={m.avatar || undefined} />
-                                          </Tooltip>
-                                        ))}
-                                    </div>
+                        <DragDropContext onDragEnd={handleDragEnd}>
+                          <div className="kanban-columns">
+                            {statuses.map((status) => (
+                              <Droppable key={status} droppableId={status}>
+                                {(provided) => (
+                                  <div
+                                    className="kanban-status-block"
+                                    ref={provided.innerRef}
+                                    {...provided.droppableProps}
+                                  >
+                                    <div className="kanban-status-header">{status}</div>
+                                    {(columns[status] || []).map((task, index) => (
+                                      <Draggable key={`task-${task.ID_Task}`} draggableId={`task-${task.ID_Task}`} index={index}>
+                                        {(providedDraggable) => (
+                                          <div
+                                            className="kanban-task"
+                                            ref={providedDraggable.innerRef}
+                                            {...providedDraggable.draggableProps}
+                                            {...providedDraggable.dragHandleProps}
+                                          >
+                                            <div className="kanban-task-content">
+                                              <strong>{task.Task_Name}</strong>
+                                              <p>{task.Description}</p>
+                                              <p><i>Проект:</i> {task.Order_Name}</p>
+                                             
+                                              <div className="kanban-avatars">
+                                                {task.Employees.map((emp, idx) => (
+                                                  <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
+                                                    <Avatar
+                                                      src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+  style={{
+    backgroundColor: emp.avatar ? 'transparent' : '#777',
+    marginRight: 4,
+    marginBottom: 4,
+  }}
+>
+  {!emp.avatar && getInitials(emp.fullName)}
+</Avatar>
+
+                                                  </Tooltip>
+                                                ))}
+                                              </div>
+                                              <div className="task-footer">
+  <Button
+    type="text"
+    icon={<EyeOutlined className="kanban-icon" />}
+    onClick={() => openViewModal(task)}
+    style={{ padding: 0, height: 'auto' }}
+  />
+  {task.Deadline ? (
+    <div
+      className={`deadline-box ${
+        dayjs(task.Deadline).isBefore(dayjs())
+          ? 'expired'
+          : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
+          ? 'warning'
+          : 'safe'
+      }`}
+    >
+      <ClockCircleOutlined style={{ marginRight: 6 }} />
+      {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
+        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
+        : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
+        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
+        : 'Срок истёк'}
+    </div>
+  ) : (
+    <div className="deadline-box undefined">
+      <ClockCircleOutlined style={{ marginRight: 6 }} />
+      Дедлайн: не назначено
+    </div>
+  )}
+</div>
+
+                                            </div>
+                                          </div>
+                                        )}
+                                      </Draggable>
+                                    ))}
+                                    {provided.placeholder}
                                   </div>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
-                          {provided.placeholder}
-                        </div>
-                      )}
-                    </Droppable>
-                  ))}
-                </div>
-              </DragDropContext>
+                                )}
+                              </Droppable>
+                            ))}
+                          </div>
+                        </DragDropContext>
+                      </>
+                    ),
+                  },
+                  {
+                    label: 'Список задач (таблица)',
+                    key: 'table',
+                    children: (
+                      <>
+                        <Button className="add-task-button" onClick={() => showModal()} style={{ marginBottom: 16 }}>
+                          ➕ Добавить задачу
+                        </Button>
 
+                        <Table dataSource={tasks} columns={tableColumns} rowKey="ID_Task" />
+                      </>
+                    ),
+                  }
+                ]}
+              />
+              {/* Модальное окно редактирования или создания задачи */}
               <Modal
-                title="Создание задачи проекта"
+                title={editingTask ? 'Редактировать задачу' : 'Создать задачу'}
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
                 onOk={() => form.submit()}
               >
+
+                
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
+                  <Form.Item label="Команда" required>
+                    <Select
+                      placeholder="Выберите команду"
+                      onChange={handleTeamChange}
+                      value={selectedTeamId ?? undefined}
+                    >
+                      {teams.map((team) => (
+                        <Option key={`team-${team.ID_Team}`} value={team.ID_Team}>
+                          {team.Team_Name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item name="ID_Order" label="Проект" rules={[{ required: true }]}>
+                    <Select placeholder="Выберите проект">
+                      {filteredProjects.map((proj) => (
+                        <Option key={`order-${proj.ID_Order}`} value={proj.ID_Order}>
+                          {proj.Order_Name}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item label="Исполнители">
+                    <Select
+                      mode="multiple"
+                      placeholder="Выберите участников"
+                      value={selectedMembers}
+                      onChange={setSelectedMembers}
+                      disabled={!selectedTeamId}
+                    >
+                      {teams.find((t) => t.ID_Team === selectedTeamId)?.members.map((member) => (
+                        <Option key={`member-${member.id}`} value={member.fullName}>
+                          {member.fullName}
+                        </Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
                   <Form.Item name="Task_Name" label="Название задачи" rules={[{ required: true }]}>
                     <Input />
                   </Form.Item>
                   <Form.Item name="Description" label="Описание" rules={[{ required: true }]}>
                     <Input.TextArea />
                   </Form.Item>
-                  <Form.Item name="Time_Norm" label="Норма времени (ч)" rules={[{ required: true }]}>
-                    <Input type="number" />
-                  </Form.Item>
                   <Form.Item name="ID_Status" label="Статус" rules={[{ required: true }]}>
                     <Select>
                       {statusesData.map((s) => (
-                        <Select.Option key={s.ID_Status} value={s.ID_Status}>
+                        <Option key={s.ID_Status} value={s.ID_Status}>
                           {s.Status_Name}
-                        </Select.Option>
+                        </Option>
                       ))}
                     </Select>
                   </Form.Item>
-                  <Form.Item name="ID_Order" label="Проект" rules={[{ required: true }]}>
-                    <Select placeholder="Выберите проект">
-                      {projects.map((proj) => (
-                        <Select.Option key={proj.ID_Order} value={proj.ID_Order}>
-                          {proj.Order_Name}
-                        </Select.Option>
-                      ))}
-                    </Select>
+                  <Form.Item name="Deadline" label="Дедлайн" rules={[{
+                      validator: (_, value) => {
+                        if (value && dayjs(value).isBefore(dayjs(), 'day')) {
+                          return Promise.reject('Дедлайн не может быть назначен прошедшей датой!');
+                        }
+                        return Promise.resolve();
+                      }
+                    }]}>
+                    <DatePicker
+                        style={{ width: '100%' }}
+                        showTime
+                        placeholder="Без дедлайна"
+                      />
+                    </Form.Item>
+                    
+                  <Form.Item name="Time_Norm" label="Норма времени (часы)" rules={[{ required: true }]}>
+                    <InputNumber style={{ width: '100%' }} min={0} step={0.5} />
                   </Form.Item>
-                  <Form.Item name="Employee_Name" label="Сотрудник">
-                    <Select placeholder="Выберите сотрудника (опц.)">
-                      {teams
-                        .flatMap((t) => t.members)
-                        .map((m) => (
-                          <Select.Option key={m.id} value={m.fullName}>
-                            {m.fullName}
-                          </Select.Option>
-                        ))}
-                    </Select>
-                  </Form.Item>
+                  <Form.Item label="Прикрепить файлы">
+  <Upload
+    multiple
+    beforeUpload={() => false}
+    fileList={selectedFiles}
+    onChange={({ fileList }) => {
+      setSelectedFiles(fileList.map(file => ({
+        ...file,
+        originFileObj: file.originFileObj ?? undefined
+      })));
+    }}
+    onRemove={(file) => {
+      setSelectedFiles(prev => prev.filter(f => f.uid !== file.uid));
+      return false;
+    }}
+  >
+   <Button icon={<UploadOutlined />} className="upload-btn-dark">Выберите файлы</Button>
+
+  </Upload>
+</Form.Item>
+
+
+
                 </Form>
+              </Modal>
+
+              {/* Модальное окно просмотра задачи */}
+              <Modal
+                title="Информация о задаче"
+                open={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={[
+                  <Button key="edit" onClick={() => {
+                    if (viewingTask) showModal(viewingTask);
+                    setIsViewModalVisible(false);
+                  }}>
+                     Редактировать
+                  </Button>,
+                  <Button key="close" onClick={() => setIsViewModalVisible(false)}>
+                    Закрыть
+                  </Button>
+                ]}
+              >
+            {viewingTask && (
+  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+    <p><strong>Название:</strong> {viewingTask.Task_Name}</p>
+    <p><strong>Описание:</strong> {viewingTask.Description}</p>
+    <p><strong>Проект:</strong> {viewingTask.Order_Name}</p>
+    <p><strong>Команда:</strong> {viewingTask.Team_Name || '—'}</p>
+    <p><strong>Статус:</strong> {viewingTask.Status_Name}</p>
+    <p><strong>Дедлайн:</strong> {viewingTask.Deadline ? dayjs(viewingTask.Deadline).format('YYYY-MM-DD HH:mm') : '—'}</p>
+    <p><strong>Норма времени:</strong> {viewingTask.Time_Norm} ч.</p>
+
+    <p><strong>Сотрудники:</strong></p>
+    <div className="kanban-avatars">
+      {viewingTask.Employees.map((emp, idx) => (
+        <Tooltip key={`emp-view-${emp.id}-${idx}`} title={emp.fullName}>
+          <Avatar
+            src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+            icon={!emp.avatar ? <UserOutlined /> : undefined}
+            style={{
+              backgroundColor: emp.avatar ? 'transparent' : '#777',
+              marginRight: 4
+            }}
+          >
+            {!emp.avatar && getInitials(emp.fullName)}
+          </Avatar>
+        </Tooltip>
+      ))}
+    </div>
+
+    {viewingTask.attachments && viewingTask.attachments.length > 0 && (
+      <>
+        <p><strong>Файлы:</strong></p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {viewingTask.attachments.map((filename, idx) => (
+            <a
+              key={`att-view-${idx}`}
+              href={`${API_URL}/uploads/${filename}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#2a2a2a',
+                color: '#fff',
+                textDecoration: 'none',
+                padding: '4px 8px',
+                borderRadius: 4,
+                fontSize: 12
+              }}
+            >
+              📎 {filename}
+            </a>
+          ))}
+        </div>
+      </>
+    )}
+
+    {/* ✅ ВСТАВЬ ЭТО */}
+    <p><strong>Загрузить новый файл:</strong></p>
+    <input type="file" onChange={handleFileUpload} />
+    {selectedFileName && (
+  <div style={{ marginTop: '8px', fontSize: '13px', color: '#aaa' }}>
+    🗂 Загружено: <strong>{selectedFileName}</strong>
+  </div>
+)}
+
+  </div>
+)}
+
               </Modal>
             </main>
           </div>
