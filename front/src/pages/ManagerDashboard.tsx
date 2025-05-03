@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+
 import {
   App, Button, ConfigProvider, Form, Input, Modal, Select, Table, Tooltip, message,
   theme, Avatar, Tabs, DatePicker, InputNumber, Upload // ✅ Добавлено сюда
 } from 'antd';
 
 import {
-  UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined // ✅ Добавлено сюда
+  UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined, FilterOutlined // ✅ Добавлено сюда
 } from '@ant-design/icons';
 
 import dayjs from 'dayjs';
@@ -66,7 +67,6 @@ interface Project {
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
 const ManagerDashboard: React.FC = () => {
-  const [columns, setColumns] = useState<Record<string, Task[]>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [statusesData, setStatusesData] = useState<Status[]>([]);
@@ -84,7 +84,10 @@ const ManagerDashboard: React.FC = () => {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
-
+  const [filterTeam, setFilterTeam] = useState<number | null>(null);
+  const [filterProject, setFilterProject] = useState<number | null>(null);
+  const [filterEmployee, setFilterEmployee] = useState<string | null>(null);
+  
 
 
   const getInitials = (fullName: string) => {
@@ -225,7 +228,21 @@ const ManagerDashboard: React.FC = () => {
       setTeams(teamsData);
       setStatusesData(statusesData);
       setProjects(projectsData);
-      setColumns(groupedMap);
+      const filteredTasks = tasks.filter(task => {
+        const matchesTeam = !filterTeam || teams.find(t => t.Team_Name === task.Team_Name)?.ID_Team === filterTeam;
+        const matchesProject = !filterProject || task.ID_Order === filterProject;
+        const matchesEmployee = !filterEmployee || task.Employees.some(emp => emp.fullName === filterEmployee);
+        return matchesTeam && matchesProject && matchesEmployee;
+      });
+      
+      const filteredGroupedMap: Record<string, Task[]> = {};
+      filteredTasks.forEach(task => {
+        if (!filteredGroupedMap[task.Status_Name]) {
+          filteredGroupedMap[task.Status_Name] = [];
+        }
+        filteredGroupedMap[task.Status_Name].push(task);
+      });
+      
     } catch {
       messageApi.error('Ошибка при загрузке данных');
     }
@@ -234,6 +251,27 @@ const ManagerDashboard: React.FC = () => {
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+  
+  const filteredTasks = useMemo(() => {
+    return tasks.filter((task) => {
+      const matchesTeam = !filterTeam || teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team === filterTeam;
+      const matchesProject = !filterProject || task.ID_Order === filterProject;
+      const matchesEmployee = !filterEmployee || task.Employees.some((emp) => emp.fullName === filterEmployee);
+      return matchesTeam && matchesProject && matchesEmployee;
+    });
+  }, [tasks, filterTeam, filterProject, filterEmployee, teams]);
+  
+  const filteredGroupedMap: Record<string, Task[]> = useMemo(() => {
+    const map: Record<string, Task[]> = {};
+    filteredTasks.forEach((task) => {
+      if (!map[task.Status_Name]) {
+        map[task.Status_Name] = [];
+      }
+      map[task.Status_Name].push(task);
+    });
+    return map;
+  }, [filteredTasks]);
+  
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -421,7 +459,57 @@ const ManagerDashboard: React.FC = () => {
                           ➕ Добавить задачу
                         </Button>
 
-                        <DragDropContext onDragEnd={handleDragEnd}>
+                        
+<div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+  <span style={{ fontSize: 18 }}><FilterOutlined /></span>
+  <Select
+    allowClear
+    placeholder="Фильтр по команде"
+    style={{ width: 200 }}
+    onChange={(val) => setFilterTeam(val)}
+    value={filterTeam ?? undefined}
+  >
+    {teams.map(team => (
+      <Option key={team.ID_Team} value={team.ID_Team}>
+        {team.Team_Name}
+      </Option>
+    ))}
+  </Select>
+
+  <Select
+    allowClear
+    placeholder="Фильтр по проекту"
+    style={{ width: 200 }}
+    onChange={(val) => setFilterProject(val)}
+    value={filterProject ?? undefined}
+  >
+    {projects.map(proj => (
+      <Option key={proj.ID_Order} value={proj.ID_Order}>
+        {proj.Order_Name}
+      </Option>
+    ))}
+  </Select>
+
+  <Select
+    allowClear
+    showSearch
+    placeholder="Фильтр по сотруднику"
+    style={{ width: 200 }}
+    onChange={(val) => setFilterEmployee(val)}
+    value={filterEmployee ?? undefined}
+    optionFilterProp="children"
+  >
+    {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))]
+      .sort()
+      .map(name => (
+        <Option key={name} value={name}>
+          {name}
+        </Option>
+      ))}
+  </Select>
+</div>
+
+<DragDropContext onDragEnd={handleDragEnd}>
                           <div className="kanban-columns">
                             {statuses.map((status) => (
                               <Droppable key={status} droppableId={status}>
@@ -432,7 +520,8 @@ const ManagerDashboard: React.FC = () => {
                                     {...provided.droppableProps}
                                   >
                                     <div className="kanban-status-header">{status}</div>
-                                    {(columns[status] || []).map((task, index) => (
+                                    {(filteredGroupedMap[status] || []).map((task, index) => (
+
                                       <Draggable key={`task-${task.ID_Task}`} draggableId={`task-${task.ID_Task}`} index={index}>
                                         {(providedDraggable) => (
                                           <div
