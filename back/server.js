@@ -3,9 +3,13 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
+// Загружаем переменные окружения из .env файла
 dotenv.config();
-require('./config/db');
 
+// Подключаем базу данных
+require('./config/db'); // Подключаем конфигурацию базы данных
+
+// Подключаем роутеры
 const authRoutes = require('./routes/auth.routes');
 const uploadRoutes = require('./routes/upload.routes');
 const teamRoutes = require('./routes/team.routes');
@@ -20,10 +24,11 @@ const managerRoutes = require('./routes/manager.routes');
 const uploadTaskFileRouter = require('./routes/uploadTaskFile.routes');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3002; // Порт 3002
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
-app.use(express.json());
+// Настройка CORS (Для разрешения запросов с клиентского приложения на порту 5173)
+app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Убедитесь, что CORS настроен правильно
+app.use(express.json());  // Для парсинга JSON в запросах
 
 // Роуты API
 app.use('/api/auth', authRoutes);
@@ -44,5 +49,5 @@ app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 // Запуск сервера
 app.listen(PORT, () => {
-  console.log(`✅ Сервер запущен: http://localhost:${PORT}`);
+  console.log(`✅ Сервер запущен на порту: http://localhost:${PORT}`);
 });

@@ -235,3 +235,44 @@
 .export-button:hover {
   background-color: #00bcd4;
 }
+/* Стиль для активной вкладки */
+.table-block .ant-tabs-card .ant-tabs-nav .ant-tabs-tab-active {
+  background-color: var(--card-bg-color) !important;
+  color: #00bcd4 !important; /* Цвет шрифта активной вкладки */
+  font-weight: bold;
+}
+
+/* Стиль для обычной вкладки (неактивной) */
+.table-block .ant-tabs-card .ant-tabs-nav .ant-tabs-tab {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+.table-block .ant-tabs-card .ant-tabs-nav .ant-tabs-tab:hover {
+  color: #00bcd4; /* Цвет текста при наведении */
+}
+
+/* Стиль для активной вкладки при наведении */
+.table-block .ant-tabs-card .ant-tabs-nav .ant-tabs-tab-active:hover {
+  color: #00bcd4; /* Цвет текста активной вкладки при наведении */
+}
+
+/* Стиль для круговой диаграммы */
+.reports canvas {
+  background-color: transparent;
+  width: 100%;    /* Диаграмма будет растягиваться по ширине, чтобы занимать доступное пространство */
+  max-width: 650px; /* Максимальная ширина диаграммы */
+  height: 650px;   /* Устанавливаем нормальный размер диаграммы */
+  margin: 20px auto; /* Центрируем диаграмму и добавляем отступы */
+  display: block;   /* Обеспечивает правильную центровку на странице */
+}
+
+/* Для мобильных устройств уменьшаем диаграммы, но не слишком сильно */
+@media (max-width: 768px) {
+  .reports canvas {
+    height: 600px;  /* Уменьшаем немного для мобильных устройств */
+    width: 100%;    /* Диаграмма будет растягиваться по ширине */
+    max-width: 600px; /* Максимальная ширина диаграммы на мобильных устройствах */
+  }
+}

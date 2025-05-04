@@ -1,11 +1,11 @@
 const express = require('express');
+const { poolConnect, pool, sql } = require('../config/db');  // Подключение к базе данных
 const router = express.Router();
-const { poolConnect, pool, sql } = require('../config/db');
 
 // 📥 Получить все проекты
 router.get('/', async (req, res) => {
   try {
-    await poolConnect;
+    await poolConnect;  // Подключаемся к базе данных
     const result = await pool.request().query(`
       SELECT 
         o.ID_Order,
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
       LEFT JOIN Teams t ON o.ID_Team = t.ID_Team
     `);
-    res.json(result.recordset);
+    res.json(result.recordset);  // Отдаем список проектов в формате JSON
   } catch (error) {
     console.error('Ошибка при получении заказов:', error);
     res.status(500).json({ message: 'Ошибка сервера при получении заказов' });
@@ -31,8 +31,9 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { Order_Name, Type_Name, Creation_Date, End_Date, Status, ID_Team } = req.body;
   try {
-    await poolConnect;
+    await poolConnect;  // Подключаемся к базе данных
 
+    // Проверяем, существует ли уже такой тип проекта
     let projectTypeResult = await pool.request()
       .input('typeName', sql.NVarChar, Type_Name)
       .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @typeName');
@@ -41,12 +42,14 @@ router.post('/', async (req, res) => {
     if (projectTypeResult.recordset.length > 0) {
       ID_ProjectType = projectTypeResult.recordset[0].ID_ProjectType;
     } else {
+      // Если типа проекта нет, создаем новый
       const insertResult = await pool.request()
         .input('typeName', sql.NVarChar, Type_Name)
         .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)');
       ID_ProjectType = insertResult.recordset[0].ID_ProjectType;
     }
 
+    // Создаем новый проект
     await pool.request()
       .input('Order_Name', sql.NVarChar, Order_Name)
       .input('ID_ProjectType', sql.Int, ID_ProjectType)
@@ -73,6 +76,7 @@ router.put('/:id', async (req, res) => {
   try {
     await poolConnect;
 
+    // Проверяем, существует ли уже такой тип проекта
     let projectTypeResult = await pool.request()
       .input('typeName', sql.NVarChar, Type_Name)
       .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @typeName');
@@ -81,12 +85,14 @@ router.put('/:id', async (req, res) => {
     if (projectTypeResult.recordset.length > 0) {
       ID_ProjectType = projectTypeResult.recordset[0].ID_ProjectType;
     } else {
+      // Если типа проекта нет, создаем новый
       const insertResult = await pool.request()
         .input('typeName', sql.NVarChar, Type_Name)
         .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)');
       ID_ProjectType = insertResult.recordset[0].ID_ProjectType;
     }
 
+    // Обновляем данные о проекте
     await pool.request()
       .input('ID_Order', sql.Int, id)
       .input('Order_Name', sql.NVarChar, Order_Name)

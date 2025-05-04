@@ -475,3 +475,10 @@
   color: #00bcd4 !important;
   border-color: #00bcd4 !important;
 }
+.filter-row {
+  display: flex;
+  justify-content: flex-end; /* Сместит элементы вправо */
+  gap: 1rem; /* Отступы между элементами */
+  margin-bottom: 2rem;
+  width: 100%; /* Обеспечивает правильную ширину контейнера */
+}

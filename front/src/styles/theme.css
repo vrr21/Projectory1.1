@@ -4,6 +4,14 @@
   --sidebar-width: 240px;
   --header-height: 64px;
   --transition-time: 0.3s;
+  --bg-color: #1e1e1e; /* Это основной фон для всех элементов */
+  --text-color: #ffffff;
+  --card-bg-color: #2c2c2c;
+  --input-bg-color: rgba(255, 255, 255, 0.15);
+  --border-color: #555;
+  --hover-bg-color: #333;
+  --scrollbar-thumb-color: #666;
+  --pagination-bg-color: #2c2c2c;
 }
 
 /* Темная тема */

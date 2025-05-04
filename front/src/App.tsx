@@ -19,6 +19,7 @@ import MyCommandsEmployee from './pages/MyCommandsEmployee';
 import MyCommandsManager from './pages/MyCommandsManager';
 import EmployeeReports from './components/Reports';
 import ManagerReports from './components/ManagerReports';
+import TimeTrackingEmployee from './pages/TimeTrackingEmployee';  // Correct import
 
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -62,6 +63,8 @@ const AnimatedRoutes: React.FC = () => {
 
         {/* Задачи */}
         <Route path="/mytasks" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
+        {/* Time Tracking Page Route */}
+        <Route path="/time-tracking" element={<PageWrapper><TimeTrackingEmployee /></PageWrapper>} />
 
         {/* Команды */}
         <Route path="/team-management" element={<PageWrapper><TeamManagementPage /></PageWrapper>} />

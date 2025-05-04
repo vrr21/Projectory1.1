@@ -47,9 +47,8 @@ interface Task {
   Team_Name: string;
   Deadline?: string | null;
   Employees: Employee[];
-  attachments?: string[]; 
+  attachments?: string[];
 }
-
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
@@ -64,21 +63,21 @@ const EmployeeDashboard = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !viewingTask?.ID_Task) return;
-  
+
     const formData = new FormData();
     formData.append('file', file);
     formData.append('taskId', viewingTask.ID_Task.toString());
-  
+
     setSelectedFileName(file.name);
-  
+
     try {
       const response = await fetch(`${API_URL}/api/upload-task`, {
         method: 'POST',
         body: formData,
       });
-  
+
       if (!response.ok) throw new Error('Ошибка загрузки');
-  
+
       const data = await response.json();
       messageApi.success('Файл загружен: ' + data.filename);
       fetchTasks(); // обновим задачи после загрузки
@@ -87,7 +86,7 @@ const EmployeeDashboard = () => {
       messageApi.error('Ошибка загрузки файла');
     }
   };
-  
+
   const getInitials = (fullName: string = '') => {
     const [first, second] = fullName.split(' ');
     return `${first?.[0] ?? ''}${second?.[0] ?? ''}`.toUpperCase();
@@ -261,16 +260,15 @@ const EmployeeDashboard = () => {
                                             <p><i>Норма времени:</i> {task.Time_Norm} ч</p>
 
                                             <div className="task-footer">
-  <button
-    type="button"
-    className="eye-button"
-    onClick={() => openViewModal(task)}
-  >
-    <EyeOutlined className="kanban-icon kanban-icon--big" />
-  </button>
-  {renderDeadlineBox(task.Deadline)}
-</div>
-
+                                              <button
+                                                type="button"
+                                                className="eye-button"
+                                                onClick={() => openViewModal(task)}
+                                              >
+                                                <EyeOutlined className="kanban-icon kanban-icon--big" />
+                                              </button>
+                                              {renderDeadlineBox(task.Deadline)}
+                                            </div>
 
                                             <div className="kanban-avatars">
                                               {renderEmployees(task.Employees)}
@@ -313,89 +311,87 @@ const EmployeeDashboard = () => {
                   </Button>,
                 ]}
               >
-               {viewingTask && (
-  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
-    <p><strong>Название:</strong> {viewingTask.Task_Name}</p>
-    <p><strong>Описание:</strong> {viewingTask.Description}</p>
-    <p><strong>Проект:</strong> {viewingTask.Order_Name}</p>
-    <p><strong>Команда:</strong> {viewingTask.Team_Name || '—'}</p>
-    <p><strong>Статус:</strong> {viewingTask.Status_Name}</p>
-    <p><strong>Дедлайн:</strong> {viewingTask.Deadline ? dayjs(viewingTask.Deadline).format('YYYY-MM-DD HH:mm') : '—'}</p>
-    <p><strong>Норма времени:</strong> {viewingTask.Time_Norm} ч.</p>
-    
-    <p><strong>Сотрудники:</strong></p>
-    <div className="kanban-avatars">
-      {viewingTask.Employees.map((emp, idx) => (
-        <Tooltip key={`emp-view-${emp.ID_Employee}-${idx}`} title={emp.Full_Name}>
-          <Avatar
-            src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
-            icon={!emp.Avatar ? <UserOutlined /> : undefined}
-            style={{ backgroundColor: emp.Avatar ? 'transparent' : '#777', marginRight: 4 }}
-          >
-            {!emp.Avatar && getInitials(emp.Full_Name)}
-          </Avatar>
-        </Tooltip>
-      ))}
-    </div>
+                {viewingTask && (
+                  <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                    <p><strong>Название:</strong> {viewingTask.Task_Name}</p>
+                    <p><strong>Описание:</strong> {viewingTask.Description}</p>
+                    <p><strong>Проект:</strong> {viewingTask.Order_Name}</p>
+                    <p><strong>Команда:</strong> {viewingTask.Team_Name || '—'}</p>
+                    <p><strong>Статус:</strong> {viewingTask.Status_Name}</p>
+                    <p><strong>Дедлайн:</strong> {viewingTask.Deadline ? dayjs(viewingTask.Deadline).format('YYYY-MM-DD HH:mm') : '—'}</p>
+                    <p><strong>Норма времени:</strong> {viewingTask.Time_Norm} ч.</p>
 
-    {viewingTask.attachments && viewingTask.attachments.length > 0 && (
-      <>
-        <p><strong>Файлы:</strong></p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {viewingTask.attachments.map((filename: string, idx: number) => (
-  <a
-    key={`att-${idx}`}
-    href={`${API_URL}/uploads/${filename}`}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display: 'inline-block',
-      backgroundColor: '#2a2a2a',
-      color: '#fff',
-      textDecoration: 'none',
-      padding: '4px 8px',
-      borderRadius: 4,
-      fontSize: 12
-    }}
-  >
-    📎 {filename}
-  </a>
-))}
+                    <p><strong>Сотрудники:</strong></p>
+                    <div className="kanban-avatars">
+                      {viewingTask.Employees.map((emp, idx) => (
+                        <Tooltip key={`emp-view-${emp.ID_Employee}-${idx}`} title={emp.Full_Name}>
+                          <Avatar
+                            src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
+                            icon={!emp.Avatar ? <UserOutlined /> : undefined}
+                            style={{ backgroundColor: emp.Avatar ? 'transparent' : '#777', marginRight: 4 }}
+                          >
+                            {!emp.Avatar && getInitials(emp.Full_Name)}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
+                    </div>
 
-        </div>
-      </>
-    )}
+                    {viewingTask.attachments && viewingTask.attachments.length > 0 && (
+                      <>
+                        <p><strong>Файлы:</strong></p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {viewingTask.attachments.map((filename: string, idx: number) => (
+                            <a
+                              key={`att-${idx}`}
+                              href={`${API_URL}/uploads/${filename}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-block',
+                                backgroundColor: '#2a2a2a',
+                                color: '#fff',
+                                textDecoration: 'none',
+                                padding: '4px 8px',
+                                borderRadius: 4,
+                                fontSize: 12
+                              }}
+                            >
+                              📎 {filename}
+                            </a>
+                          ))}
+                        </div>
+                      </>
+                    )}
 
-    <p style={{ marginTop: '1rem' }}><strong>Загрузить новый файл:</strong></p>
-    <label
-      htmlFor="employee-upload"
-      style={{
-        display: 'inline-block',
-        padding: '6px 14px',
-        backgroundColor: '#1f1f1f',
-        color: '#fff',
-        borderRadius: '6px',
-        cursor: 'pointer',
-        border: '1px solid #444',
-        fontSize: '13px'
-      }}
-    >
-      📤 Выберите файл
-    </label>
-    <input
-      id="employee-upload"
-      type="file"
-      style={{ display: 'none' }}
-      onChange={handleFileUpload}
-    />
-    {selectedFileName && (
-      <div style={{ marginTop: '6px', fontSize: '12px', color: '#aaa' }}>
-        🗂 Загружено: <strong>{selectedFileName}</strong>
-      </div>
-    )}
-  </div>
-)}
-
+                    <p style={{ marginTop: '1rem' }}><strong>Загрузить новый файл:</strong></p>
+                    <label
+                      htmlFor="employee-upload"
+                      style={{
+                        display: 'inline-block',
+                        padding: '6px 14px',
+                        backgroundColor: '#1f1f1f',
+                        color: '#fff',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        border: '1px solid #444',
+                        fontSize: '13px'
+                      }}
+                    >
+                      📤 Выберите файл
+                    </label>
+                    <input
+                      id="employee-upload"
+                      type="file"
+                      style={{ display: 'none' }}
+                      onChange={handleFileUpload}
+                    />
+                    {selectedFileName && (
+                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#aaa' }}>
+                        🗂 Загружено: <strong>{selectedFileName}</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Modal>
             </main>
           </div>

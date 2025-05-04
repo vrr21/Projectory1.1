@@ -3,7 +3,7 @@ import { Layout, Menu } from 'antd';
 import { 
   MenuFoldOutlined, 
   MenuUnfoldOutlined, 
-  TableOutlined, // Используем иконку таблицы для доски задач
+  TableOutlined, 
   ProjectOutlined, 
   TeamOutlined 
 } from '@ant-design/icons';

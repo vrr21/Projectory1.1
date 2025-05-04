@@ -2,11 +2,11 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 
 import {
   App, Button, ConfigProvider, Form, Input, Modal, Select, Table, Tooltip, message,
-  theme, Avatar, Tabs, DatePicker, InputNumber, Upload // ✅ Добавлено сюда
+  theme, Avatar, Tabs, DatePicker, InputNumber, Upload
 } from 'antd';
 
 import {
-  UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined, FilterOutlined // ✅ Добавлено сюда
+  UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined, FilterOutlined, 
 } from '@ant-design/icons';
 
 import dayjs from 'dayjs';
@@ -16,6 +16,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import '../styles/pages/ManagerDashboard.css';
 import '@ant-design/v5-patch-for-react-19';
 import type { UploadFile } from 'antd/es/upload';
+import { Dropdown, Menu} from 'antd';  
 
 
 const { Option } = Select;
@@ -87,6 +88,69 @@ const ManagerDashboard: React.FC = () => {
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
   const [filterProject, setFilterProject] = useState<number | null>(null);
   const [filterEmployee, setFilterEmployee] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const handleDropdownVisibleChange = (visible: boolean) => {
+  setIsDropdownOpen(visible);
+};
+  const clearFilters = () => {
+    setFilterTeam(null);
+    setFilterProject(null);
+    setFilterEmployee(null);
+  };
+  const filterMenu = (
+    <Menu>
+      <Menu.Item key="team">
+        <Select
+          allowClear
+          placeholder="Фильтр по команде"
+          style={{ width: 200 }}
+          onChange={(val) => setFilterTeam(val)}
+          value={filterTeam ?? undefined}
+        >
+          {teams.map((team) => (
+            <Option key={team.ID_Team} value={team.ID_Team}>
+              {team.Team_Name}
+            </Option>
+          ))}
+        </Select>
+      </Menu.Item>
+      <Menu.Item key="project">
+        <Select
+          allowClear
+          placeholder="Фильтр по проекту"
+          style={{ width: 200 }}
+          onChange={(val) => setFilterProject(val)}
+          value={filterProject ?? undefined}
+        >
+          {projects.map((proj) => (
+            <Option key={proj.ID_Order} value={proj.ID_Order}>
+              {proj.Order_Name}
+            </Option>
+          ))}
+        </Select>
+      </Menu.Item>
+      <Menu.Item key="employee">
+        <Select
+          allowClear
+          showSearch
+          placeholder="Фильтр по сотруднику"
+          style={{ width: 200 }}
+          onChange={(val) => setFilterEmployee(val)}
+          value={filterEmployee ?? undefined}
+          optionFilterProp="children"
+        >
+          {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))].sort().map((name) => (
+            <Option key={name} value={name}>
+              {name}
+            </Option>
+          ))}
+        </Select>
+      </Menu.Item>
+      <Menu.Item key="reset" onClick={clearFilters}>
+        Сбросить фильтры
+      </Menu.Item>
+    </Menu>
+  );
   
 
 
@@ -459,57 +523,19 @@ const ManagerDashboard: React.FC = () => {
                           ➕ Добавить задачу
                         </Button>
 
-                        
-<div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-  <span style={{ fontSize: 18 }}><FilterOutlined /></span>
-  <Select
-    allowClear
-    placeholder="Фильтр по команде"
-    style={{ width: 200 }}
-    onChange={(val) => setFilterTeam(val)}
-    value={filterTeam ?? undefined}
-  >
-    {teams.map(team => (
-      <Option key={team.ID_Team} value={team.ID_Team}>
-        {team.Team_Name}
-      </Option>
-    ))}
-  </Select>
+                        <Dropdown
+      overlay={filterMenu}
+      trigger={['click']}
+      visible={isDropdownOpen}  // Устанавливаем видимость вручную
+      onVisibleChange={handleDropdownVisibleChange}  // Обрабатываем изменение видимости
+    >
+      <Button icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
+        Фильтры
+      </Button>
+    </Dropdown>
 
-  <Select
-    allowClear
-    placeholder="Фильтр по проекту"
-    style={{ width: 200 }}
-    onChange={(val) => setFilterProject(val)}
-    value={filterProject ?? undefined}
-  >
-    {projects.map(proj => (
-      <Option key={proj.ID_Order} value={proj.ID_Order}>
-        {proj.Order_Name}
-      </Option>
-    ))}
-  </Select>
 
-  <Select
-    allowClear
-    showSearch
-    placeholder="Фильтр по сотруднику"
-    style={{ width: 200 }}
-    onChange={(val) => setFilterEmployee(val)}
-    value={filterEmployee ?? undefined}
-    optionFilterProp="children"
-  >
-    {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))]
-      .sort()
-      .map(name => (
-        <Option key={name} value={name}>
-          {name}
-        </Option>
-      ))}
-  </Select>
-</div>
-
-<DragDropContext onDragEnd={handleDragEnd}>
+                        <DragDropContext onDragEnd={handleDragEnd}>
                           <div className="kanban-columns">
                             {statuses.map((status) => (
                               <Droppable key={status} droppableId={status}>

@@ -1,0 +1,107 @@
+/* Page Content */
+.page-content {
+    padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    position: relative; /* Allow positioning of the button inside */
+  }
+  
+  /* Time Tracking Form */
+  .time-tracking-form {
+    background-color: var(--card-bg-color);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Submit Button */
+  .submit-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    width: 100%;
+  }
+  
+  .submit-button:hover {
+    background-color: #00bcd4;
+  }
+  
+  /* File Upload */
+  .ant-upload-drag-icon {
+    font-size: 24px;
+    color: var(--text-color);
+  }
+  
+  .ant-upload-text {
+    color: var(--text-color);
+  }
+  
+  /* Tabs */
+  .ant-tabs-nav {
+    background-color: var(--card-bg-color);
+    border-radius: 8px;
+  }
+  
+  .ant-tabs-tab {
+    color: var(--text-color);
+  }
+  
+  .ant-tabs-tab-active {
+    background-color: var(--accent-color);
+    color: white;
+  }
+  
+  .ant-form-item-label {
+    color: var(--text-color);
+  }
+  
+  /* Move the "Добавить потраченное время" button upwards */
+  .submit-button-right {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    position: absolute;
+    right: 20px;
+    top: 10px; /* Reduced top value to move the button upwards */
+    padding: 10px 15px;
+    font-size: 14px;
+    z-index: 10; /* Ensure it stays above other elements */
+  }
+  
+  /* List Item Styles */
+  .ant-list-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background-color: var(--card-bg-color);
+    margin: 10px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .ant-list-item div {
+    margin: 5px 0;
+  }
+  
+  .ant-list-item .ant-list-item-meta-title {
+    font-size: 16px;
+    font-weight: bold;
+  }
+  
+  /* Modal Form Button */
+  .submit-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    width: 100%;
+  }
+  
+  .submit-button:hover {
+    background-color: #00bcd4;
+  }
+  
+  /* Ensure the list doesn't overlap with the button */
+  .ant-list {
+    margin-top: 60px; /* Space for the button */
+  }
+  

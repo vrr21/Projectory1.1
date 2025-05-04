@@ -117,14 +117,14 @@ const ManagerAccount: React.FC = () => {
       key: 'members',
       render: (_: unknown, team: Team) => (
         <div>
-          {team.members.map((m, idx) => (
-            <div key={`${team.id}-${m.email}-${m.role}-${idx}`}>
+          {team.members.map((m) => (
+            <div key={`${team.id}-${m.id}`}>  {/* Используем уникальные ключи */}
               {m.fullName} ({m.role}) — {m.email}
             </div>
           ))}
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
