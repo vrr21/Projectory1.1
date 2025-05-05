@@ -353,3 +353,270 @@ a {
   color: var(--accent-color);
   opacity: 1;
 }
+
+
+/* =========================== */
+/* LIGHT THEME FIXES FOR TIME TRACKING */
+/* =========================== */
+
+[data-theme="light"] .entry-card {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .entry-card b {
+  color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .entry-card div {
+  color: #333 !important;
+}
+
+[data-theme="light"] .time-tracking-header h2 {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .horizontal-column {
+  background-color: #f9f9f9 !important;
+  color: #000000 !important;
+  border: 1px solid #ddd;
+}
+
+[data-theme="light"] .horizontal-column .day-header {
+  color: #000000;
+}
+
+[data-theme="light"] .horizontal-column .day-date {
+  color: #666;
+}
+
+[data-theme="light"] .time-tracking-header .ant-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .time-tracking-header .ant-btn:hover {
+  background-color: #f0f0f0 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+  border: none !important;
+}
+
+[data-theme="light"] .ant-btn-primary:hover {
+  background-color: #00bcd4 !important;
+}
+
+[data-theme="light"] .ant-picker {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .submit-button-right {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+  border: none !important;
+}
+
+[data-theme="light"] .submit-button-right:hover {
+  background-color: #00bcd4 !important;
+}
+
+/* Time Tracking Form - Light Theme */
+[data-theme="light"] .time-tracking-form {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .time-tracking-form label,
+[data-theme="light"] .time-tracking-form .ant-form-item-label,
+[data-theme="light"] .time-tracking-form .ant-form-item-label > label,
+[data-theme="light"] .time-tracking-form .ant-form-item-control-input,
+[data-theme="light"] .time-tracking-form .ant-form-item-explain,
+[data-theme="light"] .time-tracking-form .ant-upload-text,
+[data-theme="light"] .time-tracking-form .ant-upload-drag-icon {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .time-tracking-form .ant-input,
+[data-theme="light"] .time-tracking-form .ant-input-textarea,
+[data-theme="light"] .time-tracking-form .ant-select-selector,
+[data-theme="light"] .time-tracking-form .ant-picker-input > input {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+  border-color: #ccc !important;
+}
+
+/* Modal content (view & add) */
+[data-theme="light"] .ant-modal-content,
+[data-theme="light"] .ant-modal-header,
+[data-theme="light"] .ant-modal-body,
+[data-theme="light"] .ant-modal-footer {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-modal-title {
+  color: #000000 !important;
+}
+
+
+/* =============================== */
+/* ✅ FINAL FIX: Light Theme for Time Tracking Form Fields */
+/* =============================== */
+
+[data-theme="light"] .ant-modal {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .ant-modal-content,
+[data-theme="light"] .ant-modal-header,
+[data-theme="light"] .ant-modal-body,
+[data-theme="light"] .ant-modal-footer {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-modal-title {
+  color: #000000 !important;
+}
+
+/* Label colors */
+[data-theme="light"] .ant-form-item-label > label {
+  color: #000000 !important;
+}
+
+/* Input fields */
+[data-theme="light"] .ant-input,
+[data-theme="light"] .ant-input-textarea,
+[data-theme="light"] .ant-picker-input > input,
+[data-theme="light"] .ant-select-selector {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+/* Placeholder colors */
+[data-theme="light"] .ant-input::placeholder,
+[data-theme="light"] .ant-input-textarea::placeholder,
+[data-theme="light"] .ant-picker-input > input::placeholder,
+[data-theme="light"] .ant-select-selection-placeholder {
+  color: #999 !important;
+}
+
+/* File upload icon and text */
+[data-theme="light"] .ant-upload-drag-icon,
+[data-theme="light"] .ant-upload-text {
+  color: #000000 !important;
+}
+
+/* Validation text */
+[data-theme="light"] .ant-form-item-explain {
+  color: #cf1322 !important;
+}
+
+/* Primary button */
+[data-theme="light"] .ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+[data-theme="light"] .ant-btn-primary:hover {
+  background-color: #00bcd4 !important;
+}
+
+/* Select arrows and clear icons */
+[data-theme="light"] .ant-select-arrow,
+[data-theme="light"] .ant-select-clear,
+[data-theme="light"] .ant-picker-suffix,
+[data-theme="light"] .ant-picker-clear {
+  color: #000000 !important;
+}
+[data-theme="light"] input[type="number"] {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] input[type="number"]::placeholder {
+  color: #999 !important;
+}
+
+
+/* =============================== */
+/* Вкладки: белый текст в активной вкладке (всегда) */
+/* =============================== */
+
+/* Активная вкладка — фон и белый текст */
+[data-theme="light"] .ant-tabs-tab.ant-tabs-tab-active {
+  background-color: var(--accent-color) !important;
+  border-radius: 6px 6px 0 0;
+}
+
+[data-theme="light"] .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+
+/* Наведение на вкладку — тоже белый */
+[data-theme="light"] .ant-tabs-tab:hover {
+  background-color: var(--accent-color) !important;
+  border-radius: 6px 6px 0 0;
+}
+
+[data-theme="light"] .ant-tabs-tab:hover .ant-tabs-tab-btn {
+  color: #ffffff !important;
+}
+
+/* Убрать наследуемые цвета */
+[data-theme="light"] .ant-tabs-tab-btn {
+  color: #000000;
+  transition: none !important;
+}
+
+
+/* ===== ПАГИНАЦИЯ: адаптация под светлую тему ===== */
+[data-theme="light"] .ant-pagination-item {
+  background-color: var(--pagination-bg-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .ant-pagination-item a {
+  color: var(--text-color) !important;
+}
+
+[data-theme="light"] .ant-pagination-item-active {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .ant-pagination-item-active a {
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .ant-pagination-item:hover {
+  border-color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .ant-pagination-item:hover a {
+  color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .ant-pagination-prev .anticon,
+[data-theme="light"] .ant-pagination-next .anticon {
+  color: var(--text-color);
+}
+
+[data-theme="light"] .ant-pagination-prev:hover .anticon,
+[data-theme="light"] .ant-pagination-next:hover .anticon {
+  color: var(--accent-color) !important;
+}

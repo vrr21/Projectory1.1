@@ -3,9 +3,10 @@ import { Layout, Menu } from 'antd';
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  TableOutlined,  // Импорт новой иконки
+  TableOutlined,
   ProjectOutlined,
-  TeamOutlined
+  TeamOutlined,
+  ClockCircleOutlined // ✅ Добавили иконку часов
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -24,17 +25,17 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     setCollapsed(!collapsed);
   };
 
-  // Define menu items for employees
+  // Элементы меню для сотрудника
   const employeeMenuItems = [
-    { key: '/employee', icon: <TableOutlined />, label: <Link to="/employee">Доски задач</Link> },  // Заменили иконку
+    { key: '/employee', icon: <TableOutlined />, label: <Link to="/employee">Доски задач</Link> },
     { key: '/mytasks', icon: <ProjectOutlined />, label: <Link to="/mytasks">Мои задачи</Link> },
     { key: '/teams', icon: <TeamOutlined />, label: <Link to="/teams">Мои команды</Link> },
-    { key: '/time-tracking', icon: <ProjectOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> },
+    { key: '/time-tracking', icon: <ClockCircleOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> }, // ✅ заменили иконку
   ];
 
-  // Define menu items for managers
+  // Элементы меню для менеджера
   const managerMenuItems = [
-    { key: '/manager', icon: <TableOutlined />, label: <Link to="/manager">Главная</Link> },  // Заменили иконку
+    { key: '/manager', icon: <TableOutlined />, label: <Link to="/manager">Главная</Link> },
     { key: '/projects', icon: <ProjectOutlined />, label: <Link to="/projects">Проекты</Link> },
     { key: '/myteams', icon: <TeamOutlined />, label: <Link to="/myteams">Мои команды</Link> },
     { key: '/team-management', icon: <TeamOutlined />, label: <Link to="/team-management">Команды</Link> },
@@ -43,15 +44,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
 
   const menuItems = role === 'manager' ? managerMenuItems : employeeMenuItems;
 
-  // Add the 'collapsed' class to layout
+  // Добавление класса collapse в layout
   useEffect(() => {
     const layoutElement = document.querySelector('.layout');
     if (layoutElement) {
-      if (collapsed) {
-        layoutElement.classList.add('collapsed');
-      } else {
-        layoutElement.classList.remove('collapsed');
-      }
+      layoutElement.classList.toggle('collapsed', collapsed);
     }
   }, [collapsed]);
 

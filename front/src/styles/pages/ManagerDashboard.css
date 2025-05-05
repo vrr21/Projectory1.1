@@ -482,3 +482,108 @@
   margin-bottom: 2rem;
   width: 100%; /* Обеспечивает правильную ширину контейнера */
 }
+
+
+[data-theme="light"] .dashboard,
+[data-theme="light"] .dashboard-body,
+[data-theme="light"] .main-content {
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+[data-theme="light"] .kanban-task {
+  background: linear-gradient(145deg, #f0f0f0, #e0e0e0);
+  color: #000000;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .kanban-task-content p {
+  color: #333;
+}
+
+[data-theme="light"] .kanban-task-content strong {
+  color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .kanban-status-block {
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .kanban-status-header {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border-left: 4px solid var(--accent-color);
+}
+
+[data-theme="light"] .kanban-avatars .ant-avatar {
+  background-color: #eaeaea;
+  color: #000;
+  border-color: #ccc;
+}
+
+[data-theme="light"] .kanban-icon.anticon {
+  color: #000;
+}
+
+[data-theme="light"] .kanban-icon.anticon:hover {
+  color: var(--accent-color);
+}
+/* === Светлая тема: кнопка "Добавить задачу" === */
+[data-theme="light"] .add-task-button {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+[data-theme="light"] .add-task-button:hover,
+[data-theme="light"] .add-task-button:focus,
+[data-theme="light"] .add-task-button:active {
+  background-color: #f0f0f0 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* === Светлая тема: кнопка "Фильтры" === */
+[data-theme="light"] .ant-btn[icon]:has(.anticon-filter) {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .ant-btn[icon]:has(.anticon-filter):hover {
+  background-color: #f0f0f0 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* === Светлая тема: кнопки в модалке "Информация о задаче" === */
+[data-theme="light"] .ant-modal-footer .ant-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .ant-modal-footer .ant-btn:hover {
+  background-color: #f5f5f5 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+/* === Светлая тема: кнопка "Фильтры" по классу === */
+[data-theme="light"] .filters-button {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+  font-weight: 500;
+}
+
+[data-theme="light"] .filters-button:hover,
+[data-theme="light"] .filters-button:focus {
+  background-color: #f0f0f0 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}

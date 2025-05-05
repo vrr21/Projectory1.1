@@ -79,3 +79,56 @@
     max-width: 600px; /* Максимальная ширина диаграммы на мобильных устройствах */
   }
 }
+/* === Светлая тема: Страница аккаунта === */
+[data-theme="light"] .account-container {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+[data-theme="light"] .account-card {
+  background-color: #ffffff !important;
+  border: 1px solid #ccc !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .text-color {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .role-text,
+[data-theme="light"] .info-text {
+  color: #333333 !important;
+}
+
+[data-theme="light"] .accent-divider {
+  border-top: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .icon {
+  color: #666666 !important;
+}
+
+[data-theme="light"] .upload-label {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-block;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+[data-theme="light"] .upload-label:hover {
+  background-color: #f0f0f0;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+[data-theme="light"] .bottom-content {
+  background-color: #ffffff !important;
+  border: 1px solid #ccc;
+  color: #000000;
+}

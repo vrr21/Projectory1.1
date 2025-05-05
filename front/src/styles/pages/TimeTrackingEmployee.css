@@ -88,7 +88,6 @@
   font-weight: bold;
 }
 
-/* Ensure the list doesn't overlap with the button */
 .ant-list {
   margin-top: 60px;
 }
@@ -138,15 +137,15 @@
   width: 100%;
 }
 
-/* Два варианта entry-card, объединены */
+/* Entry Card */
 .entry-card {
-  background: linear-gradient(145deg, #2b2b2b, #1a1a1a);
-  border: 1px solid #444;
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem;
-  color: #f0f0f0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
   cursor: default;
   width: 100%;
 }
@@ -167,61 +166,71 @@
 .entry-card div {
   margin: 2px 0;
   font-size: 13px;
-  color: #ddd;
+  color: var(--text-color);
 }
 
+/* Action buttons in cards */
+.entry-card .ant-btn {
+  margin-right: 4px;
+  background-color: transparent;
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
 
-/* ======== DARK THEME ANT DATEPICKER FIX ======== */
+.entry-card .ant-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Modals: Add & View */
+.ant-modal-content,
+.ant-modal-header,
+.ant-modal-body,
+.ant-modal-footer {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.ant-modal-title {
+  color: var(--text-color) !important;
+}
+
+.ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+  border: none !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: #00bcd4 !important;
+}
+
+/* ======== THEME-AWARE ANT DATEPICKER FIX (dark & light) ======== */
 
 .ant-picker {
-  background-color: var(--card-bg-color);
-  border-color: var(--border-color);
-  color: var(--text-color);
+  transition: none !important;
 }
 
 .ant-picker:hover,
 .ant-picker-focused {
-  border-color: #444;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.2);
 }
 
 .ant-picker-input > input {
-  color: var(--text-color);
+  background-color: transparent;
 }
 
-.ant-picker-dropdown {
-  background-color: var(--card-bg-color);
-  border: 1px solid var(--border-color);
-}
-
-.ant-picker-panel-container {
-  background-color: var(--card-bg-color);
-  color: var(--text-color);
-}
-
-.ant-picker-cell {
-  color: var(--text-color);
+.ant-picker-cell-inner {
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
-  border-color: #333;
+  border-color: var(--accent-color);
 }
-
-/* Изменение цвета активных элементов календаря на чёрный */
-.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
-.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner {
-  background-color: #000000 !important;
-  border-color: #000000 !important;
-  color: #ffffff !important;
-}
-
 
 .ant-picker-cell-in-range::before {
   background-color: rgba(0, 0, 0, 0.3);
-}
-
-.ant-picker-header,
-.ant-picker-content th {
-  color: var(--text-color);
 }
 
 .ant-picker-footer {
@@ -232,8 +241,107 @@
   color: #555;
 }
 
-/* Icon color */
 .ant-picker-suffix,
 .ant-picker-clear {
   color: var(--text-color);
+}
+
+.custom-datepicker-popup .ant-picker-panel {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Dark Theme */
+[data-theme="dark"] .entry-card div {
+  color: #ddd;
+}
+
+/* Light Theme */
+[data-theme="light"] .entry-card {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .entry-card div {
+  color: #000000;
+}
+
+[data-theme="light"] .entry-card b {
+  color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .ant-picker {
+  background-color: #ffffff;
+  border-color: #ccc;
+  color: #000000;
+}
+
+[data-theme="light"] .ant-picker-input > input {
+  color: #000000;
+}
+
+[data-theme="light"] .ant-picker-dropdown,
+[data-theme="light"] .ant-picker-panel-container {
+  background-color: #ffffff !important;
+  border: 1px solid #ccc !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-picker-cell {
+  color: #000000;
+}
+
+[data-theme="light"] .ant-picker-header,
+[data-theme="light"] .ant-picker-content th {
+  color: #000000;
+}
+
+[data-theme="light"] .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+[data-theme="light"] .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner {
+  background-color: #e6f7ff !important;
+  border-color: #1890ff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .hours-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .hours-input input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+/* Светлая тема: стили для Select */
+[data-theme="light"] .ant-select,
+[data-theme="light"] .ant-select-selector {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .ant-select-selection-item,
+[data-theme="light"] .ant-select-selection-placeholder {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-select-dropdown {
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .ant-select-item-option {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .ant-select-item-option-active {
+  background-color: #e6f7ff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-select-item-option-selected {
+  font-weight: bold !important;
 }

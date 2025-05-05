@@ -1,20 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Layout, Button, Form, Input, Select, DatePicker, Upload,
-  notification, Modal, App, Tooltip
+  notification, Modal, App, Tooltip, InputNumber
 } from 'antd';
 import {
   InboxOutlined, EyeOutlined, EditOutlined, DeleteOutlined,
   LeftOutlined, RightOutlined, CalendarOutlined
 } from '@ant-design/icons';
-import moment, { Moment } from 'moment';
-import 'moment/locale/ru';
 import { UploadFile } from 'antd/es/upload/interface';
 import HeaderEmployee from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/TimeTrackingEmployee.css';
 
-moment.locale('ru');
+import dayjs from 'dayjs';
+import isoWeek from 'dayjs/plugin/isoWeek';
+import weekday from 'dayjs/plugin/weekday';
+import localeData from 'dayjs/plugin/localeData';
+import 'dayjs/locale/ru';
+
+dayjs.extend(isoWeek);
+dayjs.extend(weekday);
+dayjs.extend(localeData);
+dayjs.locale('ru');
 
 const { Content } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -35,7 +42,7 @@ interface TimeTrackingFormValues {
   taskName: string;
   description: string;
   hours: number;
-  date: Moment;
+  date: dayjs.Dayjs;
   file: UploadFile[];
 }
 
@@ -59,7 +66,7 @@ const TimeTrackingEmployee: React.FC = () => {
   const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [weekStart, setWeekStart] = useState(moment().startOf('isoWeek'));
+  const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'));
   const [api, contextHolder] = notification.useNotification();
 
   const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
@@ -100,7 +107,7 @@ const TimeTrackingEmployee: React.FC = () => {
       project: projects.find(p => p.Order_Name === entry.Order_Name)?.ID_Order,
       taskName: entry.ID_Task,
       hours: entry.Hours_Spent,
-      date: moment(entry.Start_Date),
+      date: dayjs(entry.Start_Date),
       description: entry.Description || '',
     });
     setIsModalVisible(true);
@@ -129,26 +136,40 @@ const TimeTrackingEmployee: React.FC = () => {
     const method = editingEntry ? 'PUT' : 'POST';
     const url = `${API_URL}/api/time-tracking${editingEntry ? `/${editingEntry.ID_Execution}` : ''}`;
 
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify(payload),
-    });
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (res.ok) {
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Ошибка ${res.status}: ${errorText}`);
+      }
+
       api.success({ message: editingEntry ? 'Запись обновлена' : 'Время добавлено' });
       fetchTimeEntries();
       form.resetFields();
       setEditingEntry(null);
       setIsModalVisible(false);
-    } else {
-      api.error({ message: 'Ошибка при сохранении' });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        api.error({ message: `Ошибка при сохранении: ${error.message}` });
+      } else {
+        api.error({ message: 'Неизвестная ошибка при сохранении' });
+      }
     }
   };
 
-  const getWeekDays = () => Array.from({ length: 7 }, (_, i) => weekStart.clone().add(i, 'day'));
-  const getEntriesByDay = (day: Moment) =>
-    timeEntries.filter(entry => moment(entry.Start_Date).isSame(day, 'day'));
+  const getWeekDays = () =>
+    Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
+
+  const getEntriesByDay = (day: dayjs.Dayjs) =>
+    timeEntries.filter(entry => dayjs(entry.Start_Date).isSame(day, 'day'));
 
   const normFile = (e: { fileList: UploadFile[] }) => Array.isArray(e) ? e : e.fileList;
 
@@ -161,37 +182,29 @@ const TimeTrackingEmployee: React.FC = () => {
           <HeaderEmployee />
           <Content className="content">
             <div className="page-content">
-              <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
-                <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.clone().subtract(1, 'week'))} />
+              <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '1rem' }}>
+                <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: 0, flexBasis: '100%' }}>Учёт времени</h1>
+                <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week'))} />
                 <h2 style={{ margin: '0 1rem' }}>
-                  {weekStart.format('D MMMM')} – {weekStart.clone().add(6, 'days').format('D MMMM YYYY')}
+                  {weekStart.format('D MMMM')} – {weekStart.add(6, 'day').format('D MMMM YYYY')}
                 </h2>
-                <Button icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.clone().add(1, 'week'))} />
+                <Button icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.add(1, 'week'))} />
                 <DatePicker
-  key={weekStart.format('YYYY-MM-DD')}
-  value={weekStart.clone()}
-  format="DD.MM.YYYY"
-  allowClear={false}
-  suffixIcon={<CalendarOutlined />}
-  style={{ marginLeft: 12 }}
-  picker="date"
-  inputReadOnly // предотвращает ручной ввод и ошибки в датах
-  disabledDate={(current) =>
-    current && (current.year() < 2000 || current.year() > 2100)
-  }
-  onChange={(date) => {
-    if (date) {
-      setWeekStart(date.clone().startOf('isoWeek'));
-    }
-  }}
-  onOpenChange={(open) => {
-    if (!open) {
-      setWeekStart(prev => prev.clone().startOf('isoWeek'));
-    }
-  }}
-/>
-
-
+                  value={weekStart}
+                  format="DD.MM.YYYY"
+                  allowClear={false}
+                  suffixIcon={<CalendarOutlined />}
+                  style={{ marginLeft: 12 }}
+                  inputReadOnly
+                  onChange={(date) => {
+                    if (date && dayjs.isDayjs(date)) {
+                      setWeekStart(date.startOf('isoWeek'));
+                    }
+                  }}
+                  disabledDate={(current) =>
+                    current && (current.year() < 2000 || current.year() > 2100)
+                  }
+                />
                 <Button
                   type="primary"
                   onClick={() => {
@@ -207,7 +220,7 @@ const TimeTrackingEmployee: React.FC = () => {
 
               <div className="horizontal-columns">
                 {getWeekDays().map(day => (
-                  <div key={day.format()} className="horizontal-column">
+                  <div key={day.toString()} className="horizontal-column">
                     <div className="day-header">{weekDaysRu[day.isoWeekday() - 1]}</div>
                     <div className="day-date">{day.format('DD.MM')}</div>
                     <div className="card-stack">
@@ -234,9 +247,12 @@ const TimeTrackingEmployee: React.FC = () => {
                 ))}
               </div>
 
-              <Modal title={editingEntry ? 'Редактировать' : 'Добавить'}
-                     open={isModalVisible}
-                     onCancel={() => setIsModalVisible(false)} footer={null}>
+              <Modal
+                title={editingEntry ? 'Редактировать' : 'Добавить'}
+                open={isModalVisible}
+                onCancel={() => setIsModalVisible(false)}
+                footer={null}
+              >
                 <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
                   <Form.Item name="project" label="Проект" rules={[{ required: true }]}>
                     <Select placeholder="Выберите проект">
@@ -259,11 +275,45 @@ const TimeTrackingEmployee: React.FC = () => {
                   <Form.Item name="description" label="Описание">
                     <Input.TextArea />
                   </Form.Item>
-                  <Form.Item name="hours" label="Потрачено часов" rules={[{ required: true }]}>
-                    <Input type="number" />
+                  <Form.Item
+                    name="hours"
+                    label="Потрачено часов"
+                    rules={[
+                      { required: true, message: 'Введите количество часов' },
+                      {
+                        validator: (_, value) =>
+                          value > 0 ? Promise.resolve() : Promise.reject('Часы должны быть больше 0')
+                      }
+                    ]}
+                  >
+                <InputNumber
+  className="hours-input"
+  min={0.1}
+  step={0.1}
+  style={{ width: '100%' }}
+  stringMode
+  controls={false}
+  onKeyPress={(e) => {
+    const charCode = e.charCode;
+    const isNumber = charCode >= 48 && charCode <= 57;
+    const isDot = charCode === 46;
+    if (!isNumber && !isDot) {
+      e.preventDefault();
+    }
+  }}
+/>
+
+
                   </Form.Item>
-                  <Form.Item name="date" label="Дата" rules={[{ required: true }]}>
-                    <DatePicker style={{ width: '100%' }} />
+                  <Form.Item
+                    name="date"
+                    label="Дата"
+                    rules={[{ required: true, message: 'Выберите дату' }]}
+                  >
+                    <DatePicker
+                      style={{ width: '100%' }}
+                      disabledDate={(current) => current && current > dayjs().endOf('day')}
+                    />
                   </Form.Item>
                   <Form.Item label="Прикрепить файл" name="file" valuePropName="fileList" getValueFromEvent={normFile}>
                     <Upload.Dragger name="files" multiple showUploadList={false}>
@@ -279,19 +329,24 @@ const TimeTrackingEmployee: React.FC = () => {
                 </Form>
               </Modal>
 
-              <Modal title="Просмотр записи" open={isViewModalVisible} onCancel={() => setIsViewModalVisible(false)}
-                     footer={<Button onClick={() => setIsViewModalVisible(false)}>Закрыть</Button>}>
+              <Modal
+                title="Просмотр записи"
+                open={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={<Button onClick={() => setIsViewModalVisible(false)}>Закрыть</Button>}
+              >
                 {viewingEntry && (
                   <div style={{ lineHeight: 1.8 }}>
                     <p><b>Задача:</b> {viewingEntry.Task_Name}</p>
                     <p><b>Проект:</b> {viewingEntry.Order_Name}</p>
-                    <p><b>Дата начала:</b> {moment(viewingEntry.Start_Date).format('DD.MM.YYYY HH:mm')}</p>
-                    <p><b>Дата окончания:</b> {moment(viewingEntry.End_Date).format('DD.MM.YYYY HH:mm')}</p>
+                    <p><b>Дата начала:</b> {dayjs(viewingEntry.Start_Date).format('DD.MM.YYYY HH:mm')}</p>
+                    <p><b>Дата окончания:</b> {dayjs(viewingEntry.End_Date).format('DD.MM.YYYY HH:mm')}</p>
                     <p><b>Потрачено:</b> {viewingEntry.Hours_Spent} ч</p>
                     {viewingEntry.Description && <p><b>Описание:</b> {viewingEntry.Description}</p>}
                   </div>
                 )}
               </Modal>
+
             </div>
           </Content>
         </Layout>

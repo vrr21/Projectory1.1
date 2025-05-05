@@ -529,9 +529,10 @@ const ManagerDashboard: React.FC = () => {
       visible={isDropdownOpen}  // Устанавливаем видимость вручную
       onVisibleChange={handleDropdownVisibleChange}  // Обрабатываем изменение видимости
     >
-      <Button icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
-        Фильтры
-      </Button>
+     <Button className="filters-button" icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
+  Фильтры
+</Button>
+
     </Dropdown>
 
 

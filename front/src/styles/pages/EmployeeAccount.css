@@ -276,3 +276,124 @@
     max-width: 600px; /* Максимальная ширина диаграммы на мобильных устройствах */
   }
 }
+/* === Светлая тема: Страница сотрудника === */
+[data-theme="light"] .account-card {
+  background-color: #ffffff !important;
+  border: 1px solid #ccc !important;
+  color: #000000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .text-color,
+[data-theme="light"] .role-text,
+[data-theme="light"] .info-text {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .accent-divider {
+  border-color: #ccc !important;
+}
+
+[data-theme="light"] .icon {
+  color: #333333 !important;
+}
+
+[data-theme="light"] .upload-label {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-block;
+  margin-top: 1rem;
+  font-weight: 500;
+}
+
+[data-theme="light"] .upload-label:hover {
+  background-color: #f0f0f0;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+[data-theme="light"] .table-block {
+  background-color: #ffffff !important;
+  border: 1px solid #ccc;
+  color: #000000;
+}
+
+[data-theme="light"] .table-block .ant-table,
+[data-theme="light"] .table-block .ant-table-container,
+[data-theme="light"] .table-block .ant-table-content {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .table-block .ant-table-thead > tr > th,
+[data-theme="light"] .table-block .ant-table-tbody > tr > td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-bottom: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .table-block .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .table-block .ant-tabs-card > .ant-tabs-nav .ant-tabs-tab-active {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+[data-theme="light"] .table-block .ant-tabs-card .ant-tabs-nav .ant-tabs-tab:hover {
+  color: var(--accent-color);
+}
+
+[data-theme="light"] .table-block .ant-pagination-item {
+  background-color: transparent;
+  color: #000000;
+  border: 1px solid #ccc;
+}
+
+[data-theme="light"] .table-block .ant-pagination-item-active {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+}
+
+[data-theme="light"] .table-block .ant-pagination-prev .anticon,
+[data-theme="light"] .table-block .ant-pagination-next .anticon {
+  color: #000000;
+}
+
+[data-theme="light"] .table-block .ant-pagination-prev:hover .anticon,
+[data-theme="light"] .table-block .ant-pagination-next:hover .anticon {
+  color: var(--accent-color);
+}
+
+[data-theme="light"] .reports .ant-card {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .reports canvas {
+  background-color: transparent;
+}
+
+[data-theme="light"] .chartjs-render-monitor line,
+[data-theme="light"] .chartjs-render-monitor path {
+  stroke: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .export-button {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border: none;
+}
+
+[data-theme="light"] .export-button:hover {
+  background-color: #00bcd4;
+}

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Menu } from 'antd';
-import { 
-  MenuFoldOutlined, 
-  MenuUnfoldOutlined, 
-  TableOutlined, 
-  ProjectOutlined, 
-  TeamOutlined 
+import {
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  TableOutlined,
+  ProjectOutlined,
+  TeamOutlined,
+  ClockCircleOutlined
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -23,13 +24,18 @@ const SidebarManager: React.FC = () => {
   const menuItems = [
     {
       key: '/manager',
-      icon: <TableOutlined />,  // Иконка таблицы для "Доски задач"
+      icon: <TableOutlined />,
       label: <Link to="/manager">Доски задач</Link>,
     },
     {
       key: '/projects',
       icon: <ProjectOutlined />,
       label: <Link to="/projects">Проекты</Link>,
+    },
+    {
+      key: '/manager-time-tracking',
+      icon: <ClockCircleOutlined />,
+      label: <Link to="/manager-time-tracking">Учёт времени</Link>,
     },
     {
       key: 'teams',

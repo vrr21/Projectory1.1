@@ -4,7 +4,7 @@ import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 
 import './styles/theme.css';
-import Loader from './components/Loader'; // Новый компонент загрузки
+import Loader from './components/Loader';
 
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
@@ -19,7 +19,8 @@ import MyCommandsEmployee from './pages/MyCommandsEmployee';
 import MyCommandsManager from './pages/MyCommandsManager';
 import EmployeeReports from './components/Reports';
 import ManagerReports from './components/ManagerReports';
-import TimeTrackingEmployee from './pages/TimeTrackingEmployee';  // Correct import
+import TimeTrackingEmployee from './pages/TimeTrackingEmployee';
+import TimeTrackingManager from './pages/TimeTrackingManager'; // ✅ Добавлено
 
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -31,7 +32,6 @@ const ProtectedProfileRoute = () => {
   return isManager ? <ManagerAccount /> : <EmployeeAccount />;
 };
 
-// Обёртка для анимированного появления страниц
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <motion.div
     initial={{ opacity: 0 }}
@@ -57,22 +57,18 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/employee" element={<PageWrapper><EmployeeDashboard /></PageWrapper>} />
         <Route path="/profile" element={<PageWrapper><ProtectedProfileRoute /></PageWrapper>} />
 
-        {/* Проекты */}
         <Route path="/projects" element={<PageWrapper><ProjectManagementPage /></PageWrapper>} />
         <Route path="/projects/:id" element={<PageWrapper><ProjectManagementPage /></PageWrapper>} />
 
-        {/* Задачи */}
         <Route path="/mytasks" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
-        {/* Time Tracking Page Route */}
         <Route path="/time-tracking" element={<PageWrapper><TimeTrackingEmployee /></PageWrapper>} />
+        <Route path="/manager-time-tracking" element={<PageWrapper><TimeTrackingManager /></PageWrapper>} /> 
 
-        {/* Команды */}
         <Route path="/team-management" element={<PageWrapper><TeamManagementPage /></PageWrapper>} />
         <Route path="/teams" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
         <Route path="/teams/:id" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
         <Route path="/myteams" element={<PageWrapper><MyCommandsManager /></PageWrapper>} />
 
-        {/* Отчёты */}
         <Route path="/reports" element={<PageWrapper><EmployeeReports /></PageWrapper>} />
         <Route path="/manager-reports" element={<PageWrapper><ManagerReports /></PageWrapper>} />
       </Routes>

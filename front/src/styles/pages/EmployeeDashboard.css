@@ -251,3 +251,102 @@
   border: none;
   box-shadow: none;
 }
+/* =============================== */
+/* LIGHT THEME FIXES FOR DASHBOARD */
+/* =============================== */
+
+[data-theme="light"] .dashboard,
+[data-theme="light"] .dashboard-body,
+[data-theme="light"] .main-content {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .kanban-column {
+  background-color: #f9f9f9 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .kanban-column h3 {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border-left-color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .kanban-task {
+  background: #ffffff !important;
+  border: 1px solid #ccc !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .kanban-task-content strong {
+  color: var(--accent-color) !important;
+}
+
+[data-theme="light"] .kanban-task-content p,
+[data-theme="light"] .kanban-task-content p i {
+  color: #333 !important;
+}
+
+[data-theme="light"] .ant-table {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-table-thead > tr > th {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-table-tbody > tr > td {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ccc !important;
+}
+
+[data-theme="light"] .ant-tabs-tab {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-tabs-tab-active {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+[data-theme="light"] .ant-modal-content,
+[data-theme="light"] .ant-modal-header,
+[data-theme="light"] .ant-modal-body,
+[data-theme="light"] .ant-modal-footer {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-modal-title {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .kanban-icon--big {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .eye-button {
+  color: #000000 !important;
+}
+
+/* Deadline boxes - keep colors */
+[data-theme="light"] .deadline-box.safe {
+  background-color: #52c41a !important;
+}
+
+[data-theme="light"] .deadline-box.warning {
+  background-color: #faad14 !important;
+}
+
+[data-theme="light"] .deadline-box.expired {
+  background-color: #f5222d !important;
+}
+
+[data-theme="light"] .deadline-box.undefined {
+  background-color: #d9d9d9 !important;
+  color: #000000 !important;
+}
