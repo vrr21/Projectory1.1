@@ -39,13 +39,11 @@
   border: none !important; /* Убирает обводку */
   padding: 0 !important; /* Убирает отступы */
   text-decoration: none; /* Убирает подчеркивание */
-  color: #006F7A !important; /* Цвет текста для кнопки "Добавить участников" */
 }
 
 /* Устанавливаем цвет иконки для кнопки "Добавить участников" */
 .team-management-page .ant-btn-link .anticon {
   font-size: 16px; /* Размер иконки */
-  color: #006F7A !important; /* Цвет иконки */
 }
 
 /* Убираем изменения для корзины */

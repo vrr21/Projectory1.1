@@ -49,30 +49,35 @@ router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
 
 // 📥 Получить данные о текущем пользователе
 router.get('/current-user', async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];  // Извлекаем токен из заголовков
-
-  if (!token) {
-    return res.status(401).json({ message: 'Нет токена' });
-  }
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Нет токена' });
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
 
+    await poolConnect;
+
     const result = await pool.request()
       .input('userId', sql.Int, userId)
-      .query('SELECT * FROM Users WHERE ID_User = @userId');
+      .query(`
+        SELECT u.*, tm.ID_Team 
+        FROM Users u
+        LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
+        WHERE u.ID_User = @userId
+      `);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ message: 'Пользователь не найден' });
     }
 
-    res.json(result.recordset[0]);  // Возвращаем данные пользователя
+    res.json(result.recordset[0]);  // содержит ID_Team
   } catch (error) {
     console.error('Ошибка при получении данных о пользователе:', error);
     res.status(500).json({ message: 'Ошибка при получении данных о пользователе' });
   }
 });
+
 
 // ✅ Регистрация
 router.post('/register', async (req, res) => {

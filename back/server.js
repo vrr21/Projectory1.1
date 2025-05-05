@@ -15,20 +15,21 @@ const uploadRoutes = require('./routes/upload.routes');
 const teamRoutes = require('./routes/team.routes');
 const projectRoutes = require('./routes/projects.routes');
 const taskRoutes = require('./routes/tasks.routes');
-const taskDetailsRoutes = require('./routes/tasks.details.routes'); // Для GET /with-details
+const taskDetailsRoutes = require('./routes/tasks.details.routes');
 const employeeRoutes = require('./routes/employees.routes');
 const reportsRoutes = require('./routes/reports');
 const statusRoutes = require('./routes/status.routes');
 const employeeFullSearchRouter = require('./routes/employeeFullSearch.router');
 const managerRoutes = require('./routes/manager.routes');
 const uploadTaskFileRouter = require('./routes/uploadTaskFile.routes');
+const timeTrackingRoutes = require('./routes/timeTracking'); // Убедитесь, что роут настроен для учета времени
 
 const app = express();
-const PORT = process.env.PORT || 3002; // Порт 3002
+const PORT = process.env.PORT || 3002;
 
-// Настройка CORS (Для разрешения запросов с клиентского приложения на порту 5173)
-app.use(cors({ origin: 'http://localhost:5173', credentials: true })); // Убедитесь, что CORS настроен правильно
-app.use(express.json());  // Для парсинга JSON в запросах
+// Настройка CORS
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+app.use(express.json());
 
 // Роуты API
 app.use('/api/auth', authRoutes);
@@ -36,13 +37,14 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
-app.use('/api/taskdetails', taskDetailsRoutes); // 🔹 /api/taskdetails/with-details
+app.use('/api/taskdetails', taskDetailsRoutes);
 app.use('/api/employees', employeeRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/statuses', statusRoutes);
 app.use('/api/employee', employeeFullSearchRouter);
 app.use('/api/manager', managerRoutes);
 app.use('/api', uploadTaskFileRouter);
+app.use('/api', timeTrackingRoutes);  // Роут для учета времени
 
 // Базовый маршрут для проверки
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));

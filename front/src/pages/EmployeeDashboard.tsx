@@ -218,7 +218,7 @@ const EmployeeDashboard = () => {
           <div className="dashboard-body">
             <Sidebar role="employee" />
             <main className="main-content kanban-board">
-              <h2 className="dashboard-title">Мои доски задач</h2>
+              <h2 className="dashboard-title">Мои задачи</h2>
               {contextHolder}
               <Tabs
                 activeKey={activeTab}

@@ -1,16 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layout, Tabs, Button, Form, Input, Select, DatePicker, Upload, notification, Modal, List, App } from 'antd';
-import { InboxOutlined } from '@ant-design/icons';
-import moment from 'moment';
+import {
+  Layout, Button, Form, Input, Select, DatePicker, Upload,
+  notification, Modal, App, Tooltip
+} from 'antd';
+import {
+  InboxOutlined, EyeOutlined, EditOutlined, DeleteOutlined,
+  LeftOutlined, RightOutlined, CalendarOutlined
+} from '@ant-design/icons';
+import moment, { Moment } from 'moment';
+import 'moment/locale/ru';
 import { UploadFile } from 'antd/es/upload/interface';
 import HeaderEmployee from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
-import "../styles/pages/TimeTrackingEmployee.css";
+import '../styles/pages/TimeTrackingEmployee.css';
+
+moment.locale('ru');
 
 const { Content } = Layout;
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Project {
-  ID_Project: string;
+  ID_Order: string;
   Order_Name: string;
   ID_Team: string;
 }
@@ -18,9 +28,6 @@ interface Project {
 interface Task {
   ID_Task: string;
   Task_Name: string;
-  Description: string;
-  Time_Norm: number;
-  Deadline: string | null;
 }
 
 interface TimeTrackingFormValues {
@@ -28,232 +35,263 @@ interface TimeTrackingFormValues {
   taskName: string;
   description: string;
   hours: number;
-  date: moment.Moment | null;
+  date: Moment;
   file: UploadFile[];
 }
 
+interface RawTimeEntry {
+  ID_Execution: string;
+  ID_Task: string;
+  Task_Name: string;
+  Order_Name: string;
+  Start_Date: string;
+  End_Date: string;
+  Hours_Spent: number;
+  Description?: string;
+}
+
 const TimeTrackingEmployee: React.FC = () => {
-  const [activeKey, setActiveKey] = useState('1');
   const [form] = Form.useForm();
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [timeEntries, setTimeEntries] = useState<TimeTrackingFormValues[]>([]);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<RawTimeEntry | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<RawTimeEntry | null>(null);
+  const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [weekStart, setWeekStart] = useState(moment().startOf('isoWeek'));
   const [api, contextHolder] = notification.useNotification();
 
+  const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+
   const fetchProjects = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No token available');
-      }
+    const token = localStorage.getItem('token');
+    const userResponse = await fetch(`${API_URL}/api/auth/current-user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const userData = await userResponse.json();
+    const response = await fetch(`${API_URL}/api/projects`);
+    const data = await response.json();
+    setProjects(data.filter((p: Project) => p.ID_Team === userData.ID_Team));
+  }, []);
 
-      const userResponse = await fetch('http://localhost:3002/api/auth/current-user', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+  const fetchTasks = useCallback(async () => {
+    const res = await fetch(`${API_URL}/api/tasks`);
+    setTasks(await res.json());
+  }, []);
 
-      if (!userResponse.ok) {
-        throw new Error('Failed to fetch user data');
-      }
-
-      const userData = await userResponse.json();
-      console.log('User Data:', userData); // Debugging line to check the user data
-
-      const response = await fetch('http://localhost:3002/api/projects');
-      if (!response.ok) {
-        throw new Error('Failed to fetch projects');
-      }
-
-      const data = await response.json();
-      console.log('Fetched Projects:', data);  // Debugging line to check the projects data
-
-      const filteredProjects = data.filter((project: Project) => project.ID_Team === userData.teamID); // Filter by user's team
-      setProjects(filteredProjects); // Set filtered projects
-    } catch (error: unknown) {
-      console.error('Error fetching projects:', error);
-      if (error instanceof Error) {
-        api.error({
-          message: 'Error',
-          description: error.message || 'Failed to fetch projects from the server.',
-        });
-      }
-    }
-  }, [api]);
+  const fetchTimeEntries = useCallback(async () => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/time-tracking`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setTimeEntries(await res.json());
+  }, []);
 
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchTasks();
+    fetchTimeEntries();
+  }, [fetchProjects, fetchTasks, fetchTimeEntries]);
 
-  const fetchTasks = async (projectId: string) => {
-    try {
-      const response = await fetch(`http://localhost:3002/api/tasks?projectId=${projectId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch tasks');
-      }
-      const data = await response.json();
-      console.log('Fetched Tasks:', data); // Debugging line to check the tasks data
-      setTasks(data);
-    } catch (error: unknown) {
-      console.error('Error fetching tasks:', error);
-      if (error instanceof Error) {
-        api.error({
-          message: 'Error',
-          description: error.message || 'Failed to fetch tasks from the server.',
-        });
-      }
-    }
-  };
-
-  const handleTabChange = (key: string) => {
-    setActiveKey(key);
-  };
-
-  const handleFormSubmit = async (values: TimeTrackingFormValues) => {
-    api.success({
-      message: 'Time Entry Added',
-      description: `You have successfully logged time for task ${values.taskName}.`,
+  const handleEdit = (entry: RawTimeEntry) => {
+    setEditingEntry(entry);
+    form.setFieldsValue({
+      project: projects.find(p => p.Order_Name === entry.Order_Name)?.ID_Order,
+      taskName: entry.ID_Task,
+      hours: entry.Hours_Spent,
+      date: moment(entry.Start_Date),
+      description: entry.Description || '',
     });
-
-    try {
-      await fetch('http://localhost:3002/api/time-tracking', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
-      });
-      
-      setTimeEntries([...timeEntries, values]);
-      form.resetFields();
-      setIsModalVisible(false); // Close modal after submission
-    } catch (error: unknown) {
-      console.error('Error saving time entry:', error);
-      if (error instanceof Error) {
-        api.error({
-          message: 'Error',
-          description: error.message || 'Failed to save time entry.',
-        });
-      }
-    }
-  };
-
-  const normFile = (e: { fileList: UploadFile[] }) => {
-    return Array.isArray(e) ? e : e.fileList;
-  };
-
-  const showModal = () => {
     setIsModalVisible(true);
   };
 
-  const handleCancel = () => {
-    setIsModalVisible(false);
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`${API_URL}/api/time-tracking/${id}`, { method: 'DELETE' });
+      api.success({ message: 'Запись удалена' });
+      fetchTimeEntries();
+    } catch {
+      api.error({ message: 'Ошибка удаления' });
+    }
   };
+
+  const handleFormSubmit = async (values: TimeTrackingFormValues) => {
+    const token = localStorage.getItem('token');
+    const payload = {
+      project: values.project,
+      taskName: values.taskName,
+      date: values.date.toISOString(),
+      description: values.description,
+      hours: values.hours,
+    };
+
+    const method = editingEntry ? 'PUT' : 'POST';
+    const url = `${API_URL}/api/time-tracking${editingEntry ? `/${editingEntry.ID_Execution}` : ''}`;
+
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      api.success({ message: editingEntry ? 'Запись обновлена' : 'Время добавлено' });
+      fetchTimeEntries();
+      form.resetFields();
+      setEditingEntry(null);
+      setIsModalVisible(false);
+    } else {
+      api.error({ message: 'Ошибка при сохранении' });
+    }
+  };
+
+  const getWeekDays = () => Array.from({ length: 7 }, (_, i) => weekStart.clone().add(i, 'day'));
+  const getEntriesByDay = (day: Moment) =>
+    timeEntries.filter(entry => moment(entry.Start_Date).isSame(day, 'day'));
+
+  const normFile = (e: { fileList: UploadFile[] }) => Array.isArray(e) ? e : e.fileList;
 
   return (
     <App>
       {contextHolder}
-
       <Layout className="layout">
         <Sidebar role="employee" />
         <Layout className="main-layout">
           <HeaderEmployee />
           <Content className="content">
             <div className="page-content">
-              <Tabs activeKey={activeKey} onChange={handleTabChange} items={[{
-                label: 'Люди',
-                key: '1',
-                children: (
-                  <>
-                    <Button 
-                      type="primary" 
-                      onClick={showModal} 
-                      className="submit-button-right"
-                    >
-                      Добавить потраченное время
+              <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24 }}>
+                <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.clone().subtract(1, 'week'))} />
+                <h2 style={{ margin: '0 1rem' }}>
+                  {weekStart.format('D MMMM')} – {weekStart.clone().add(6, 'days').format('D MMMM YYYY')}
+                </h2>
+                <Button icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.clone().add(1, 'week'))} />
+                <DatePicker
+  key={weekStart.format('YYYY-MM-DD')}
+  value={weekStart.clone()}
+  format="DD.MM.YYYY"
+  allowClear={false}
+  suffixIcon={<CalendarOutlined />}
+  style={{ marginLeft: 12 }}
+  picker="date"
+  inputReadOnly // предотвращает ручной ввод и ошибки в датах
+  disabledDate={(current) =>
+    current && (current.year() < 2000 || current.year() > 2100)
+  }
+  onChange={(date) => {
+    if (date) {
+      setWeekStart(date.clone().startOf('isoWeek'));
+    }
+  }}
+  onOpenChange={(open) => {
+    if (!open) {
+      setWeekStart(prev => prev.clone().startOf('isoWeek'));
+    }
+  }}
+/>
+
+
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    form.resetFields();
+                    setEditingEntry(null);
+                    setIsModalVisible(true);
+                  }}
+                  style={{ marginLeft: 'auto' }}
+                >
+                  Добавить потраченное время
+                </Button>
+              </div>
+
+              <div className="horizontal-columns">
+                {getWeekDays().map(day => (
+                  <div key={day.format()} className="horizontal-column">
+                    <div className="day-header">{weekDaysRu[day.isoWeekday() - 1]}</div>
+                    <div className="day-date">{day.format('DD.MM')}</div>
+                    <div className="card-stack">
+                      {getEntriesByDay(day).map(entry => (
+                        <div key={entry.ID_Execution} className="entry-card">
+                          <b>{entry.Task_Name}</b>
+                          <div>Проект: {entry.Order_Name}</div>
+                          <div>{entry.Hours_Spent} ч</div>
+                          <div style={{ marginTop: 8 }}>
+                            <Tooltip title="Просмотр">
+                              <Button icon={<EyeOutlined />} onClick={() => { setViewingEntry(entry); setIsViewModalVisible(true); }} />
+                            </Tooltip>
+                            <Tooltip title="Редактировать">
+                              <Button icon={<EditOutlined />} onClick={() => handleEdit(entry)} />
+                            </Tooltip>
+                            <Tooltip title="Удалить">
+                              <Button icon={<DeleteOutlined />} danger onClick={() => handleDelete(entry.ID_Execution)} />
+                            </Tooltip>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Modal title={editingEntry ? 'Редактировать' : 'Добавить'}
+                     open={isModalVisible}
+                     onCancel={() => setIsModalVisible(false)} footer={null}>
+                <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+                  <Form.Item name="project" label="Проект" rules={[{ required: true }]}>
+                    <Select placeholder="Выберите проект">
+                      {projects.map(p => (
+                        <Select.Option key={p.ID_Order} value={p.ID_Order}>
+                          {p.Order_Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item name="taskName" label="Задача" rules={[{ required: true }]}>
+                    <Select placeholder="Выберите задачу">
+                      {tasks.map(t => (
+                        <Select.Option key={t.ID_Task} value={t.ID_Task}>
+                          {t.Task_Name}
+                        </Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item name="description" label="Описание">
+                    <Input.TextArea />
+                  </Form.Item>
+                  <Form.Item name="hours" label="Потрачено часов" rules={[{ required: true }]}>
+                    <Input type="number" />
+                  </Form.Item>
+                  <Form.Item name="date" label="Дата" rules={[{ required: true }]}>
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item label="Прикрепить файл" name="file" valuePropName="fileList" getValueFromEvent={normFile}>
+                    <Upload.Dragger name="files" multiple showUploadList={false}>
+                      <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+                      <p className="ant-upload-text">Перетащите сюда файл или нажмите для выбора</p>
+                    </Upload.Dragger>
+                  </Form.Item>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" block>
+                      {editingEntry ? 'Обновить' : 'Добавить'}
                     </Button>
+                  </Form.Item>
+                </Form>
+              </Modal>
 
-                    <Modal
-                      title="Добавить потраченное время"
-                      open={isModalVisible}
-                      onCancel={handleCancel}
-                      footer={null}
-                      width={600}
-                    >
-                      <Form
-                        form={form}
-                        layout="vertical"
-                        onFinish={handleFormSubmit}
-                        className="time-tracking-form"
-                      >
-                        <Form.Item label="Проект" name="project" rules={[{ required: true, message: 'Выберите проект!' }]}>
-                          <Select placeholder="Выберите проект" allowClear onChange={fetchTasks}>
-                            {projects.map((project) => (
-                              <Select.Option 
-                                key={project.ID_Project || Math.random()}  
-                                value={project.ID_Project || ''}  
-                              >
-                                {project.Order_Name}
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-
-                        <Form.Item label="Задача" name="taskName" rules={[{ required: true, message: 'Выберите задачу!' }]}>
-                          <Select placeholder="Выберите задачу" allowClear>
-                            {tasks.map((task) => (
-                              <Select.Option key={task.ID_Task} value={task.ID_Task}>
-                                {task.Task_Name}
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-
-                        <Form.Item label="Описание" name="description">
-                          <Input.TextArea placeholder="Опишите, что вы сделали" />
-                        </Form.Item>
-
-                        <Form.Item label="Потраченные часы" name="hours" rules={[{ required: true, message: 'Укажите количество часов!' }]}>
-                          <Input type="number" placeholder="Часы" />
-                        </Form.Item>
-
-                        <Form.Item label="Дата" name="date" rules={[{ required: true, message: 'Выберите дату!' }]}>
-                          <DatePicker style={{ width: '100%' }} />
-                        </Form.Item>
-
-                        <Form.Item label="Прикрепить файл" name="file" valuePropName="fileList" getValueFromEvent={normFile}>
-                          <Upload.Dragger name="files" multiple={true} showUploadList={false}>
-                            <p className="ant-upload-drag-icon">
-                              <InboxOutlined />
-                            </p>
-                            <p className="ant-upload-text">Перетащите сюда файл или нажмите для выбора</p>
-                          </Upload.Dragger>
-                        </Form.Item>
-
-                        <Form.Item>
-                          <Button type="primary" htmlType="submit" className="submit-button">
-                            Добавить
-                          </Button>
-                        </Form.Item>
-                      </Form>
-                    </Modal>
-
-                    <List
-                      header={<div>Добавленные карточки времени:</div>}
-                      bordered
-                      dataSource={timeEntries}
-                      renderItem={(entry) => (
-                        <List.Item>
-                          <div>{entry.project} - {entry.taskName}</div>
-                          <div>Дата: {entry.date?.format('DD/MM/YYYY')}</div>
-                          <div>Часы: {entry.hours}</div>
-                          <div>Описание: {entry.description}</div>
-                        </List.Item>
-                      )}
-                    />
-                  </>
-                ),
-              }]} />
+              <Modal title="Просмотр записи" open={isViewModalVisible} onCancel={() => setIsViewModalVisible(false)}
+                     footer={<Button onClick={() => setIsViewModalVisible(false)}>Закрыть</Button>}>
+                {viewingEntry && (
+                  <div style={{ lineHeight: 1.8 }}>
+                    <p><b>Задача:</b> {viewingEntry.Task_Name}</p>
+                    <p><b>Проект:</b> {viewingEntry.Order_Name}</p>
+                    <p><b>Дата начала:</b> {moment(viewingEntry.Start_Date).format('DD.MM.YYYY HH:mm')}</p>
+                    <p><b>Дата окончания:</b> {moment(viewingEntry.End_Date).format('DD.MM.YYYY HH:mm')}</p>
+                    <p><b>Потрачено:</b> {viewingEntry.Hours_Spent} ч</p>
+                    {viewingEntry.Description && <p><b>Описание:</b> {viewingEntry.Description}</p>}
+                  </div>
+                )}
+              </Modal>
             </div>
           </Content>
         </Layout>

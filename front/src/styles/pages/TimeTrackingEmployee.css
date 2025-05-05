@@ -1,107 +1,239 @@
 /* Page Content */
 .page-content {
-    padding: 20px;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    position: relative; /* Allow positioning of the button inside */
-  }
-  
-  /* Time Tracking Form */
-  .time-tracking-form {
-    background-color: var(--card-bg-color);
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Submit Button */
-  .submit-button {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    width: 100%;
-  }
-  
-  .submit-button:hover {
-    background-color: #00bcd4;
-  }
-  
-  /* File Upload */
-  .ant-upload-drag-icon {
-    font-size: 24px;
-    color: var(--text-color);
-  }
-  
-  .ant-upload-text {
-    color: var(--text-color);
-  }
-  
-  /* Tabs */
-  .ant-tabs-nav {
-    background-color: var(--card-bg-color);
-    border-radius: 8px;
-  }
-  
-  .ant-tabs-tab {
-    color: var(--text-color);
-  }
-  
-  .ant-tabs-tab-active {
-    background-color: var(--accent-color);
-    color: white;
-  }
-  
-  .ant-form-item-label {
-    color: var(--text-color);
-  }
-  
-  /* Move the "Добавить потраченное время" button upwards */
-  .submit-button-right {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    position: absolute;
-    right: 20px;
-    top: 10px; /* Reduced top value to move the button upwards */
-    padding: 10px 15px;
-    font-size: 14px;
-    z-index: 10; /* Ensure it stays above other elements */
-  }
-  
-  /* List Item Styles */
-  .ant-list-item {
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-    background-color: var(--card-bg-color);
-    margin: 10px 0;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .ant-list-item div {
-    margin: 5px 0;
-  }
-  
-  .ant-list-item .ant-list-item-meta-title {
-    font-size: 16px;
-    font-weight: bold;
-  }
-  
-  /* Modal Form Button */
-  .submit-button {
-    background-color: var(--accent-color);
-    color: white;
-    border: none;
-    width: 100%;
-  }
-  
-  .submit-button:hover {
-    background-color: #00bcd4;
-  }
-  
-  /* Ensure the list doesn't overlap with the button */
-  .ant-list {
-    margin-top: 60px; /* Space for the button */
-  }
-  
+  padding: 20px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  position: relative;
+}
+
+/* Time Tracking Form */
+.time-tracking-form {
+  background-color: var(--card-bg-color);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Submit Button */
+.submit-button {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  width: 100%;
+}
+
+.submit-button:hover {
+  background-color: #00bcd4;
+}
+
+/* File Upload */
+.ant-upload-drag-icon {
+  font-size: 24px;
+  color: var(--text-color);
+}
+
+.ant-upload-text {
+  color: var(--text-color);
+}
+
+/* Tabs */
+.ant-tabs-nav {
+  background-color: var(--card-bg-color);
+  border-radius: 8px;
+}
+
+.ant-tabs-tab {
+  color: var(--text-color);
+}
+
+.ant-tabs-tab-active {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.ant-form-item-label {
+  color: var(--text-color);
+}
+
+/* Floating Add Time Button */
+.submit-button-right {
+  background-color: var(--accent-color);
+  color: var(--text2-color);
+  border: 1px solid var(--border-color) !important;
+  position: absolute;
+  right: 20px;
+  top: 10px;
+  padding: 10px 15px;
+  font-size: 14px;
+  z-index: 10;
+}
+
+/* List Item Styles */
+.ant-list-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  background-color: var(--card-bg-color);
+  margin: 10px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ant-list-item div {
+  margin: 5px 0;
+}
+
+.ant-list-item .ant-list-item-meta-title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Ensure the list doesn't overlap with the button */
+.ant-list {
+  margin-top: 60px;
+}
+
+/* =============================== */
+/*   Time Tracking Columns (Days)  */
+/* =============================== */
+
+.horizontal-columns {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 16px;
+  margin-top: 20px;
+}
+
+.horizontal-column {
+  flex: 1;
+  min-width: 130px;
+  background: var(--card-bg-color);
+  border-radius: 8px;
+  padding: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.day-header {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+  color: var(--text-color);
+}
+
+.day-date {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Два варианта entry-card, объединены */
+.entry-card {
+  background: linear-gradient(145deg, #2b2b2b, #1a1a1a);
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  color: #f0f0f0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: default;
+  width: 100%;
+}
+
+.entry-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.entry-card b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #00bcd4;
+  margin-bottom: 6px;
+}
+
+.entry-card div {
+  margin: 2px 0;
+  font-size: 13px;
+  color: #ddd;
+}
+
+
+/* ======== DARK THEME ANT DATEPICKER FIX ======== */
+
+.ant-picker {
+  background-color: var(--card-bg-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+.ant-picker:hover,
+.ant-picker-focused {
+  border-color: #444;
+}
+
+.ant-picker-input > input {
+  color: var(--text-color);
+}
+
+.ant-picker-dropdown {
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+}
+
+.ant-picker-panel-container {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+}
+
+.ant-picker-cell {
+  color: var(--text-color);
+}
+
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: #333;
+}
+
+/* Изменение цвета активных элементов календаря на чёрный */
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner {
+  background-color: #000000 !important;
+  border-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+
+.ant-picker-cell-in-range::before {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+.ant-picker-header,
+.ant-picker-content th {
+  color: var(--text-color);
+}
+
+.ant-picker-footer {
+  border-top: 1px solid var(--border-color);
+}
+
+.ant-picker-cell-disabled .ant-picker-cell-inner {
+  color: #555;
+}
+
+/* Icon color */
+.ant-picker-suffix,
+.ant-picker-clear {
+  color: var(--text-color);
+}

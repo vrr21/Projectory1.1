@@ -38,13 +38,14 @@
 
 /* Кнопка */
 .ant-btn-primary {
-  background-color: var(--accent-color);
-  border-color: var(--accent-color);
+  background-color: #000000 !important;
+  border-color: var(--border-color) !important;
 }
 
 .ant-btn-primary:hover {
-  background-color: #00bcd4;
-  border-color: #00bcd4;
+  background-color: #000000 !important;
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
 }
 
 /* Таблица */

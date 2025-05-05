@@ -211,7 +211,7 @@ const ProjectManagementPage: React.FC = () => {
           <Button
             type="link"
             onClick={() => showModal(record)}
-            icon={<EditOutlined style={{ color: '#006F7A' }} />}
+            icon={<EditOutlined style={{ color: '' }} />}
           >
             Редактировать
           </Button>
