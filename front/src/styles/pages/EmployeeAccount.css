@@ -397,3 +397,59 @@
 [data-theme="light"] .export-button:hover {
   background-color: #00bcd4;
 }
+
+
+/* === КОММЕНТАРИИ: СТИЛИ РАЗМЕТКИ === */
+.comment-list .ant-list-header {
+  margin-bottom: 12px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.comment-list .ant-list-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 8px 0;
+  margin-bottom: 6px;
+}
+
+.comment-list .ant-list-item-meta {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+}
+
+.comment-list .ant-list-item-meta-avatar {
+  margin-top: 4px; /* слегка приподнимает аватар */
+}
+
+.comment-list .ant-list-item-meta-content {
+  flex: 1;
+  word-break: break-word;
+  white-space: pre-wrap;
+  text-align: left;
+}
+
+.comment-list .ant-list-item-meta-title {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 2px;
+  color: var(--text-color);
+}
+
+.comment-list .ant-list-item-meta-title span:last-child {
+  font-size: 12px;
+  color: #999;
+  margin-left: 12px; /* отступ между именем и датой */
+}
+
+.comment-list .ant-list-item-meta-description {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-color);
+}

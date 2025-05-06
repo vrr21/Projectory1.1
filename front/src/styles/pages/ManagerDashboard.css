@@ -275,14 +275,14 @@
 }
 
 .kanban-icon.anticon {
-  font-size: 24px; /* увеличен размер */
-  color: #e0e0e0; /* светлее для тёмной темы */
-  opacity: 0.8;
-  vertical-align: middle;
+  font-size: 20px;
+  color: #aaa;
+  opacity: 0.7;
+  transition: color 0.3s ease, transform 0.2s ease, opacity 0.2s ease;
   background: transparent !important;
   box-shadow: none !important;
-  margin-top: 6px;
-  transition: opacity 0.3s ease, transform 0.2s ease;
+  padding: 2px;
+  border-radius: 6px;
 }
 
 .kanban-icon.anticon:hover {
@@ -290,6 +290,7 @@
   color: #00bcd4;
   transform: scale(1.1);
 }
+
 .kanban-task-content .kanban-icon {
   align-self: flex-start;
   padding: 4px;

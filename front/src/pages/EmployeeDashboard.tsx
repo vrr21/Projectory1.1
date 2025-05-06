@@ -27,6 +27,11 @@ import {
 } from '@hello-pangea/dnd';
 import dayjs from 'dayjs';
 import '../styles/pages/EmployeeDashboard.css';
+import { Input, List } from 'antd';
+import { MessageOutlined } from '@ant-design/icons';
+
+
+
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -49,6 +54,13 @@ interface Task {
   Employees: Employee[];
   attachments?: string[];
 }
+interface CommentType {
+  ID_Comment: number;
+  CommentText: string;
+  Created_At: string;
+  AuthorName: string;
+  Avatar?: string;
+}
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
@@ -59,7 +71,54 @@ const EmployeeDashboard = () => {
   const [activeTab, setActiveTab] = useState('kanban');
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+  const openCommentsModal = (task: Task) => {
+    setViewingTask(task);
+    setIsCommentsModalVisible(true);
+    fetchComments(task.ID_Task);
+  };
+  
+  const [newComment, setNewComment] = useState('');
+  
+  
+  const fetchComments = async (taskId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const data = await response.json();
+      setComments(data);
+    } catch (error) {
+      console.error('Ошибка при получении комментариев:', error);
+    }
+  };
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !viewingTask || !user?.id) return;
+  
+    try {
+      const response = await fetch(`${API_URL}/api/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          taskId: viewingTask.ID_Task,
+          userId: user.id,
+          commentText: newComment.trim(),
+        }),
+      });
+  
+      if (!response.ok) throw new Error();
+      setNewComment('');
+      fetchComments(viewingTask.ID_Task);
+    } catch (error) {
+      console.error('Ошибка при добавлении комментария:', error);
+    }
+  };
+  
+  useEffect(() => {
+    if (viewingTask) {
+      fetchComments(viewingTask.ID_Task);
+    }
+  }, [viewingTask]);
+  
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !viewingTask?.ID_Task) return;
@@ -260,15 +319,24 @@ const EmployeeDashboard = () => {
                                             <p><i>Норма времени:</i> {task.Time_Norm} ч</p>
 
                                             <div className="task-footer">
-                                              <button
-                                                type="button"
-                                                className="eye-button"
-                                                onClick={() => openViewModal(task)}
-                                              >
-                                                <EyeOutlined className="kanban-icon kanban-icon--big" />
-                                              </button>
-                                              {renderDeadlineBox(task.Deadline)}
-                                            </div>
+                                            <Button
+  type="text"
+  icon={<EyeOutlined className="kanban-icon" />}
+  onClick={() => openViewModal(task)}
+  style={{ padding: 0, marginRight: 8 }}
+/>
+
+<Button
+  type="text"
+  icon={<MessageOutlined className="kanban-icon" />}
+  onClick={() => openCommentsModal(task)}
+  style={{ padding: 0 }}
+/>
+
+
+  {renderDeadlineBox(task.Deadline)}
+</div>
+
 
                                             <div className="kanban-avatars">
                                               {renderEmployees(task.Employees)}
@@ -393,6 +461,63 @@ const EmployeeDashboard = () => {
                   </div>
                 )}
               </Modal>
+              <Modal
+  title="Комментарии к задаче"
+  open={isCommentsModalVisible}
+  onCancel={() => setIsCommentsModalVisible(false)}
+  footer={null}
+>
+  {viewingTask && (
+    <>
+      <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
+      <List
+        className="comment-list"
+        header={`${comments.length} комментариев`}
+        itemLayout="horizontal"
+        dataSource={comments}
+        renderItem={(item: CommentType) => (
+          <List.Item>
+            <List.Item.Meta
+              avatar={
+                <Avatar
+                  src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+                  icon={!item.Avatar ? <UserOutlined /> : undefined}
+                  style={{ backgroundColor: item.Avatar ? 'transparent' : '#777' }}
+                />
+              }
+              title={
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item.AuthorName}</span>
+                  <span style={{ fontSize: 12, color: '#999' }}>
+                    {dayjs(item.Created_At).format('YYYY-MM-DD HH:mm')}
+                  </span>
+                </div>
+              }
+              description={item.CommentText}
+            />
+          </List.Item>
+        )}
+      />
+      <Input.TextArea
+        rows={3}
+        value={newComment}
+        onChange={(e) => setNewComment(e.target.value)}
+        placeholder="Введите комментарий..."
+        style={{ marginTop: 8 }}
+      />
+      <Button
+        type="primary"
+        onClick={handleAddComment}
+        disabled={!newComment.trim()}
+        style={{ marginTop: 8 }}
+        block
+      >
+        Добавить комментарий
+      </Button>
+    </>
+  )}
+</Modal>
+
             </main>
           </div>
         </div>

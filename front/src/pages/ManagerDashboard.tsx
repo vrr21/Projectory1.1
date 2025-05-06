@@ -682,19 +682,18 @@ const ManagerDashboard: React.FC = () => {
                                                   </Tooltip>
                                                 ))}
                                               </div>
-                                              <Button
-  type="text"
-  htmlType="button"
-  icon={<MessageOutlined className="kanban-icon" />}
-  onClick={() => openCommentsModal(task.ID_Task)}
-  style={{ padding: 0, height: 'auto', marginRight: 8 }}
-/>
-
+                                             
                                               <div className="task-footer">
   <Button
     type="text"
     icon={<EyeOutlined className="kanban-icon" />}
     onClick={() => openViewModal(task)}
+    style={{ padding: 0, height: 'auto', marginRight: 8 }}
+  />
+  <Button
+    type="text"
+    icon={<MessageOutlined className="kanban-icon" />}
+    onClick={() => openCommentsModal(task.ID_Task)}
     style={{ padding: 0, height: 'auto' }}
   />
   {task.Deadline ? (
@@ -707,7 +706,6 @@ const ManagerDashboard: React.FC = () => {
           : 'safe'
       }`}
     >
-
       <ClockCircleOutlined style={{ marginRight: 6 }} />
       {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
         ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
@@ -722,6 +720,7 @@ const ManagerDashboard: React.FC = () => {
     </div>
   )}
 </div>
+
 
                                             </div>
                                           </div>
