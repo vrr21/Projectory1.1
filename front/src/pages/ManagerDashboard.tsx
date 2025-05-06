@@ -8,6 +8,7 @@ import {
 import {
   UserOutlined, EyeOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined, UploadOutlined, FilterOutlined, 
 } from '@ant-design/icons';
+import { MessageOutlined } from '@ant-design/icons';
 
 import dayjs from 'dayjs';
 import HeaderManager from '../components/HeaderManager';
@@ -16,12 +17,19 @@ import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea
 import '../styles/pages/ManagerDashboard.css';
 import '@ant-design/v5-patch-for-react-19';
 import type { UploadFile } from 'antd/es/upload';
-import { Dropdown, Menu} from 'antd';  
+import { Dropdown} from 'antd';  
 
 
 const { Option } = Select;
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
+
+interface Comment {
+  id: number;
+  author: string;
+  content: string;
+  datetime: string;
+}
 
 interface Task {
   ID_Task: number;
@@ -38,7 +46,8 @@ interface Task {
     fullName: string;
     avatar?: string | null;
   }[];
-  attachments?: string[]; // Добавлено свойство attachments
+  attachments?: string[];
+  comments?: Comment[]; // ✅ новое поле
 }
 
 
@@ -89,68 +98,137 @@ const ManagerDashboard: React.FC = () => {
   const [filterProject, setFilterProject] = useState<number | null>(null);
   const [filterEmployee, setFilterEmployee] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const handleDropdownVisibleChange = (visible: boolean) => {
-  setIsDropdownOpen(visible);
-};
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
+  const [comments, setComments] = useState<{
+    ID_Comment: number;
+    CommentText: string;
+    Created_At: string;
+    AuthorName: string;
+    ID_User: number;
+    Avatar?: string;
+  }[]>([]);
+  
+  const [newComment, setNewComment] = useState('');
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const userId = user?.id ?? null;
+
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+ const [editedCommentText, setEditedCommentText] = useState('');
+
+  const openCommentsModal = async (taskId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const data = await res.json();
+      setComments(Array.isArray(data) ? data : data.comments ?? []);
+      setCurrentTaskId(taskId);
+      setIsCommentsModalVisible(true);
+    } catch (err) {
+      console.error(err);
+      messageApi.error('Ошибка при загрузке комментариев');
+    }
+  };
+  
+  const submitComment = async () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userId = user?.id ?? null;
+  
+    if (!newComment.trim()) {
+      messageApi.error('Комментарий не может быть пустым');
+      return;
+    }
+  
+    if (!currentTaskId) {
+      messageApi.error('ID задачи не определён');
+      return;
+    }
+  
+    if (!userId || userId <= 0) {
+      messageApi.error('ID пользователя отсутствует или некорректен');
+      return;
+    }
+  
+    const payload = {
+      taskId: currentTaskId,
+      userId,
+      commentText: newComment.trim()
+    };
+  
+    try {
+      const res = await fetch(`${API_URL}/api/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+  
+      if (!res.ok) throw new Error(`Ошибка: ${res.status} — ${await res.text()}`);
+  
+      setNewComment('');
+      openCommentsModal(currentTaskId);
+      messageApi.success('Комментарий добавлен');
+    } catch (err) {
+      messageApi.error('Ошибка при отправке комментария');
+      console.error('submitComment error:', err);
+    }
+  };
+  
   const clearFilters = () => {
     setFilterTeam(null);
     setFilterProject(null);
     setFilterEmployee(null);
   };
   const filterMenu = (
-    <Menu>
-      <Menu.Item key="team">
-        <Select
-          allowClear
-          placeholder="Фильтр по команде"
-          style={{ width: 200 }}
-          onChange={(val) => setFilterTeam(val)}
-          value={filterTeam ?? undefined}
-        >
-          {teams.map((team) => (
-            <Option key={team.ID_Team} value={team.ID_Team}>
-              {team.Team_Name}
-            </Option>
-          ))}
-        </Select>
-      </Menu.Item>
-      <Menu.Item key="project">
-        <Select
-          allowClear
-          placeholder="Фильтр по проекту"
-          style={{ width: 200 }}
-          onChange={(val) => setFilterProject(val)}
-          value={filterProject ?? undefined}
-        >
-          {projects.map((proj) => (
-            <Option key={proj.ID_Order} value={proj.ID_Order}>
-              {proj.Order_Name}
-            </Option>
-          ))}
-        </Select>
-      </Menu.Item>
-      <Menu.Item key="employee">
-        <Select
-          allowClear
-          showSearch
-          placeholder="Фильтр по сотруднику"
-          style={{ width: 200 }}
-          onChange={(val) => setFilterEmployee(val)}
-          value={filterEmployee ?? undefined}
-          optionFilterProp="children"
-        >
-          {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))].sort().map((name) => (
-            <Option key={name} value={name}>
-              {name}
-            </Option>
-          ))}
-        </Select>
-      </Menu.Item>
-      <Menu.Item key="reset" onClick={clearFilters}>
+    <div style={{ padding: 8 }}>
+      <Select
+        allowClear
+        placeholder="Фильтр по команде"
+        style={{ width: 200, marginBottom: 8 }}
+        onChange={(val) => setFilterTeam(val)}
+        value={filterTeam ?? undefined}
+      >
+        {teams.map((team) => (
+          <Option key={team.ID_Team} value={team.ID_Team}>
+            {team.Team_Name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Select
+        allowClear
+        placeholder="Фильтр по проекту"
+        style={{ width: 200, marginBottom: 8 }}
+        onChange={(val) => setFilterProject(val)}
+        value={filterProject ?? undefined}
+      >
+        {projects.map((proj) => (
+          <Option key={proj.ID_Order} value={proj.ID_Order}>
+            {proj.Order_Name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Select
+        allowClear
+        showSearch
+        placeholder="Фильтр по сотруднику"
+        style={{ width: 200, marginBottom: 8 }}
+        onChange={(val) => setFilterEmployee(val)}
+        value={filterEmployee ?? undefined}
+        optionFilterProp="children"
+      >
+        {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))].sort().map((name) => (
+          <Option key={name} value={name}>
+            {name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Button block danger onClick={clearFilters}>
         Сбросить фильтры
-      </Menu.Item>
-    </Menu>
+      </Button>
+    </div>
   );
+  
   
 
 
@@ -494,7 +572,33 @@ const ManagerDashboard: React.FC = () => {
     setViewingTask(task);
     setIsViewModalVisible(true);
   };
-
+  const handleEditComment = async (commentId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commentText: editedCommentText }),
+      });
+  
+      if (!res.ok) throw new Error();
+      setEditingCommentId(null);
+      openCommentsModal(currentTaskId!);
+      messageApi.success('Комментарий обновлён');
+    } catch {
+      messageApi.error('Ошибка при обновлении комментария');
+    }
+  };
+  
+  const handleDeleteComment = async (commentId: number) => {
+    try {
+      await fetch(`${API_URL}/api/comments/${commentId}`, { method: 'DELETE' });
+      messageApi.success('Комментарий удалён');
+      openCommentsModal(currentTaskId!);
+    } catch {
+      messageApi.error('Ошибка при удалении комментария');
+    }
+  };
+  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
@@ -524,16 +628,15 @@ const ManagerDashboard: React.FC = () => {
                         </Button>
 
                         <Dropdown
-      overlay={filterMenu}
-      trigger={['click']}
-      visible={isDropdownOpen}  // Устанавливаем видимость вручную
-      onVisibleChange={handleDropdownVisibleChange}  // Обрабатываем изменение видимости
-    >
-     <Button className="filters-button" icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
-  Фильтры
-</Button>
-
-    </Dropdown>
+  menu={{ items: [] }} // временно пусто, мы заменим это ниже
+  open={isDropdownOpen}
+  onOpenChange={setIsDropdownOpen}
+  dropdownRender={() => filterMenu}
+>
+  <Button className="filters-button" icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
+    Фильтры
+  </Button>
+</Dropdown>
 
 
                         <DragDropContext onDragEnd={handleDragEnd}>
@@ -579,6 +682,14 @@ const ManagerDashboard: React.FC = () => {
                                                   </Tooltip>
                                                 ))}
                                               </div>
+                                              <Button
+  type="text"
+  htmlType="button"
+  icon={<MessageOutlined className="kanban-icon" />}
+  onClick={() => openCommentsModal(task.ID_Task)}
+  style={{ padding: 0, height: 'auto', marginRight: 8 }}
+/>
+
                                               <div className="task-footer">
   <Button
     type="text"
@@ -596,6 +707,7 @@ const ManagerDashboard: React.FC = () => {
           : 'safe'
       }`}
     >
+
       <ClockCircleOutlined style={{ marginRight: 6 }} />
       {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
         ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
@@ -832,6 +944,71 @@ const ManagerDashboard: React.FC = () => {
 )}
 
               </Modal>
+
+              <Modal
+  title="Комментарии к задаче"
+  open={isCommentsModalVisible}
+  onCancel={() => {
+    setIsCommentsModalVisible(false);
+    setEditingCommentId(null);
+  }}
+  footer={null}
+>
+  <div style={{ maxHeight: 300, overflowY: 'auto', marginBottom: 16 }}>
+    {comments.length ? comments.map((c) => (
+      <div key={c.ID_Comment} style={{ marginBottom: 12, paddingBottom: 8, borderBottom: '1px solid #333' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 4 }}>
+          <Avatar src={c.Avatar ? `${API_URL}/uploads/${c.Avatar}` : undefined} style={{ marginRight: 8 }} />
+          <strong>{c.AuthorName}</strong>
+          <span style={{ marginLeft: 'auto', fontSize: 12, color: '#aaa' }}>
+            {dayjs(c.Created_At).format('YYYY-MM-DD HH:mm')}
+          </span>
+        </div>
+
+        {editingCommentId === c.ID_Comment ? (
+          <>
+            <Input.TextArea
+              value={editedCommentText}
+              onChange={(e) => setEditedCommentText(e.target.value)}
+              autoSize
+            />
+            <div style={{ marginTop: 4, textAlign: 'right' }}>
+              <Button onClick={() => setEditingCommentId(null)} style={{ marginRight: 8 }}>Отмена</Button>
+              <Button type="primary" onClick={() => handleEditComment(c.ID_Comment)}>Сохранить</Button>
+            </div>
+          </>
+        ) : (
+          <div style={{ paddingLeft: 32 }}>{c.CommentText}</div>
+        )}
+
+        {c.ID_User === userId && editingCommentId !== c.ID_Comment && (
+          <div className="comment-action-buttons">
+          <Button size="small" onClick={() => {
+            setEditingCommentId(c.ID_Comment);
+            setEditedCommentText(c.CommentText);
+          }}>Редактировать</Button>
+          <Button size="small" onClick={() => handleDeleteComment(c.ID_Comment)}>Удалить</Button>
+        </div>
+        
+        )}
+      </div>
+    )) : (
+      <p style={{ color: '#aaa' }}>Комментариев пока нет.</p>
+    )}
+  </div>
+
+  <Input.TextArea
+    placeholder="Введите комментарий..."
+    rows={3}
+    value={newComment}
+    onChange={(e) => setNewComment(e.target.value)}
+  />
+  <Button type="primary" onClick={submitComment} style={{ marginTop: 8 }} block>
+    Отправить
+  </Button>
+</Modal>
+
+
             </main>
           </div>
         </div>

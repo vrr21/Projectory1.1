@@ -87,7 +87,7 @@ router.post('/register', async (req, res) => {
       .input('roleId', sql.Int, roleId)
       .query(
         `INSERT INTO Users (First_Name, Last_Name, Phone, Email, Password, ID_Role)
-        VALUES (@firstName, @lastName, @phone, @email, @password, @roleId)`
+         VALUES (@firstName, @lastName, @phone, @email, @password, @roleId)`
       );
 
     res.status(201).json({ message: 'Пользователь успешно зарегистрирован' });
@@ -137,15 +137,15 @@ router.post('/login', async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.ID_User,
-        email: user.Email,
-        role: roleName,
-        name: `${user.Last_Name} ${user.First_Name}`,
-        firstName: user.First_Name,
-        lastName: user.Last_Name,
-        phone: user.Phone,
-        avatar: user.Avatar ?? null
-      },
+        ID_User: user.ID_User,
+        Email: user.Email,
+        Role: roleName,
+        Name: `${user.Last_Name} ${user.First_Name}`,
+        First_Name: user.First_Name,
+        Last_Name: user.Last_Name,
+        Phone: user.Phone,
+        Avatar: user.Avatar ?? null
+      }
     });
   } catch (error) {
     console.error('Ошибка при авторизации:', error);

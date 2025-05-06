@@ -587,3 +587,35 @@
   color: var(--accent-color) !important;
   border-color: var(--accent-color) !important;
 }
+
+
+/* === Комментарии: кнопки Редактировать и Удалить === */
+.comment-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.comment-action-buttons .ant-btn {
+  background-color: transparent !important;
+  border: none !important;
+  color: #ccc !important;
+  font-size: 13px;
+  padding: 2px 8px;
+  transition: color 0.3s ease;
+}
+
+.comment-action-buttons .ant-btn:hover {
+  color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Светлая тема */
+[data-theme="light"] .comment-action-buttons .ant-btn {
+  color: #444 !important;
+}
+
+[data-theme="light"] .comment-action-buttons .ant-btn:hover {
+  color: var(--accent-color) !important;
+}

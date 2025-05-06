@@ -1,9 +1,30 @@
 import React, { useState } from 'react';
-import { Layout, Badge, Avatar, Dropdown, Modal, Tooltip, AutoComplete, Input, Spin } from 'antd';
-import { BellOutlined, UserOutlined, BulbOutlined, SearchOutlined } from '@ant-design/icons';
+
+import {
+  Layout,
+  Badge,
+  Avatar,
+  Dropdown,
+  Modal,
+  Tooltip,
+  AutoComplete,
+  Input,
+  Spin,
+  Drawer,
+  List,
+  MenuProps,
+} from 'antd';
+import {
+  BellOutlined,
+  UserOutlined,
+  BulbOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import '../styles/components/Header.css';
 
 const { Header } = Layout;
@@ -21,24 +42,41 @@ interface OptionType {
   type: 'task' | 'order' | 'team';
 }
 
+interface NotificationItem {
+  id: number;
+  title: string;
+  description: string;
+  datetime: string;
+}
+
 const HeaderEmployee: React.FC = () => {
   const { setUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [searchOptions, setSearchOptions] = useState<OptionType[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const handleConfirmLogout = () => {
     localStorage.removeItem('user');
+    localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
   };
 
-  const profileMenu = {
+  const profileMenu: MenuProps = {
     items: [
-      { key: '1', label: <span onClick={() => navigate('/profile')}>Профиль</span> },
-      { key: '2', label: <span onClick={() => setIsModalVisible(true)}>Выйти</span> },
+      {
+        key: '1',
+        label: <span onClick={() => navigate('/profile')}>Профиль</span>,
+      },
+      {
+        key: '2',
+        label: <span onClick={() => setIsModalVisible(true)}>Выйти</span>,
+      },
     ],
   };
 
@@ -52,8 +90,9 @@ const HeaderEmployee: React.FC = () => {
 
     try {
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-      const res = await fetch(`${API_URL}/api/employee/fullsearch?q=${encodeURIComponent(value)}&employeeEmail=${currentUser.email}`);
+      const res = await fetch(
+        `${API_URL}/api/employee/fullsearch?q=${encodeURIComponent(value)}&employeeEmail=${currentUser.email}`
+      );
       if (!res.ok) throw new Error('Ошибка поиска');
       const data: SearchResult[] = await res.json();
 
@@ -73,13 +112,37 @@ const HeaderEmployee: React.FC = () => {
 
   const handleSelect = (value: string, option: OptionType) => {
     const { type } = option;
+    if (type === 'task') navigate('/mytasks');
+    else if (type === 'order') navigate('/employee');
+    else if (type === 'team') navigate('/teams');
+  };
 
-    if (type === 'task') {
-      navigate('/mytasks');
-    } else if (type === 'order') {
-      navigate('/employee');
-    } else if (type === 'team') {
-      navigate('/teams');
+  const fetchNotifications = async () => {
+    try {
+      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const token = localStorage.getItem('token');
+
+      const res = await fetch(
+        `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error('Ошибка при загрузке уведомлений');
+      const data: NotificationItem[] = await res.json();
+      setNotifications(data);
+
+      // Показать тосты при новой загрузке
+      data.slice(0, 3).forEach((item) => {
+        toast.info(`${item.title}: ${item.description}`, {
+          toastId: `notif-${item.id}`,
+        });
+      });
+    } catch (error) {
+      console.error('Ошибка при загрузке уведомлений:', error);
     }
   };
 
@@ -106,8 +169,14 @@ const HeaderEmployee: React.FC = () => {
             />
           </AutoComplete>
 
-          <Badge count={0} className="icon">
-            <BellOutlined style={{ fontSize: '20px', color: 'var(--text-color)' }} />
+          <Badge count={notifications.length} className="icon">
+            <BellOutlined
+              style={{ fontSize: '20px', color: 'var(--text-color)', cursor: 'pointer' }}
+              onClick={() => {
+                fetchNotifications();
+                setIsDrawerVisible(true);
+              }}
+            />
           </Badge>
 
           <Tooltip title="Переключить тему">
@@ -125,7 +194,10 @@ const HeaderEmployee: React.FC = () => {
           </Tooltip>
 
           <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
-            <Avatar style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }} icon={<UserOutlined />} />
+            <Avatar
+              style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }}
+              icon={<UserOutlined />}
+            />
           </Dropdown>
         </div>
       </Header>
@@ -141,6 +213,25 @@ const HeaderEmployee: React.FC = () => {
       >
         <p>Вы действительно хотите выйти из аккаунта?</p>
       </Modal>
+
+      <Drawer
+        title="Уведомления"
+        placement="right"
+        onClose={() => setIsDrawerVisible(false)}
+        open={isDrawerVisible}
+        width={350}
+      >
+        <List
+          itemLayout="vertical"
+          dataSource={notifications}
+          renderItem={(item) => (
+            <List.Item key={item.id}>
+              <List.Item.Meta title={item.title} description={item.description} />
+              <div style={{ fontSize: '12px', color: '#888' }}>{item.datetime}</div>
+            </List.Item>
+          )}
+        />
+      </Drawer>
     </>
   );
 };

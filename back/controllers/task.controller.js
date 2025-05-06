@@ -67,7 +67,7 @@ exports.getAllTasks = async (req, res) => {
   }
 };
 
-// 🔹 Создание задачи
+// 🔹 Создание задачи с уведомлением
 exports.createTask = async (req, res) => {
   const { Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, Employee_Names = [] } = req.body;
 
@@ -96,10 +96,11 @@ exports.createTask = async (req, res) => {
       const userResult = await pool.request()
         .input('First_Name', sql.NVarChar, First_Name)
         .input('Last_Name', sql.NVarChar, Last_Name)
-        .query('SELECT ID_User FROM Users WHERE First_Name = @First_Name AND Last_Name = @Last_Name');
+        .query('SELECT ID_User, Email FROM Users WHERE First_Name = @First_Name AND Last_Name = @Last_Name');
 
       if (userResult.recordset.length) {
-        const ID_User = userResult.recordset[0].ID_User;
+        const { ID_User, Email } = userResult.recordset[0];
+
         await pool.request()
           .input('ID_Task', sql.Int, ID_Task)
           .input('ID_Employee', sql.Int, ID_User)
@@ -108,10 +109,19 @@ exports.createTask = async (req, res) => {
             INSERT INTO Assignment (ID_Task, ID_Employee, Assignment_Date)
             VALUES (@ID_Task, @ID_Employee, @Assignment_Date)
           `);
+
+        await pool.request()
+          .input('Title', sql.NVarChar, 'Назначена новая задача')
+          .input('Description', sql.NVarChar, `Вам назначена задача "${Task_Name}"`)
+          .input('UserEmail', sql.NVarChar, Email)
+          .query(`
+            INSERT INTO Notifications (Title, Description, UserEmail)
+            VALUES (@Title, @Description, @UserEmail)
+          `);
       }
     }
 
-    res.status(201).json({ message: 'Задача успешно создана' });
+    res.status(201).json({ message: 'Задача и уведомления успешно созданы' });
   } catch (error) {
     console.error('🔥 Ошибка при создании задачи:', error);
     res.status(500).json({ message: 'Ошибка при создании задачи', error: error.message });

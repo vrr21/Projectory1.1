@@ -2,6 +2,8 @@ import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import './styles/theme.css';
 import Loader from './components/Loader';
@@ -20,7 +22,7 @@ import MyCommandsManager from './pages/MyCommandsManager';
 import EmployeeReports from './components/Reports';
 import ManagerReports from './components/ManagerReports';
 import TimeTrackingEmployee from './pages/TimeTrackingEmployee';
-import TimeTrackingManager from './pages/TimeTrackingManager'; // ✅ Добавлено
+import TimeTrackingManager from './pages/TimeTrackingManager';
 
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -62,7 +64,7 @@ const AnimatedRoutes: React.FC = () => {
 
         <Route path="/mytasks" element={<PageWrapper><MyTasksEmployee /></PageWrapper>} />
         <Route path="/time-tracking" element={<PageWrapper><TimeTrackingEmployee /></PageWrapper>} />
-        <Route path="/manager-time-tracking" element={<PageWrapper><TimeTrackingManager /></PageWrapper>} /> 
+        <Route path="/manager-time-tracking" element={<PageWrapper><TimeTrackingManager /></PageWrapper>} />
 
         <Route path="/team-management" element={<PageWrapper><TeamManagementPage /></PageWrapper>} />
         <Route path="/teams" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
@@ -84,6 +86,7 @@ const App: React.FC = () => {
           <Router>
             <Suspense fallback={<Loader />}>
               <AnimatedRoutes />
+              <ToastContainer position="top-right" autoClose={5000} />
             </Suspense>
           </Router>
         </AntdApp>
