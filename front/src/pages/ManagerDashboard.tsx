@@ -652,101 +652,104 @@ const ManagerDashboard: React.FC = () => {
 </Dropdown>
 
 
-                        <DragDropContext onDragEnd={handleDragEnd}>
-                          <div className="kanban-columns">
-                            {statuses.map((status) => (
-                              <Droppable key={status} droppableId={status}>
-                                {(provided) => (
-                                  <div
-                                    className="kanban-status-block"
-                                    ref={provided.innerRef}
-                                    {...provided.droppableProps}
-                                  >
-                                    <div className="kanban-status-header">{status}</div>
-                                    {(filteredGroupedMap[status] || []).map((task, index) => (
+<DragDropContext onDragEnd={handleDragEnd}>
+  <div className="kanban-wrapper">
+    <div className="kanban-columns">
+      {statuses.map((status) => (
+        <Droppable key={status} droppableId={status}>
+          {(provided) => (
+            <div
+              className="kanban-status-block"
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+            >
+              <div className="kanban-status-header">{status}</div>
+              {(filteredGroupedMap[status] || []).map((task, index) => (
+                <Draggable
+                  key={`task-${task.ID_Task}`}
+                  draggableId={`task-${task.ID_Task}`}
+                  index={index}
+                >
+                  {(providedDraggable) => (
+                    <div
+                      className="kanban-task"
+                      ref={providedDraggable.innerRef}
+                      {...providedDraggable.draggableProps}
+                      {...providedDraggable.dragHandleProps}
+                    >
+                      <div className="kanban-task-content">
+                        <strong>{task.Task_Name}</strong>
+                        <p>{task.Description}</p>
+                        <p><i>Проект:</i> {task.Order_Name}</p>
 
-                                      <Draggable key={`task-${task.ID_Task}`} draggableId={`task-${task.ID_Task}`} index={index}>
-                                        {(providedDraggable) => (
-                                          <div
-                                            className="kanban-task"
-                                            ref={providedDraggable.innerRef}
-                                            {...providedDraggable.draggableProps}
-                                            {...providedDraggable.dragHandleProps}
-                                          >
-                                            <div className="kanban-task-content">
-                                              <strong>{task.Task_Name}</strong>
-                                              <p>{task.Description}</p>
-                                              <p><i>Проект:</i> {task.Order_Name}</p>
-                                             
-                                              <div className="kanban-avatars">
-                                                {task.Employees.map((emp, idx) => (
-                                                  <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
-                                                    <Avatar
-                                                      src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-  style={{
-    backgroundColor: emp.avatar ? 'transparent' : '#777',
-    marginRight: 4,
-    marginBottom: 4,
-  }}
->
-  {!emp.avatar && getInitials(emp.fullName)}
-</Avatar>
+                        <div className="kanban-avatars">
+                          {task.Employees.map((emp, idx) => (
+                            <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
+                              <Avatar
+                                src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+                                style={{
+                                  backgroundColor: emp.avatar ? 'transparent' : '#777',
+                                  marginRight: 4,
+                                  marginBottom: 4,
+                                }}
+                              >
+                                {!emp.avatar && getInitials(emp.fullName)}
+                              </Avatar>
+                            </Tooltip>
+                          ))}
+                        </div>
 
-                                                  </Tooltip>
-                                                ))}
-                                              </div>
-                                             
-                                              <div className="task-footer">
-  <Button
-    type="text"
-    icon={<EyeOutlined className="kanban-icon" />}
-    onClick={() => openViewModal(task)}
-    style={{ padding: 0, height: 'auto', marginRight: 8 }}
-  />
-  <Button
-    type="text"
-    icon={<MessageOutlined className="kanban-icon" />}
-    onClick={() => openCommentsModal(task.ID_Task)}
-    style={{ padding: 0, height: 'auto' }}
-  />
-  {task.Deadline ? (
-    <div
-      className={`deadline-box ${
-        dayjs(task.Deadline).isBefore(dayjs())
-          ? 'expired'
-          : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
-          ? 'warning'
-          : 'safe'
-      }`}
-    >
-      <ClockCircleOutlined style={{ marginRight: 6 }} />
-      {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
-        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
-        : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
-        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
-        : 'Срок истёк'}
+                        <div className="task-footer">
+                          <Button
+                            type="text"
+                            icon={<EyeOutlined className="kanban-icon" />}
+                            onClick={() => openViewModal(task)}
+                            style={{ padding: 0, height: 'auto', marginRight: 8 }}
+                          />
+                          <Button
+                            type="text"
+                            icon={<MessageOutlined className="kanban-icon" />}
+                            onClick={() => openCommentsModal(task.ID_Task)}
+                            style={{ padding: 0, height: 'auto' }}
+                          />
+                          {task.Deadline ? (
+                            <div
+                              className={`deadline-box ${
+                                dayjs(task.Deadline).isBefore(dayjs())
+                                  ? 'expired'
+                                  : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
+                                  ? 'warning'
+                                  : 'safe'
+                              }`}
+                            >
+                              <ClockCircleOutlined style={{ marginRight: 6 }} />
+                              {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
+                                ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
+                                : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
+                                ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
+                                : 'Срок истёк'}
+                            </div>
+                          ) : (
+                            <div className="deadline-box undefined">
+                              <ClockCircleOutlined style={{ marginRight: 6 }} />
+                              Дедлайн: не назначено
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      ))}
     </div>
-  ) : (
-    <div className="deadline-box undefined">
-      <ClockCircleOutlined style={{ marginRight: 6 }} />
-      Дедлайн: не назначено
-    </div>
-  )}
-</div>
+  </div>
+</DragDropContext>
 
-
-                                            </div>
-                                          </div>
-                                        )}
-                                      </Draggable>
-                                    ))}
-                                    {provided.placeholder}
-                                  </div>
-                                )}
-                              </Droppable>
-                            ))}
-                          </div>
-                        </DragDropContext>
                       </>
                     ),
                   },

@@ -1,3 +1,10 @@
+
+:root {
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 80px;
+}
+
+
 .dashboard {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -9,10 +16,17 @@
 .dashboard-body {
   display: flex;
   flex-direction: column;
-  margin-top: var(--header-height);
-  padding-left: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: var(--sidebar-width);
   padding-right: 2rem;
+  transition: all 0.3s ease;
 }
+
+body.sidebar-collapsed .dashboard-body {
+  padding-left: var(--sidebar-collapsed-width) !important;
+}
+
 
 
 .dashboard-title {
@@ -27,14 +41,7 @@
   gap: 2rem;
 }
 
-.kanban-columns {
-  display: flex;
-  gap: 4rem;
-  overflow-x: auto;
-  padding-bottom: 1rem;
-  margin-left: 0;
-  margin-right: 0;
-}
+
 
 .kanban-column {
   background-color: var(--card-bg-color);
@@ -151,9 +158,6 @@
 
   .main-content {
     flex-grow: 1;
-    padding: 2rem;
-    padding-left: calc(var(--sidebar-width, 240px));
-    padding-right: 2rem;
     background-color: var(--bg-color);
     color: var(--text-color);
     min-height: calc(100vh - var(--header-height));
@@ -163,18 +167,8 @@
     transition: all 0.3s ease;
     box-sizing: border-box;
   }
-  
-  body.sidebar-collapsed .main-content {
-    padding-left: 80px; /* заменено с 64px → на 80px, потому что collapsedWidth в <Sider> = 80 */
-  }
-  
-  
 
-  .dashboard-body {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
+  
   .dashboard-title {
     font-size: 18px;
   }
@@ -190,10 +184,7 @@
     gap: 1rem;
   }
 
-  .dashboard-body {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
+
 
   .dashboard-title {
     font-size: 16px;
@@ -368,17 +359,17 @@
   background-color: #1a1a1a;
   border-radius: 10px;
   padding: 1rem;
-  width: 320px;
-  flex-shrink: 0;
- 
+  width: 100%;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 1rem;
   box-shadow: 0 4px 12px rgba(59, 59, 59, 0.2);
   min-height: 100px;
   overflow: hidden;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
   transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  box-sizing: border-box;
 }
 
 
@@ -617,12 +608,3 @@
   color: var(--accent-color) !important;
 }
 
-
-/* === Адаптивность при свёрнутом сайдбаре === */
-
-.dashboard-body {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  overflow-x: hidden;
-}
