@@ -1,18 +1,18 @@
-// back/routes/comments.routes.js
 const express = require('express');
 const router = express.Router();
 const controller = require('../controllers/comments.controller');
+const verifyToken = require('../middleware/authMiddleware');
 
 // Получение комментариев по задаче
 router.get('/:taskId', controller.getCommentsByTask);
 
 // Добавление нового комментария
-router.post('/', controller.addComment);
+router.post('/', verifyToken, controller.addComment);
 
 // Обновление существующего комментария
-router.put('/:id', controller.updateComment);
+router.put('/:id', verifyToken, controller.updateComment);
 
 // Удаление комментария
-router.delete('/:id', controller.deleteComment);
+router.delete('/:id', verifyToken, controller.deleteComment);
 
 module.exports = router;

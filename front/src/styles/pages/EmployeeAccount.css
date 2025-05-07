@@ -198,9 +198,11 @@
 
 .reports .ant-card {
   width: 100%;
-  background-color: var(--card-bg-color) !important;
+ .reports .ant-card {
+  width: 100%;
+  background-color: var(--bg-color) !important;
   color: var(--text-color) !important;
-  transition: background-color var(--transition-time), color var(--transition-time);
+  border: 1px solid var(--border-color) !important;
 }
 
 .reports .ant-card .ant-table-wrapper {
@@ -452,4 +454,58 @@
   font-size: 13px;
   line-height: 1.6;
   color: var(--text-color);
+}
+}
+
+/* Вкладки на странице аккаунта (не в .table-block) */
+.ant-tabs-tab {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+.ant-tabs-tab:hover {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.ant-tabs-tab-active {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  font-weight: bold;
+  border-radius: 6px 6px 0 0;
+}
+
+
+/* Общий стиль вкладок */
+.ant-tabs .ant-tabs-tab {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
+  border: none !important;
+}
+
+/* При наведении */
+.ant-tabs .ant-tabs-tab:hover {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+/* Активная вкладка */
+.ant-tabs .ant-tabs-tab-active {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+  font-weight: bold;
+  border-radius: 6px 6px 0 0;
+}
+
+/* Снимаем лишнюю обводку у кнопки активной вкладки */
+.ant-tabs .ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--text-color) !important;
+}
+
+/* При наведении на активную вкладку — тот же фон */
+.ant-tabs .ant-tabs-tab-active:hover {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
 }

@@ -46,5 +46,29 @@ router.post('/upload-task', upload.single('file'), async (req, res) => {
     res.status(500).json({ message: 'Ошибка при прикреплении файла', error: error.message });
   }
 });
+// Получение вложений задачи по ID
+router.get('/tasks/:taskId/attachments', async (req, res) => {
+  const { taskId } = req.params;
+
+  try {
+    await poolConnect;
+
+    const result = await pool.request()
+      .input('ID_Task', sql.Int, taskId)
+      .query('SELECT Attachments FROM Tasks WHERE ID_Task = @ID_Task');
+
+    const attachment = result.recordset[0]?.Attachments;
+
+    if (!attachment) {
+      return res.status(200).json({ attachments: [] });
+    }
+
+    // Если в будущем вы будете хранить массив строк, тут можно .split(';') или JSON.parse
+    return res.status(200).json({ attachments: [attachment] });
+  } catch (err) {
+    console.error('Ошибка при получении вложений задачи:', err);
+    return res.status(500).json({ message: 'Ошибка при получении вложений задачи' });
+  }
+});
 
 module.exports = router;

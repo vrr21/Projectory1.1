@@ -68,6 +68,32 @@ const updateTimeEntry = async (req, res) => {
   }
 };
 
+// Удалить запись учета времени
+const deleteTimeEntry = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await poolConnect;
+
+    const tokenUser = req.user;
+    if (!tokenUser?.id) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    await pool.request()
+      .input('ID_Execution', sql.Int, id)
+      .input('ID_Employee', sql.Int, tokenUser.id)
+      .query(`
+        DELETE FROM Execution WHERE ID_Execution = @ID_Execution AND ID_Employee = @ID_Employee
+      `);
+
+    res.status(200).json({ message: 'Запись удалена' });
+  } catch (error) {
+    console.error('Ошибка при удалении:', error);
+    res.status(500).json({ message: 'Ошибка сервера' });
+  }
+};
+
 // Получить все записи времени
 const getTimeEntries = async (req, res) => {
   try {
@@ -77,26 +103,25 @@ const getTimeEntries = async (req, res) => {
     }
 
     const result = await pool.request()
-    .query(`
-      SELECT 
-        e.ID_Execution,
-        e.ID_Task,
-        t.Task_Name,
-        o.Order_Name,
-        e.Start_Date,
-        e.End_Date,
-        e.Hours_Spent,
-        e.Description,
-        u.ID_User, -- добавлено
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        tm.Team_Name
-      FROM Execution e
-      INNER JOIN Tasks t ON e.ID_Task = t.ID_Task
-      INNER JOIN Orders o ON t.ID_Order = o.ID_Order
-      INNER JOIN Users u ON e.ID_Employee = u.ID_User
-      INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
-    `);
-  
+      .query(`
+        SELECT 
+          e.ID_Execution,
+          e.ID_Task,
+          t.Task_Name,
+          o.Order_Name,
+          e.Start_Date,
+          e.End_Date,
+          e.Hours_Spent,
+          e.Description,
+          u.ID_User,
+          u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+          tm.Team_Name
+        FROM Execution e
+        INNER JOIN Tasks t ON e.ID_Task = t.ID_Task
+        INNER JOIN Orders o ON t.ID_Order = o.ID_Order
+        INNER JOIN Users u ON e.ID_Employee = u.ID_User
+        INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
+      `);
 
     res.status(200).json(result.recordset);
   } catch (error) {
@@ -108,5 +133,6 @@ const getTimeEntries = async (req, res) => {
 module.exports = {
   createTimeEntry,
   updateTimeEntry,
+  deleteTimeEntry,
   getTimeEntries
 };

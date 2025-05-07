@@ -112,3 +112,6 @@
     width: calc(100% - 80px);
   }
 }
+body.sidebar-collapsed .main-content {
+  padding-left: 64px !important; /* ширина свернутого сайдбара */
+}

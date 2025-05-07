@@ -141,7 +141,7 @@
 .entry-card {
   background-color: var(--card-bg-color);
   color: var(--text-color);
-  border: 1px solid var(--border-color);
+  border: 0.1px solid var(--border-color);
   border-radius: 8px;
   padding: 1rem;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -344,4 +344,35 @@
 
 [data-theme="light"] .ant-select-item-option-selected {
   font-weight: bold !important;
+}
+
+
+.attachments-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.attachments-list li {
+  margin: 4px 0;
+  font-size: 14px;
+  color: white;
+}
+
+.attachments-list li a {
+  color: white;
+  text-decoration: none;
+  word-break: break-word;
+  display: inline-flex;
+  align-items: center;
+}
+
+.attachments-list li a::before {
+  content: "📎";
+  margin-right: 6px;
+  font-size: 16px;
+}
+
+.attachments-list li a:hover {
+  text-decoration: underline;
 }

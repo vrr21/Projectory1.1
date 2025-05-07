@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import {
   Layout,
   Badge,
@@ -26,6 +25,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/components/Header.css';
+
+import logoIcon from '../assets/лого.png'; // ← логотип
 
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -135,7 +136,6 @@ const HeaderEmployee: React.FC = () => {
       const data: NotificationItem[] = await res.json();
       setNotifications(data);
 
-      // Показать тосты при новой загрузке
       data.slice(0, 3).forEach((item) => {
         toast.info(`${item.title}: ${item.description}`, {
           toastId: `notif-${item.id}`,
@@ -149,7 +149,24 @@ const HeaderEmployee: React.FC = () => {
   return (
     <>
       <Header className="header">
-        <div className="logo" onClick={() => navigate('/employee')}>
+        <div
+          className="logo"
+          onClick={() => navigate('/employee')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '20px',
+            fontWeight: 600,
+            color: 'var(--text-color)',
+            cursor: 'pointer',
+          }}
+        >
+          <img
+            src={logoIcon}
+            alt="Logo Icon"
+            style={{ height: '1.6em', objectFit: 'contain' }}
+          />
           Projectory
         </div>
 

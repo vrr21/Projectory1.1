@@ -30,7 +30,7 @@ const SidebarManager: React.FC = () => {
     {
       key: '/projects',
       icon: <ProjectOutlined />,
-      label: <Link to="/projects">Проекты</Link>,
+      label: <Link to="/projects">Управление проектами</Link>,
     },
     {
       key: '/manager-time-tracking',
@@ -60,6 +60,12 @@ const SidebarManager: React.FC = () => {
         },
       ],
     },
+    {
+      key: '/manager-reports',
+      icon: <TableOutlined />,
+      label: <Link to="/manager-reports">Отчёты</Link>,
+    }
+    
   ];
 
   const getOpenKeys = () => {
@@ -70,16 +76,17 @@ const SidebarManager: React.FC = () => {
   };
 
   useEffect(() => {
-    const layoutElement = document.querySelector('.layout');
-    if (layoutElement) {
+    const layout = document.querySelector('.layout');
+    if (layout) {
       if (collapsed) {
-        layoutElement.classList.add('collapsed');
+        layout.classList.add('collapsed');
       } else {
-        layoutElement.classList.remove('collapsed');
+        layout.classList.remove('collapsed');
       }
     }
   }, [collapsed]);
-
+  
+  
   return (
     <Sider
       trigger={null}

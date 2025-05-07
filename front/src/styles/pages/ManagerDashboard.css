@@ -14,17 +14,6 @@
   padding-right: 2rem;
 }
 
-.main-content {
-  flex-grow: 1;
-  padding: 2rem;
-  margin-left: var(--sidebar-width);
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  min-height: calc(100vh - var(--header-height));
-  display: flex;
-  flex-direction: column;
-  gap: 3rem;
-}
 
 .dashboard-title {
   font-size: 24px;
@@ -153,12 +142,7 @@
   }
 }
 
-@media (max-width: 900px) {
-  .kanban-columns {
-    flex-direction: column;
-    gap: 2rem;
-    padding: 0;
-  }
+
 
   .kanban-column {
     width: 100%;
@@ -168,10 +152,22 @@
   .main-content {
     flex-grow: 1;
     padding: 2rem;
-    margin-left: var(--sidebar-width);
-    width: calc(100% - var(--sidebar-width)); /* добавлено */
-    box-sizing: border-box; /* важно */
+    padding-left: calc(var(--sidebar-width, 240px));
+    padding-right: 2rem;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    min-height: calc(100vh - var(--header-height));
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
   }
+  
+  body.sidebar-collapsed .main-content {
+    padding-left: 80px; /* заменено с 64px → на 80px, потому что collapsedWidth в <Sider> = 80 */
+  }
+  
   
 
   .dashboard-body {
@@ -182,7 +178,7 @@
   .dashboard-title {
     font-size: 18px;
   }
-}
+
 
 @media (max-width: 600px) {
   .kanban-column {
@@ -619,4 +615,14 @@
 
 [data-theme="light"] .comment-action-buttons .ant-btn:hover {
   color: var(--accent-color) !important;
+}
+
+
+/* === Адаптивность при свёрнутом сайдбаре === */
+
+.dashboard-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow-x: hidden;
 }

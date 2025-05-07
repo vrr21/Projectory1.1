@@ -1,18 +1,28 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Form, Input, Typography } from "antd";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { loginUser } from "../api/auth";
-import { useAuth } from '../contexts/useAuth';
-import { App } from 'antd';
-
-import "../styles/pages/LoginPage.css";
+import { useAuth } from "../contexts/useAuth";
+import { App } from "antd";
+import "../styles/pages/AuthPages.css";
+import backgroundImage from '../assets/reg_auth.png';
+import logo from '../assets/лого.png'; // ← добавьте логотип
 
 const { Title } = Typography;
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setUser } = useAuth();
   const { message } = App.useApp();
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (location.state?.fromRegister) {
+      setIsTransitioning(true);
+      setTimeout(() => setIsTransitioning(false), 600);
+    }
+  }, [location]);
 
   const onFinish = async (values: { email: string; password: string }) => {
     try {
@@ -36,10 +46,11 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="auth-page">
-      <div className="auth-container">
+    <div className={`auth-container ${isTransitioning ? "transition" : ""}`}>
+      <div className="auth-wrapper login">
+        {/* Левая колонка — форма авторизации */}
         <div className="auth-form">
-          <Title level={2} style={{ textAlign: "center" }}>Вход</Title>
+          <Title level={2}>Вход</Title>
           <Form layout="vertical" onFinish={onFinish}>
             <Form.Item
               label="Email"
@@ -61,9 +72,33 @@ const LoginPage: React.FC = () => {
               </Button>
             </Form.Item>
             <Form.Item style={{ textAlign: "center" }}>
-              Ещё не зарегистрированы? <Link to="/register">Создать аккаунт</Link>
+              Ещё не зарегистрированы?{" "}
+              <Link to="/register" state={{ fromLogin: true }}>
+                Создать аккаунт
+              </Link>
             </Form.Item>
           </Form>
+        </div>
+
+        {/* Правая колонка — изображение и текст */}
+        <div className="auth-left">
+          <div className="auth-text">
+          <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+  <img
+    src={logo}
+    alt="Logo"
+    style={{ height: "1.5em", verticalAlign: "middle" }}
+  />
+  Projectory
+</h1>
+
+            <p>
+              Добро пожаловать
+              <br />
+              Работай над проектами с нами!
+            </p>
+          </div>
+          <img src={backgroundImage} alt="Auth Illustration" className="auth-image" />
         </div>
       </div>
     </div>

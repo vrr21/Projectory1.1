@@ -620,3 +620,77 @@ a {
 [data-theme="light"] .ant-pagination-next:hover .anticon {
   color: var(--accent-color) !important;
 }
+
+
+/* G2Plot (Ant Design Plots) — Глобальная адаптация под тёмную тему */
+.g2-tooltip,
+.g2-tooltip-title,
+.g2-tooltip-list-item,
+.g2-html-legend,
+.g2-legend-item,
+.g2-guide-text,
+.g2-label,
+.g2-axis-label,
+.g2-axis-title,
+.g2-legend-marker {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.g2-axis-line {
+  stroke: #ffffff !important;
+  opacity: 0.5 !important;
+}
+
+.g2-axis-grid line {
+  stroke: #ffffff !important;
+  stroke-opacity: 0.1 !important;
+}
+
+.g2-tooltip {
+  background-color: #2c2c2c !important;
+  border: 1px solid #555 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  color: #ffffff !important;
+}
+
+.g2-legend {
+  fill: #ffffff !important;
+}
+
+.g2-label {
+  opacity: 1 !important;
+}
+
+
+/* === ✅ G2Plot легенда — текст всегда белый, маркер отключается === */
+
+/* G2Plot Legend Always White Text (even when inactive) */
+.g2-legend-item-name {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  opacity: 1 !important;
+  font-size: 12px !important;
+}
+
+/* Inactive legend state still white */
+.g2-legend-item.g2-legend-item-inactive .g2-legend-item-name {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Only legend marker dims on inactive */
+.g2-legend-item.g2-legend-item-inactive .g2-legend-marker {
+  opacity: 0.3 !important;
+}
+/* Устанавливаем белый цвет текста для ячеек с именами сотрудников */
+.employee-name-cell {
+  color: #ffffff !important;
+}
+/* Устанавливаем белый цвет текста для ячеек второй колонки */
+.ant-table-tbody > tr > td:nth-child(2) {
+  color: #ffffff !important;
+}

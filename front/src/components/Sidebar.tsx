@@ -28,15 +28,14 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
   // Элементы меню для сотрудника
   const employeeMenuItems = [
     { key: '/employee', icon: <TableOutlined />, label: <Link to="/employee">Доски задач</Link> },
-    { key: '/mytasks', icon: <ProjectOutlined />, label: <Link to="/mytasks">Мои задачи</Link> },
-    { key: '/teams', icon: <TeamOutlined />, label: <Link to="/teams">Мои команды</Link> },
-    { key: '/time-tracking', icon: <ClockCircleOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> }, // ✅ заменили иконку
+    { key: '/teams', icon: <TeamOutlined />, label: <Link to="/teams">Команды и проекты</Link> },
+    { key: '/time-tracking', icon: <ClockCircleOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> },
   ];
 
   // Элементы меню для менеджера
   const managerMenuItems = [
     { key: '/manager', icon: <TableOutlined />, label: <Link to="/manager">Главная</Link> },
-    { key: '/projects', icon: <ProjectOutlined />, label: <Link to="/projects">Проекты</Link> },
+    { key: '/projects', icon: <ProjectOutlined />, label: <Link to="/projects">Управление проектами</Link> },
     { key: '/myteams', icon: <TeamOutlined />, label: <Link to="/myteams">Мои команды</Link> },
     { key: '/team-management', icon: <TeamOutlined />, label: <Link to="/team-management">Команды</Link> },
     { key: '/time-tracking', icon: <ProjectOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> },
@@ -44,14 +43,17 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
 
   const menuItems = role === 'manager' ? managerMenuItems : employeeMenuItems;
 
-  // Добавление класса collapse в layout
   useEffect(() => {
-    const layoutElement = document.querySelector('.layout');
-    if (layoutElement) {
-      layoutElement.classList.toggle('collapsed', collapsed);
+    const layout = document.querySelector('.layout');
+    if (layout) {
+      if (collapsed) {
+        layout.classList.add('collapsed');
+      } else {
+        layout.classList.remove('collapsed');
+      }
     }
   }, [collapsed]);
-
+  
   return (
     <Sider
       trigger={null}

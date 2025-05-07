@@ -16,7 +16,7 @@ exports.getCommentsByTask = async (req, res) => {
         WHERE c.ID_Task = @taskId
         ORDER BY c.Created_At ASC
       `);
-    res.json(result.recordset);
+    res.status(200).json(result.recordset);
   } catch (err) {
     console.error('getCommentsByTask error:', err);
     res.status(500).json({ error: 'Ошибка при получении комментариев' });
@@ -25,9 +25,11 @@ exports.getCommentsByTask = async (req, res) => {
 
 // Добавление комментария
 exports.addComment = async (req, res) => {
-  const { taskId, userId, commentText } = req.body;
-  if (!taskId || !userId || !commentText) {
-    return res.status(400).json({ error: 'Поля обязательны' });
+  const { taskId, commentText } = req.body;
+  const userId = req.user?.id;
+
+  if (!taskId || !commentText || !userId) {
+    return res.status(400).json({ error: 'Все поля обязательны' });
   }
 
   try {
@@ -35,13 +37,13 @@ exports.addComment = async (req, res) => {
     await poolConn.request()
       .input('taskId', sql.Int, taskId)
       .input('userId', sql.Int, userId)
-      .input('commentText', sql.NVarChar, commentText)
+      .input('commentText', sql.NVarChar(sql.MAX), commentText)
       .query(`
         INSERT INTO TaskComments (ID_Task, ID_User, CommentText)
         VALUES (@taskId, @userId, @commentText)
       `);
 
-    res.json({ message: 'Комментарий добавлен' });
+    res.status(201).json({ message: 'Комментарий добавлен' });
   } catch (err) {
     console.error('addComment error:', err);
     res.status(500).json({ error: 'Ошибка при добавлении комментария' });
@@ -61,7 +63,7 @@ exports.updateComment = async (req, res) => {
     const poolConn = await pool.connect();
     await poolConn.request()
       .input('id', sql.Int, id)
-      .input('commentText', sql.NVarChar, commentText)
+      .input('commentText', sql.NVarChar(sql.MAX), commentText)
       .query(`
         UPDATE TaskComments
         SET CommentText = @commentText

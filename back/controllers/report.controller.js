@@ -4,16 +4,33 @@ const {
   Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun
 } = docx;
 
+// Отчёт для сотрудника
 exports.getEmployeeReport = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.request()
       .input('ID_User', sql.Int, id)
       .query(`
-        SELECT * FROM EmployeeTaskExecution 
-        WHERE Employee_Name IN (
-          SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
-        )
+        SELECT 
+          u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+          o.Order_Name,
+          pt.Type_Name AS Project_Type,
+          s.Status_Name,
+          t.Task_Name,
+          t.Description,
+          t.Time_Norm,
+          e.Start_Date,
+          e.End_Date,
+          e.Hours_Spent,
+          YEAR(e.Start_Date) AS Year,
+          MONTH(e.Start_Date) AS Month
+        FROM Execution e
+        JOIN Tasks t ON e.ID_Task = t.ID_Task
+        JOIN Statuses s ON t.ID_Status = s.ID_Status
+        JOIN Orders o ON t.ID_Order = o.ID_Order
+        JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
+        JOIN Users u ON e.ID_Employee = u.ID_User
+        WHERE u.ID_User = @ID_User
       `);
     res.json(result.recordset);
   } catch (error) {
@@ -22,28 +39,65 @@ exports.getEmployeeReport = async (req, res) => {
   }
 };
 
+// Отчёт для менеджера (все данные)
 exports.getManagerReport = async (req, res) => {
   try {
     const result = await pool.request().query(`
-      SELECT * FROM EmployeeTaskExecution
+      SELECT 
+        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+        o.Order_Name,
+        pt.Type_Name AS Project_Type,
+        s.Status_Name,
+        t.Task_Name,
+        t.Description,
+        t.Time_Norm,
+        e.Start_Date,
+        e.End_Date,
+        e.Hours_Spent,
+        YEAR(e.Start_Date) AS Year,
+        MONTH(e.Start_Date) AS Month,
+        t.ID_Task
+      FROM Execution e
+      JOIN Tasks t ON e.ID_Task = t.ID_Task
+      JOIN Statuses s ON t.ID_Status = s.ID_Status
+      JOIN Orders o ON t.ID_Order = o.ID_Order
+      JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
+      JOIN Users u ON e.ID_Employee = u.ID_User
     `);
-    res.json(result.recordset); // Для менеджера получаем все данные
+    res.json(result.recordset);
   } catch (error) {
     console.error('Ошибка получения отчёта для менеджера:', error);
     res.status(500).json({ message: 'Ошибка сервера' });
   }
 };
 
+// Экспорт отчёта сотрудника в Word
 exports.exportToWord = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await pool.request()
       .input('ID_User', sql.Int, id)
       .query(`
-        SELECT * FROM EmployeeTaskExecution 
-        WHERE Employee_Name IN (
-          SELECT First_Name + ' ' + Last_Name FROM Users WHERE ID_User = @ID_User
-        )
+        SELECT 
+          u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+          o.Order_Name,
+          pt.Type_Name AS Project_Type,
+          s.Status_Name,
+          t.Task_Name,
+          t.Description,
+          t.Time_Norm,
+          e.Start_Date,
+          e.End_Date,
+          e.Hours_Spent,
+          YEAR(e.Start_Date) AS Year,
+          MONTH(e.Start_Date) AS Month
+        FROM Execution e
+        JOIN Tasks t ON e.ID_Task = t.ID_Task
+        JOIN Statuses s ON t.ID_Status = s.ID_Status
+        JOIN Orders o ON t.ID_Order = o.ID_Order
+        JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
+        JOIN Users u ON e.ID_Employee = u.ID_User
+        WHERE u.ID_User = @ID_User
       `);
 
     const rows = result.recordset;
@@ -81,10 +135,7 @@ exports.exportToWord = async (req, res) => {
       }));
     }
 
-    const doc = new Document({
-      sections: [{ children }],
-    });
-
+    const doc = new Document({ sections: [{ children }] });
     const buffer = await Packer.toBuffer(doc);
     res.setHeader('Content-Disposition', 'attachment; filename="employee-report.docx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');

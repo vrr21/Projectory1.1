@@ -3,68 +3,88 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #000000, #006F7A);
+  background: linear-gradient(135deg, #0A1C2B, #1A3C4A);
   padding: 2rem;
 }
 
-.auth-form {
-  background-color: rgba(255, 255, 255, 0.07);
-  backdrop-filter: blur(12px);
-  padding: 2.5rem;
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+.auth-wrapper {
+  display: flex;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   width: 100%;
-  max-width: 420px;
+  max-width: 900px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.auth-wrapper:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.auth-form {
+  flex: 1;
+  padding: 3rem;
   color: #ffffff;
-  transition: all 0.3s ease;
 }
 
 .auth-form .ant-typography {
   color: #ffffff !important;
   text-align: center;
-  font-weight: bold;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
 }
 
 .auth-form .ant-form-item-label > label {
   color: #ffffff !important;
+  font-weight: 500;
 }
 
 .auth-form .ant-input,
 .auth-form .ant-input-password {
-  background-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.15);
   border: none;
+  border-radius: 12px;
   color: #ffffff;
   font-weight: 500;
+  padding: 0.75rem;
 }
 
 .auth-form .ant-input::placeholder {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .auth-form :where(.ant-btn-primary) {
-  background-color: #006F7A !important;
+  background: #00A1A7 !important;
   border: none !important;
+  border-radius: 12px;
   color: #ffffff !important;
-  font-weight: bold;
+  font-weight: 600;
+  padding: 0.75rem;
+  height: auto;
   transition: all 0.3s ease;
 }
 
 .auth-form :where(.ant-btn-primary):hover,
 .auth-form :where(.ant-btn-primary):focus,
 .auth-form :where(.ant-btn-primary):active {
-  background-color: #000000 !important;
+  background: #007A7F !important;
   color: #ffffff !important;
   border: none !important;
+  transform: scale(1.05);
 }
 
 .auth-form .ant-checkbox-inner {
-  background-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.15);
   border: 1px solid #ffffff;
+  border-radius: 4px;
 }
 
 .auth-form .ant-checkbox-checked .ant-checkbox-inner {
-  background-color: #006F7A;
-  border-color: #006F7A;
+  background: #00A1A7;
+  border-color: #00A1A7;
 }
 
 .auth-form .ant-checkbox-checked::after {
@@ -72,5 +92,34 @@
 }
 
 .auth-form a {
-  color: #00bcd4;
+  color: #00A1A7;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.auth-form a:hover {
+  color: #00CED1;
+}
+
+.auth-form .ant-form-item {
+  margin-bottom: 1.5rem;
+}
+
+.image-container {
+  flex: 1;
+  background: url('front/src/assets/reg_auth.png') no-repeat center center;
+  background-size: cover;
+  min-height: 400px;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .auth-wrapper {
+    flex-direction: column;
+    max-width: 400px;
+  }
+
+  .image-container {
+    display: none;
+  }
 }

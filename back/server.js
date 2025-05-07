@@ -22,6 +22,7 @@ const statusRoutes = require('./routes/status.routes');
 const employeeFullSearchRouter = require('./routes/employeeFullSearch.router');
 const managerRoutes = require('./routes/manager.routes');
 const uploadTaskFileRouter = require('./routes/uploadTaskFile.routes');
+//@ts-ignore
 const timeTrackingRoutes = require('./routes/timeTracking'); // Убедитесь, что роут настроен для учета времени
 const notificationsRouter = require('./routes/notifications');
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api', uploadTaskFileRouter);
 app.use('/api', timeTrackingRoutes);  // Роут для учета времени
 app.use('/api', notificationsRouter);
 app.use('/api/comments', require('./routes/comments.routes'));
+app.use('/api/reportspage', require('./routes/reportspage.routes'));
 
 // Базовый маршрут для проверки
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));

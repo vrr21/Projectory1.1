@@ -14,6 +14,8 @@ import isoWeek from 'dayjs/plugin/isoWeek';
 import weekday from 'dayjs/plugin/weekday';
 import localeData from 'dayjs/plugin/localeData';
 import 'dayjs/locale/ru';
+import { MessageOutlined, UserOutlined } from '@ant-design/icons';
+import { List, Input, Avatar } from 'antd';
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekday);
@@ -47,6 +49,13 @@ interface User {
   First_Name: string;
   Last_Name: string;
 }
+interface CommentType {
+  ID_Comment: number;
+  CommentText: string;
+  Created_At: string;
+  AuthorName: string;
+  Avatar?: string;
+}
 
 const TimeTrackingManager: React.FC = () => {
   const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
@@ -59,7 +68,10 @@ const TimeTrackingManager: React.FC = () => {
   const [viewingEntry, setViewingEntry] = useState<RawTimeEntry | null>(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [, contextHolder] = notification.useNotification();
-
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+  
 
   const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
@@ -101,7 +113,47 @@ const TimeTrackingManager: React.FC = () => {
 
     setFilteredEntries(filtered);
   }, [selectedTeam, selectedUser, timeEntries]);
-
+  const fetchComments = async (taskId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const data = await response.json();
+      setComments(data);
+    } catch (error) {
+      console.error('Ошибка при получении комментариев:', error);
+    }
+  };
+  
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !viewingEntry?.ID_Task) return;
+  
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          taskId: viewingEntry.ID_Task,
+          commentText: newComment.trim(),
+        }),
+      });
+  
+      if (!response.ok) throw new Error();
+      setNewComment('');
+      fetchComments(viewingEntry.ID_Task);
+    } catch (error) {
+      console.error('Ошибка при добавлении комментария:', error);
+    }
+  };
+  
+  const openCommentsModal = (entry: RawTimeEntry) => {
+    setViewingEntry(entry);
+    setIsCommentsModalVisible(true);
+    fetchComments(entry.ID_Task);
+  };
+  
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
 
@@ -187,6 +239,10 @@ const TimeTrackingManager: React.FC = () => {
                             <Tooltip title="Просмотр">
                               <Button icon={<EyeOutlined />} onClick={() => { setViewingEntry(entry); setIsViewModalVisible(true); }} />
                             </Tooltip>
+                            <Tooltip title="Комментарии">
+  <Button icon={<MessageOutlined />} onClick={() => openCommentsModal(entry)} />
+</Tooltip>
+
                           </div>
                         </div>
                       ))}
@@ -213,6 +269,63 @@ const TimeTrackingManager: React.FC = () => {
                   </div>
                 )}
               </Modal>
+              <Modal
+  title="Комментарии к задаче"
+  open={isCommentsModalVisible}
+  onCancel={() => setIsCommentsModalVisible(false)}
+  footer={null}
+>
+  {viewingEntry && (
+    <>
+      <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
+      <List
+        className="comment-list"
+        header={`${comments.length} комментариев`}
+        itemLayout="horizontal"
+        dataSource={comments}
+        renderItem={(item: CommentType) => (
+          <List.Item>
+            <List.Item.Meta
+              avatar={
+                <Avatar
+                  src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+                  icon={!item.Avatar ? <UserOutlined /> : undefined}
+                  style={{ backgroundColor: item.Avatar ? 'transparent' : '#777' }}
+                />
+              }
+              title={
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span>{item.AuthorName}</span>
+                  <span style={{ fontSize: 12, color: '#999' }}>
+                    {dayjs(item.Created_At).format('YYYY-MM-DD HH:mm')}
+                  </span>
+                </div>
+              }
+              description={item.CommentText}
+            />
+          </List.Item>
+        )}
+      />
+      <Input.TextArea
+        rows={3}
+        value={newComment}
+        onChange={(e) => setNewComment(e.target.value)}
+        placeholder="Введите комментарий..."
+        style={{ marginTop: 8 }}
+      />
+      <Button
+        type="primary"
+        onClick={handleAddComment}
+        disabled={!newComment.trim()}
+        style={{ marginTop: 8 }}
+        block
+      >
+        Добавить комментарий
+      </Button>
+    </>
+  )}
+</Modal>
+
             </div>
           </Content>
         </Layout>

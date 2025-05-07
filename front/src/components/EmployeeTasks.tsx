@@ -38,8 +38,9 @@ const EmployeeTasks: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {tasks.map(task => (
-            <tr key={task.ID_Task}>
+  {tasks.map(task => (
+    <tr key={task.ID_Task}>
+
               <td>{task.Task_Name}</td>
               <td>{task.Description}</td>
               <td>{task.Status_Name}</td>

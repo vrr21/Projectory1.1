@@ -1,10 +1,27 @@
 import React, { useState } from 'react';
-import { Layout, Badge, Avatar, Dropdown, Modal, Tooltip, AutoComplete, Input, Spin, message } from 'antd';
-import { BellOutlined, UserOutlined, BulbOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  Layout,
+  Badge,
+  Avatar,
+  Dropdown,
+  Modal,
+  Tooltip,
+  AutoComplete,
+  Input,
+  Spin,
+  message,
+} from 'antd';
+import {
+  BellOutlined,
+  UserOutlined,
+  BulbOutlined,
+  SearchOutlined,
+} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import '../styles/components/Header.css';
+import logoIcon from '../assets/лого.png'; // ← ваш логотип-иконка
 
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -71,25 +88,42 @@ const HeaderManager: React.FC = () => {
       setSearchLoading(false);
     }
   };
+
   const handleSelect = (_value: string, option: OptionType) => {
     const { type, id } = option;
-  
+
     if (type === 'task') {
-      navigate('/tasks'); // Переход просто на страницу задач менеджера
+      navigate('/tasks');
     } else if (type === 'order') {
-      navigate(`/projects/${id}`); // Переход на конкретный проект
+      navigate(`/projects/${id}`);
     } else if (type === 'team') {
-      navigate('/team-management'); // Переход на страницу управления командами
+      navigate('/team-management');
     } else {
       message.error('Неизвестный тип перехода!');
     }
   };
-  
 
   return (
     <>
       <Header className="header">
-        <div className="logo" onClick={() => navigate('/manager')} style={{ cursor: 'pointer' }}>
+        <div
+          className="logo"
+          onClick={() => navigate('/manager')}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '20px',
+            fontWeight: 600,
+            color: 'var(--text-color)',
+          }}
+        >
+          <img
+            src={logoIcon}
+            alt="Logo Icon"
+            style={{ height: '1.6em', objectFit: 'contain' }}
+          />
           Projectory
         </div>
 
@@ -97,7 +131,9 @@ const HeaderManager: React.FC = () => {
           <AutoComplete
             options={searchOptions}
             onSearch={handleSearch}
-            onSelect={(_, option) => handleSelect(option.value, option as OptionType)}
+            onSelect={(_, option) =>
+              handleSelect(option.value, option as OptionType)
+            }
             style={{ width: 250, marginRight: '16px' }}
             notFoundContent={searchLoading ? <Spin size="small" /> : 'Ничего не найдено'}
           >
@@ -128,7 +164,10 @@ const HeaderManager: React.FC = () => {
           </Tooltip>
 
           <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
-            <Avatar style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }} icon={<UserOutlined />} />
+            <Avatar
+              style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }}
+              icon={<UserOutlined />}
+            />
           </Dropdown>
         </div>
       </Header>

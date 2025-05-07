@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Typography, Button, App, Table } from 'antd';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+
+import { Card, Typography, Button, App, Table, Dropdown } from 'antd';
+import {  Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -17,9 +18,8 @@ import { useAuth } from '../contexts/useAuth';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
-// @ts-ignore
 import { saveAs } from 'file-saver';
-
+import { DownloadOutlined } from '@ant-design/icons';
 
 ChartJS.register(
   CategoryScale,
@@ -66,7 +66,7 @@ const Reports: React.FC = () => {
       }
     };
     fetchReports();
-  }, [user]);
+  }, [user, message]);
 
   const exportToWord = async () => {
     try {
@@ -89,21 +89,38 @@ const Reports: React.FC = () => {
     if (!reportElement) return;
 
     try {
-      const canvas = await html2canvas(reportElement as HTMLElement, { scale: 2 });
+      const canvas = await html2canvas(reportElement as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        scrollY: -window.scrollY,
+      });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
-     // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const pageHeight = pdf.internal.pageSize.getHeight();
 
-      const ratio = canvas.width / canvas.height;
-      const pdfWidth = pageWidth;
-      const pdfHeight = pageWidth / ratio;
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
       pdf.save('employee-report.pdf');
     } catch (error) {
       console.error('Ошибка при экспорте в PDF:', error);
+      message.error('Ошибка при экспорте в PDF');
     }
   };
 
@@ -126,43 +143,96 @@ const Reports: React.FC = () => {
     }],
   };
 
-  const employeeNames = [...new Set(reportData.map(item => item.Employee_Name))];
-  const barChartData = {
-    labels: employeeNames,
-    datasets: [{
-      label: 'Часы на задачи',
-      data: employeeNames.map(name =>
-        reportData.filter(i => i.Employee_Name === name).reduce((sum, i) => sum + i.Hours_Spent, 0)
-      ),
-      backgroundColor: '#ffcd56',
-    }],
-  };
 
-  const statusNames = [...new Set(reportData.map(item => item.Status_Name))];
+  const statusMap = new Map<string, number>();
+
+  reportData.forEach(item => {
+    const raw = item.Status_Name || '';
+    const status = raw.trim().toLowerCase(); // нормализация
+    if (!status) return;
+    const existing = statusMap.get(status) || 0;
+    statusMap.set(status, existing + 1);
+  });
+  
+  // Уникальные статусы по исходному отображаемому виду (без потери читаемости)
+  const statusLabelsMap = new Map<string, string>();
+  reportData.forEach(item => {
+    const raw = item.Status_Name || '';
+    const normalized = raw.trim().toLowerCase();
+    if (normalized && !statusLabelsMap.has(normalized)) {
+      statusLabelsMap.set(normalized, raw.trim()); // оригинальное имя
+    }
+  });
+  
+  const statusNames = Array.from(statusMap.keys()).map(k => statusLabelsMap.get(k) || k);
+  const statusCounts = Array.from(statusMap.values());
+  
   const doughnutChartData = {
     labels: statusNames,
     datasets: [{
       label: 'Задачи по статусу',
-      data: statusNames.map(status =>
-        reportData.filter(i => i.Status_Name === status).length
-      ),
-      backgroundColor: ['#4bc0c0', '#59AC78', '#36a2eb', '#9966ff'],
+      data: statusCounts,
+      backgroundColor: ['#4bc0c0', '#59AC78', '#36a2eb', '#9966ff', '#ff6384', '#ffa600'],
+      borderColor: '#1e1e1e',
+      borderWidth: 1,
     }],
   };
+  
 
   const chartOptions = {
-    plugins: { legend: { labels: { color: '#fff' } } },
+    plugins: {
+      legend: {
+        labels: {
+          color: '#ffffff',
+        },
+      },
+    },
     scales: {
-      x: { ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.2)' } },
-      y: { ticks: { color: '#ddd' }, grid: { color: 'rgba(255,255,255,0.2)' } }
-    }
+      x: {
+        ticks: { color: '#ffffff' },
+        grid: {
+          color: '#ffffff',
+          lineWidth: 0.3,
+        },
+      },
+      y: {
+        ticks: { color: '#ffffff' },
+        grid: {
+          color: '#ffffff',
+          lineWidth: 0.3, 
+        },
+      },
+    },
   };
+
+  const exportMenuItems = [
+    {
+      key: 'excel',
+      label: 'Экспорт в Excel',
+      onClick: exportToExcel,
+    },
+    {
+      key: 'pdf',
+      label: 'Экспорт в PDF',
+      onClick: exportToPDF,
+    },
+    {
+      key: 'word',
+      label: 'Экспорт в Word',
+      onClick: exportToWord,
+    },
+  ];
 
   return (
     <div className="reports">
-      <AntTitle level={3}>Отчёты по задачам</AntTitle>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <AntTitle level={3} style={{ margin: 0 }}>Отчёты по задачам</AntTitle>
+        <Dropdown menu={{ items: exportMenuItems }} placement="bottomRight" trigger={['click']}>
+          <Button icon={<DownloadOutlined />} />
+        </Dropdown>
+      </div>
 
-      <Card title="Задачи по месяцам" variant="outlined">
+      <Card title="Задачи по месяцам" style={{ marginTop: 16 }}>
         <Table
           dataSource={reportData.map((r, i) => ({ ...r, key: i }))}
           columns={[
@@ -176,51 +246,23 @@ const Reports: React.FC = () => {
         <Line data={lineChartData} options={chartOptions} />
       </Card>
 
-      <Card title="Задачи по сотрудникам" variant="outlined">
-        <Table
-          dataSource={employeeNames.map((name, i) => ({
-            key: i,
-            Employee_Name: name,
-            Hours_Spent: reportData
-              .filter(item => item.Employee_Name === name)
-              .reduce((sum, i) => sum + i.Hours_Spent, 0)
-          }))}
-          columns={[
-            { title: 'Сотрудник', dataIndex: 'Employee_Name' },
-            { title: 'Всего часов', dataIndex: 'Hours_Spent' }
-          ]}
-          pagination={false}
-        />
-        <Bar data={barChartData} options={chartOptions} />
-      </Card>
+    
+      <Card title="Задачи по статусам" style={{ marginTop: 16 }}>
+      <Table
+  dataSource={statusNames.map((label, i) => ({
+    key: i,
+    Status_Name: label,
+    Count: statusCounts[i]
+  }))}
+  columns={[
+    { title: 'Статус', dataIndex: 'Status_Name' },
+    { title: 'Количество задач', dataIndex: 'Count' }
+  ]}
+  pagination={false}
+/>
 
-      <Card title="Задачи по статусам" variant="outlined">
-        <Table
-          dataSource={statusNames.map((status, i) => ({
-            key: i,
-            Status_Name: status,
-            Count: reportData.filter(item => item.Status_Name === status).length
-          }))}
-          columns={[
-            { title: 'Статус', dataIndex: 'Status_Name' },
-            { title: 'Количество задач', dataIndex: 'Count' }
-          ]}
-          pagination={false}
-        />
         <Doughnut data={doughnutChartData} options={chartOptions} />
       </Card>
-
-      <div style={{ marginTop: 16 }}>
-        <Button type="primary" onClick={exportToWord}>
-          Экспорт в Word
-        </Button>
-        <Button type="default" onClick={exportToPDF} style={{ marginLeft: 12 }}>
-          Экспорт в PDF
-        </Button>
-        <Button type="default" onClick={exportToExcel} style={{ marginLeft: 12 }}>
-          Экспорт в Excel
-        </Button>
-      </div>
     </div>
   );
 };
