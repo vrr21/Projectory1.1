@@ -18,6 +18,24 @@ const LoginPage: React.FC = () => {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
+    const root = document.documentElement;
+  
+    // Принудительно установить тёмную тему и сохранить предыдущее значение
+    const previousTheme = root.getAttribute("data-theme");
+    root.setAttribute("data-theme", "dark");
+  
+    return () => {
+      // Восстановить прошлую тему при выходе со страницы
+      if (previousTheme) {
+        root.setAttribute("data-theme", previousTheme);
+      } else {
+        root.removeAttribute("data-theme");
+      }
+    };
+  }, []);
+  
+  
+  useEffect(() => {
     if (location.state?.fromRegister) {
       setIsTransitioning(true);
       setTimeout(() => setIsTransitioning(false), 600);

@@ -178,70 +178,68 @@ const ManagerDashboard: React.FC = () => {
     setFilterEmployee(null);
   };
 
-
   const filterMenu = (
-  <div style={{ padding: 8, minWidth: 200, maxWidth: 220 }}>
-    <Select
-      allowClear
-      placeholder="Фильтр по команде"
-      style={{ width: '100%', marginBottom: 8 }}
-      onChange={(val) => setFilterTeam(val)}
-      value={filterTeam ?? undefined}
-    >
-      {teams.map((team) => (
-        <Option key={team.ID_Team} value={team.ID_Team}>
-          {team.Team_Name}
-        </Option>
-      ))}
-    </Select>
-
-    <Select
-      allowClear
-      placeholder="Фильтр по проекту"
-      style={{ width: '100%', marginBottom: 8 }}
-      onChange={(val) => setFilterProject(val)}
-      value={filterProject ?? undefined}
-    >
-      {projects.map((proj) => (
-        <Option key={proj.ID_Order} value={proj.ID_Order}>
-          {proj.Order_Name}
-        </Option>
-      ))}
-    </Select>
-
-    <Select
-      allowClear
-      showSearch
-      placeholder="Фильтр по сотруднику"
-      style={{ width: '100%', marginBottom: 8 }}
-      onChange={(val) => setFilterEmployee(val)}
-      value={filterEmployee ?? undefined}
-      optionFilterProp="children"
-    >
-      {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))].sort().map((name) => (
-        <Option key={name} value={name}>
-          {name}
-        </Option>
-      ))}
-    </Select>
-
-    <Button
-      danger
-      onClick={clearFilters}
-      style={{
-        width: '100%',
-        fontSize: '12px',
-        padding: '4px 0',
-        whiteSpace: 'nowrap',
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-      }}
-    >
-      Сбросить фильтры
-    </Button>
-  </div>
-);
-
+    <div style={{ padding: 8, minWidth: 200, maxWidth: 220 }}>
+      <Select
+        allowClear
+        placeholder="Фильтр по команде"
+        style={{ width: '100%', marginBottom: 8 }}
+        onChange={(val) => setFilterTeam(val)}
+        value={filterTeam ?? undefined}
+      >
+        {teams.map((team) => (
+          <Option key={team.ID_Team} value={team.ID_Team}>
+            {team.Team_Name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Select
+        allowClear
+        placeholder="Фильтр по проекту"
+        style={{ width: '100%', marginBottom: 8 }}
+        onChange={(val) => setFilterProject(val)}
+        value={filterProject ?? undefined}
+      >
+        {projects.map((proj) => (
+          <Option key={proj.ID_Order} value={proj.ID_Order}>
+            {proj.Order_Name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Select
+        allowClear
+        showSearch
+        placeholder="Фильтр по сотруднику"
+        style={{ width: '100%', marginBottom: 8 }}
+        onChange={(val) => setFilterEmployee(val)}
+        value={filterEmployee ?? undefined}
+        optionFilterProp="children"
+      >
+        {[...new Set(tasks.flatMap(task => task.Employees.map(emp => emp.fullName)))].sort().map((name) => (
+          <Option key={name} value={name}>
+            {name}
+          </Option>
+        ))}
+      </Select>
+  
+      <Button
+        onClick={clearFilters}
+        style={{
+          width: '100%',
+          fontSize: '12px',
+          padding: '4px 0',
+          marginTop: 4,
+          backgroundColor: '#f5f5f5',
+          color: '#000',
+          border: '1px solid #ccc'
+        }}
+      >
+        Сбросить фильтры
+      </Button>
+    </div>
+  );
   
 
 

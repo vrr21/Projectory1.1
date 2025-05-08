@@ -41,32 +41,44 @@
 
 /* Контейнер колонок */
 .kanban-columns {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
   gap: 2rem;
+  overflow-x: auto;
+  padding: 1rem 0;
+  margin: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 1rem 0;
-  overflow-x: auto;
+  scroll-snap-type: x mandatory;
 }
 
 .kanban-columns::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+  background-color: #2a2a2a;
 }
+
+.kanban-columns::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
+}
+
 
 /* Колонка */
 .kanban-column {
-  background-color: #1f1f1f;
-  padding: 1.5rem;
-  border-radius: 10px;
-  width: 320px;
-  flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-  border: 1px solid #333;
   display: flex;
   flex-direction: column;
-  transition: background-color 0.3s ease;
+  gap: 1rem;
+  padding: 1.5rem;
+  background-color: #222222; /* ✅ Новый фон */
+  flex-grow: 1;
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.06); /* белая мягкая тень */
+  border: 1px solid #333;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
+
 
 /* Заголовок колонки */
 .kanban-column h3 {

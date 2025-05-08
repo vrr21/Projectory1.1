@@ -6,7 +6,8 @@ import {
   TableOutlined,
   ProjectOutlined,
   TeamOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  BarChartOutlined // ✅ Добавили иконку для отчётов
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -62,14 +63,16 @@ const SidebarManager: React.FC = () => {
     },
     {
       key: '/manager-reports',
-      icon: <TableOutlined />,
+      icon: <BarChartOutlined />, // ✅ новая иконка для отчётов
       label: <Link to="/manager-reports">Отчёты</Link>,
     }
-    
   ];
 
   const getOpenKeys = () => {
-    if (location.pathname.startsWith('/team-management') || location.pathname.startsWith('/myteams')) {
+    if (
+      location.pathname.startsWith('/team-management') ||
+      location.pathname.startsWith('/myteams')
+    ) {
       return ['teams'];
     }
     return [];
@@ -78,15 +81,10 @@ const SidebarManager: React.FC = () => {
   useEffect(() => {
     const layout = document.querySelector('.layout');
     if (layout) {
-      if (collapsed) {
-        layout.classList.add('collapsed');
-      } else {
-        layout.classList.remove('collapsed');
-      }
+      layout.classList.toggle('collapsed', collapsed);
     }
   }, [collapsed]);
-  
-  
+
   return (
     <Sider
       trigger={null}

@@ -44,7 +44,7 @@ body.sidebar-collapsed .dashboard-body {
 
 
 .kanban-column {
-  background-color: var(--card-bg-color);
+  background-color: #333 !important;
   padding: 1.5rem 1rem;
   border-radius: 8px;
   width: 320px;

@@ -26,7 +26,9 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/components/Header.css';
 
-import logoIcon from '../assets/лого.png'; // ← логотип
+import logoDark from '../assets/лого.png';
+import logoLight from '../assets/лого2.png';
+
 
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -162,11 +164,12 @@ const HeaderEmployee: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-          <img
-            src={logoIcon}
-            alt="Logo Icon"
-            style={{ height: '1.6em', objectFit: 'contain' }}
-          />
+<img
+  src={theme === 'dark' ? logoDark : logoLight}
+  alt="Logo"
+  style={{ height: '1.6em', objectFit: 'contain' }}
+/>
+
           Projectory
         </div>
 
@@ -200,7 +203,7 @@ const HeaderEmployee: React.FC = () => {
             <BulbOutlined
               style={{
                 fontSize: '24px',
-                color: theme === 'dark' ? '#FFD700' : '#555',
+                color: theme === 'dark' ? '#00bcd4' : '#555',
                 transform: theme === 'dark' ? 'rotate(0deg)' : 'rotate(180deg)',
                 marginLeft: '16px',
                 cursor: 'pointer',
@@ -212,7 +215,7 @@ const HeaderEmployee: React.FC = () => {
 
           <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
             <Avatar
-              style={{ backgroundColor: '#006F7A', marginLeft: '16px', cursor: 'pointer' }}
+              style={{ backgroundColor: '#555', marginLeft: '16px', cursor: 'pointer' }}
               icon={<UserOutlined />}
             />
           </Dropdown>

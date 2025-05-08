@@ -70,39 +70,47 @@ const PageManagerReports: React.FC = () => {
   const totalTasks = lineOrders.reduce((sum, o) => sum + (o.Total_Tasks ?? 0), 0);
   const completedTasks = Math.floor(totalTasks * 0.6); // placeholder
 
-  const sharedTheme = {
+  const themeOverrides = {
     styleSheet: {
       brandColor: '#5B8FF9',
+      backgroundColor: '#2c2c2c',
       textColor: '#ffffff',
-      labelColor: '#ffffff',
+      labelFill: '#ffffff',
       axisLineColor: '#ffffff',
-      axisGridColor: '#444444',
+      axisTickLineColor: '#ffffff',
+      axisLabelFill: '#ffffff',
       legendTextFillColor: '#ffffff',
       tooltipBackgroundColor: '#2c2c2c',
       tooltipTextColor: '#ffffff',
-      tooltipBoxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+      fontFamily: 'Arial',
     },
   };
 
+  const pieData: EmployeeHoursReport[] = hours.filter(
+    (item): item is EmployeeHoursReport =>
+      typeof item.Employee_Name === 'string' &&
+      item.Employee_Name.trim().length > 0 &&
+      typeof item.Total_Hours === 'number' &&
+      !isNaN(item.Total_Hours) &&
+      item.Total_Hours > 0
+  );
+
   const pieConfig = {
     appendPadding: 10,
-    data: hours
-      .filter(item => typeof item.Total_Hours === 'number' && !isNaN(item.Total_Hours))
-      .map(item => ({
-        Employee_Name: item.Employee_Name || 'Неизвестно',
-        Total_Hours: item.Total_Hours ?? 0,
-      })),
+    data: pieData,
     angleField: 'Total_Hours',
     colorField: 'Employee_Name',
     radius: 1,
     label: {
+      type: 'inner',
       offset: '-30%',
-      content: ({ Employee_Name, Total_Hours }: EmployeeHoursReport) =>
-        `${Employee_Name}\n${Total_Hours} ч`,
+      content: (data: EmployeeHoursReport) =>
+        `${data.Employee_Name}\n${data.Total_Hours} ч`,
       style: {
         fill: '#ffffff',
         fontSize: 12,
         textAlign: 'center',
+        fontWeight: 'bold',
       },
     },
     interactions: [
@@ -121,11 +129,11 @@ const PageManagerReports: React.FC = () => {
     tooltip: {
       fields: ['Employee_Name', 'Total_Hours'],
       formatter: (datum: EmployeeHoursReport) => ({
-        name: datum.Employee_Name || 'Неизвестно',
-        value: `${datum.Total_Hours ?? 0} ч`,
+        name: datum.Employee_Name,
+        value: `${datum.Total_Hours} ч`,
       }),
     },
-    theme: sharedTheme,
+    theme: themeOverrides,
   };
 
   const barConfig = {
@@ -144,12 +152,15 @@ const PageManagerReports: React.FC = () => {
     xAxis: {
       label: { style: { fill: '#ffffff', fontSize: 12 } },
       line: { style: { stroke: '#ffffff' } },
+      tickLine: { style: { stroke: '#ffffff' } },
+      grid: { line: { style: { stroke: '#444444', lineDash: [4, 4] } } },
     },
     yAxis: {
       label: { style: { fill: '#ffffff', fontSize: 12 } },
       line: { style: { stroke: '#ffffff' } },
+      tickLine: { style: { stroke: '#ffffff' } },
     },
-    theme: sharedTheme,
+    theme: themeOverrides,
   };
 
   const lineData: LineDatum[] = lineOrders
@@ -175,13 +186,15 @@ const PageManagerReports: React.FC = () => {
             <Spin size="large" />
           ) : (
             <>
-              <Card title="Выполненные задачи (процент выполнения)" className="card">
-                <Progress
-                  type="circle"
-                  percent={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
-                  format={(percent?: number) => `${percent ?? 0}%`}
-                  strokeColor="#5B8FF9"
-                />
+              <Card title="Выполненные задач (процент выполнения)" className="card">
+              <Progress
+  type="circle"
+  percent={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
+  format={(percent?: number) => `${percent ?? 0}%`}
+  strokeColor="#5B8FF9"
+  trailColor={document.documentElement.getAttribute('data-theme') === 'light' ? '#d9d9d9' : '#3a3a3a'}
+/>
+
               </Card>
 
               <Card title="Потраченные часы по сотрудникам" className="card">

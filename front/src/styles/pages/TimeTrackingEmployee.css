@@ -148,8 +148,24 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.3s ease, color 0.3s ease;
   cursor: default;
   width: 100%;
+  word-wrap: break-word;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  overflow: hidden;
 }
+@media (max-width: 768px) {
+  .entry-card {
+    padding: 0.75rem;
+  }
 
+  .entry-card b {
+    font-size: 14px;
+  }
+
+  .entry-card div {
+    font-size: 12px;
+  }
+}
 .entry-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -163,10 +179,11 @@
   margin-bottom: 6px;
 }
 
-.entry-card div {
-  margin: 2px 0;
+.entry-card div,
+.entry-card b {
   font-size: 13px;
-  color: var(--text-color);
+  line-height: 1.4;
+  white-space: normal;
 }
 
 /* Action buttons in cards */

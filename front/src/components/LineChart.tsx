@@ -1,6 +1,5 @@
-// components/LineChart.tsx
 import React from 'react';
-import { Line } from '@ant-design/plots';
+import { Line, G2 } from '@ant-design/plots';
 
 interface LineDatum {
   date: string;
@@ -9,51 +8,70 @@ interface LineDatum {
 
 interface LineChartProps {
   data: LineDatum[];
+  theme?: G2.Theme; // <-- заменили any на правильный тип
 }
 
-const LineChart: React.FC<LineChartProps> = ({ data }) => {
+const LineChart: React.FC<LineChartProps> = ({ data, theme }) => {
   const config = {
     data,
+    padding: 'auto',
     xField: 'date',
     yField: 'tasks',
-    label: { style: { fill: '#ffffff', fontSize: 12 } },
+    xAxis: {
+      label: {
+        style: {
+          fill: '#ffffff',
+          fontSize: 12,
+        },
+      },
+      line: {
+        style: {
+          stroke: '#ffffff',
+        },
+      },
+      tickLine: {
+        style: {
+          stroke: '#ffffff',
+        },
+      },
+    },
+    yAxis: {
+      label: {
+        style: {
+          fill: '#ffffff',
+          fontSize: 12,
+        },
+      },
+      line: {
+        style: {
+          stroke: '#ffffff',
+        },
+      },
+      tickLine: {
+        style: {
+          stroke: '#ffffff',
+        },
+      },
+      grid: {
+        line: {
+          style: {
+            stroke: '#444444',
+            lineDash: [4, 4],
+          },
+        },
+      },
+    },
     point: {
       size: 5,
       shape: 'diamond',
       style: {
-        fill: '#ffffff',
-        stroke: '#5B8FF9',
+        fill: 'white',
       },
     },
     tooltip: {
       showMarkers: true,
-      formatter: (datum: LineDatum) => ({
-        name: 'Количество задач',
-        value: datum.tasks,
-      }),
     },
-    interactions: [{ type: 'marker-active' }],
-    xAxis: {
-      label: { style: { fill: '#ffffff', fontSize: 12 } },
-      line: { style: { stroke: '#ffffff' } },
-    },
-    yAxis: {
-      label: { style: { fill: '#ffffff', fontSize: 12 } },
-      line: { style: { stroke: '#ffffff' } },
-    },
-    theme: {
-      styleSheet: {
-        brandColor: '#5B8FF9',
-        textColor: '#ffffff',
-        labelColor: '#ffffff',
-        axisLineColor: '#ffffff',
-        axisGridColor: '#444444',
-        legendTextFillColor: '#ffffff',
-        tooltipBackgroundColor: '#2c2c2c',
-        tooltipTextColor: '#ffffff',
-        tooltipBoxShadow: '0 4px 12px rgba(0,0,0,0.4)',
-      },
-    },
+    theme,
   };
 
   return <Line {...config} />;

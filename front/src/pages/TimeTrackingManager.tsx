@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Layout, Button, Select, DatePicker, Modal, App, Tooltip, notification
+  Layout, Button, Select, DatePicker, Modal, App, Tooltip, notification, Dropdown
 } from 'antd';
 import {
-  EyeOutlined, LeftOutlined, RightOutlined, CalendarOutlined
+  EyeOutlined, LeftOutlined, RightOutlined, CalendarOutlined, FilterOutlined, MessageOutlined, UserOutlined
 } from '@ant-design/icons';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
@@ -14,7 +14,6 @@ import isoWeek from 'dayjs/plugin/isoWeek';
 import weekday from 'dayjs/plugin/weekday';
 import localeData from 'dayjs/plugin/localeData';
 import 'dayjs/locale/ru';
-import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import { List, Input, Avatar } from 'antd';
 
 dayjs.extend(isoWeek);
@@ -49,6 +48,7 @@ interface User {
   First_Name: string;
   Last_Name: string;
 }
+
 interface CommentType {
   ID_Comment: number;
   CommentText: string;
@@ -63,7 +63,7 @@ const TimeTrackingManager: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<string | undefined>();
-  const [selectedUser, setSelectedUser] = useState<string | undefined>(undefined);
+  const [selectedUser, setSelectedUser] = useState<string | undefined>();
   const [weekStart, setWeekStart] = useState(() => dayjs().startOf('isoWeek'));
   const [viewingEntry, setViewingEntry] = useState<RawTimeEntry | null>(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
@@ -71,7 +71,7 @@ const TimeTrackingManager: React.FC = () => {
   const [comments, setComments] = useState<CommentType[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
-  
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
@@ -102,17 +102,15 @@ const TimeTrackingManager: React.FC = () => {
 
   useEffect(() => {
     let filtered = timeEntries;
-
     if (selectedTeam) {
       filtered = filtered.filter(e => e.Team_Name === selectedTeam);
     }
-
     if (selectedUser) {
       filtered = filtered.filter(e => e.ID_User === selectedUser);
     }
-
     setFilteredEntries(filtered);
   }, [selectedTeam, selectedUser, timeEntries]);
+
   const fetchComments = async (taskId: string) => {
     try {
       const response = await fetch(`${API_URL}/api/comments/${taskId}`);
@@ -122,10 +120,10 @@ const TimeTrackingManager: React.FC = () => {
       console.error('Ошибка при получении комментариев:', error);
     }
   };
-  
+
   const handleAddComment = async () => {
     if (!newComment.trim() || !viewingEntry?.ID_Task) return;
-  
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_URL}/api/comments`, {
@@ -139,7 +137,7 @@ const TimeTrackingManager: React.FC = () => {
           commentText: newComment.trim(),
         }),
       });
-  
+
       if (!response.ok) throw new Error();
       setNewComment('');
       fetchComments(viewingEntry.ID_Task);
@@ -147,18 +145,69 @@ const TimeTrackingManager: React.FC = () => {
       console.error('Ошибка при добавлении комментария:', error);
     }
   };
-  
+
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);
     setIsCommentsModalVisible(true);
     fetchComments(entry.ID_Task);
   };
-  
+
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
 
   const getEntriesByDay = (day: dayjs.Dayjs) =>
     filteredEntries.filter(entry => dayjs(entry.Start_Date).isSame(day, 'day'));
+
+  const filterMenu = (
+    <div style={{ padding: 8, minWidth: 220 }}>
+      <Select
+        allowClear
+        placeholder="Фильтр по команде"
+        style={{ width: '100%', marginBottom: 8 }}
+        onChange={(val) => setSelectedTeam(val)}
+        value={selectedTeam}
+      >
+        {teams.map((team) => (
+          <Select.Option key={team.ID_Team} value={team.Team_Name}>
+            {team.Team_Name}
+          </Select.Option>
+        ))}
+      </Select>
+  
+      <Select
+        allowClear
+        placeholder="Фильтр по сотруднику"
+        style={{ width: '100%' }}
+        onChange={(val) => setSelectedUser(val)}
+        value={selectedUser}
+      >
+        {users.map((u) => (
+          <Select.Option key={u.ID_User} value={u.ID_User}>
+            {u.First_Name} {u.Last_Name}
+          </Select.Option>
+        ))}
+      </Select>
+  
+      <Button
+        onClick={() => {
+          setSelectedTeam(undefined);
+          setSelectedUser(undefined);
+        }}
+        style={{
+          width: '100%',
+          fontSize: '12px',
+          padding: '4px 0',
+          marginTop: 8,
+          backgroundColor: '#f5f5f5',
+          color: '#000',
+          border: '1px solid #ccc',
+        }}
+      >
+        Сбросить фильтры
+      </Button>
+    </div>
+  );
+  
 
   return (
     <App>
@@ -172,32 +221,14 @@ const TimeTrackingManager: React.FC = () => {
               <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '1rem' }}>
                 <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: 0, flexBasis: '100%' }}>Учёт времени сотрудников</h1>
 
-                <Select
-                  allowClear
-                  placeholder="Фильтр по команде"
-                  style={{ width: 200 }}
-                  onChange={(value) => setSelectedTeam(value)}
+                <Dropdown
+                  menu={{ items: [] }}
+                  open={isDropdownOpen}
+                  onOpenChange={setIsDropdownOpen}
+                  dropdownRender={() => filterMenu}
                 >
-                  {teams.map(team => (
-                    <Select.Option key={team.ID_Team} value={team.Team_Name}>
-                      {team.Team_Name}
-                    </Select.Option>
-                  ))}
-                </Select>
-
-                <Select
-  allowClear
-  placeholder="Фильтр по сотруднику"
-  style={{ width: 200 }}
-  onChange={(value) => setSelectedUser(value)}
->
-  {users.map(u => (
-    <Select.Option key={u.ID_User} value={u.ID_User}>
-      {u.First_Name} {u.Last_Name}
-    </Select.Option>
-  ))}
-</Select>
-
+                  <Button icon={<FilterOutlined />}>Фильтры</Button>
+                </Dropdown>
 
                 <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week'))} />
                 <h2 style={{ margin: '0 1rem' }}>
@@ -240,9 +271,8 @@ const TimeTrackingManager: React.FC = () => {
                               <Button icon={<EyeOutlined />} onClick={() => { setViewingEntry(entry); setIsViewModalVisible(true); }} />
                             </Tooltip>
                             <Tooltip title="Комментарии">
-  <Button icon={<MessageOutlined />} onClick={() => openCommentsModal(entry)} />
-</Tooltip>
-
+                              <Button icon={<MessageOutlined />} onClick={() => openCommentsModal(entry)} />
+                            </Tooltip>
                           </div>
                         </div>
                       ))}
@@ -269,63 +299,63 @@ const TimeTrackingManager: React.FC = () => {
                   </div>
                 )}
               </Modal>
-              <Modal
-  title="Комментарии к задаче"
-  open={isCommentsModalVisible}
-  onCancel={() => setIsCommentsModalVisible(false)}
-  footer={null}
->
-  {viewingEntry && (
-    <>
-      <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
-      <List
-        className="comment-list"
-        header={`${comments.length} комментариев`}
-        itemLayout="horizontal"
-        dataSource={comments}
-        renderItem={(item: CommentType) => (
-          <List.Item>
-            <List.Item.Meta
-              avatar={
-                <Avatar
-                  src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
-                  icon={!item.Avatar ? <UserOutlined /> : undefined}
-                  style={{ backgroundColor: item.Avatar ? 'transparent' : '#777' }}
-                />
-              }
-              title={
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{item.AuthorName}</span>
-                  <span style={{ fontSize: 12, color: '#999' }}>
-                    {dayjs(item.Created_At).format('YYYY-MM-DD HH:mm')}
-                  </span>
-                </div>
-              }
-              description={item.CommentText}
-            />
-          </List.Item>
-        )}
-      />
-      <Input.TextArea
-        rows={3}
-        value={newComment}
-        onChange={(e) => setNewComment(e.target.value)}
-        placeholder="Введите комментарий..."
-        style={{ marginTop: 8 }}
-      />
-      <Button
-        type="primary"
-        onClick={handleAddComment}
-        disabled={!newComment.trim()}
-        style={{ marginTop: 8 }}
-        block
-      >
-        Добавить комментарий
-      </Button>
-    </>
-  )}
-</Modal>
 
+              <Modal
+                title="Комментарии к задаче"
+                open={isCommentsModalVisible}
+                onCancel={() => setIsCommentsModalVisible(false)}
+                footer={null}
+              >
+                {viewingEntry && (
+                  <>
+                    <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
+                    <List
+                      className="comment-list"
+                      header={`${comments.length} комментариев`}
+                      itemLayout="horizontal"
+                      dataSource={comments}
+                      renderItem={(item: CommentType) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={
+                              <Avatar
+                                src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+                                icon={!item.Avatar ? <UserOutlined /> : undefined}
+                                style={{ backgroundColor: item.Avatar ? 'transparent' : '#777' }}
+                              />
+                            }
+                            title={
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>{item.AuthorName}</span>
+                                <span style={{ fontSize: 12, color: '#999' }}>
+                                  {dayjs(item.Created_At).format('YYYY-MM-DD HH:mm')}
+                                </span>
+                              </div>
+                            }
+                            description={item.CommentText}
+                          />
+                        </List.Item>
+                      )}
+                    />
+                    <Input.TextArea
+                      rows={3}
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Введите комментарий..."
+                      style={{ marginTop: 8 }}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      style={{ marginTop: 8 }}
+                      block
+                    >
+                      Добавить комментарий
+                    </Button>
+                  </>
+                )}
+              </Modal>
             </div>
           </Content>
         </Layout>
