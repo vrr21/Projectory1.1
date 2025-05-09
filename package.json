@@ -1,0 +1,17 @@
+{
+  "name": "project-management-app",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000D\u0000I\u0000P\u0000L\u0000O\u0000M\u0000_\u0000P\u0000R\u0000O\u0000J\u0000E\u0000C\u0000T\u0000-\u0000M\u0000A\u0000N\u0000A\u0000G\u0000E\u0000M\u0000E\u0000N\u0000T\u0000-\u0000A\u0000P\u0000P\u0000-\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "puppeteer": "^24.8.2"
+  }
+}

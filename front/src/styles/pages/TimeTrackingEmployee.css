@@ -23,7 +23,7 @@
 }
 
 .submit-button:hover {
-  background-color: #00bcd4;
+  background-color: #006F7A;
 }
 
 /* File Upload */
@@ -393,3 +393,132 @@
 .attachments-list li a:hover {
   text-decoration: underline;
 }
+
+
+/* Комментарии: выравнивание и внешний вид */
+.comment-list .ant-list-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 12px;
+  background-color: var(--card-bg-color);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.comment-list .ant-list-item-meta {
+  flex: 1;
+}
+
+.comment-list .ant-list-item-meta-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.comment-list .comment-timestamp {
+  font-size: 12px;
+  color: #aaa;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
+.comment-list .ant-list-item-meta-description {
+  color: var(--text-color);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.comment-list .ant-avatar {
+  margin-right: 12px;
+}
+
+
+/* =============================== */
+/* LIGHT THEME: TEXT COLOR FIXES  */
+/* =============================== */
+
+[data-theme="light"] .page-content,
+[data-theme="light"] .time-tracking-form,
+[data-theme="light"] .day-header,
+[data-theme="light"] .ant-form-item-label,
+[data-theme="light"] .comment-list .ant-list-item-meta-title,
+[data-theme="light"] .comment-list .ant-list-item-meta-description,
+[data-theme="light"] .ant-upload-text,
+[data-theme="light"] .ant-upload-drag-icon,
+[data-theme="light"] .ant-tabs-tab,
+[data-theme="light"] .horizontal-column,
+[data-theme="light"] .submit-button-right {
+  color: #000000 !important;
+  background-color: #ffffff !important;
+}
+
+[data-theme="light"] .day-date {
+  color: #666 !important;
+}
+
+[data-theme="light"] .submit-button {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .comment-list .ant-list-item {
+  background-color: #f9f9f9 !important;
+}
+
+[data-theme="light"] .ant-modal-content,
+[data-theme="light"] .ant-modal-header,
+[data-theme="light"] .ant-modal-body,
+[data-theme="light"] .ant-modal-footer {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-modal-title {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .attachments-list li {
+  color: #000000 !important;
+}
+
+[data-theme="light"] .attachments-list li a {
+  color: #000000 !important;
+}
+
+
+/* =============================== */
+/* LIGHT THEME: BUTTON ACTIVE FIX */
+/* =============================== */
+
+[data-theme="light"] .submit-button,
+[data-theme="light"] .submit-button-right,
+[data-theme="light"] .ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+[data-theme="light"] .submit-button:hover,
+[data-theme="light"] .submit-button-right:hover,
+[data-theme="light"] .ant-btn-primary:hover {
+  background-color: #00bcd4 !important;
+  color: #ffffff !important;
+}
+
+[data-theme="light"] .ant-btn-default {
+  background-color: #f0f0f0 !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+[data-theme="light"] .ant-btn-default:hover {
+  background-color: #e6f7ff !important;
+  color: #000000 !important;
+  border-color: #1890ff !important;
+}
+

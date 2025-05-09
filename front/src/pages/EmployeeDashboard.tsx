@@ -222,7 +222,7 @@ const EmployeeDashboard = () => {
       return (
         <div className="deadline-box undefined">
           <ClockCircleOutlined style={{ marginRight: 6 }} />
-          Дедлайн: не назначено
+          Без срока
         </div>
       );
     }

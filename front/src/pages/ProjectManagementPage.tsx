@@ -10,10 +10,15 @@ import {
   message,
   theme,
   AutoComplete,
+  Dropdown,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';  // Импортируем иконки
+import {
+  EditOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+} from '@ant-design/icons';
 
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
@@ -182,6 +187,45 @@ const ProjectManagementPage: React.FC = () => {
     }
   };
 
+  const handleExport = async (format: string): Promise<void> => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/export/projects?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+  
+      // Новая проверка ошибок с логированием текста ошибки
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Ошибка экспорта:', errorText);
+        throw new Error(errorText || 'Ошибка при экспорте');
+      }
+  
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      let extension = 'txt';
+      if (format === 'excel') extension = 'xlsx';
+      else if (format === 'word') extension = 'docx';
+      else if (format === 'pdf') extension = 'pdf';
+      
+      link.setAttribute('download', `projects_export.${extension}`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        console.error('Ошибка экспорта:', error.message);
+        messageApi.error(error.message);
+      } else {
+        messageApi.error('Произошла неизвестная ошибка.');
+      }
+    }
+  };
+  
+
   const columns: ColumnsType<Project> = [
     { title: 'Название проекта', dataIndex: 'Order_Name', key: 'Order_Name' },
     { title: 'Тип проекта', dataIndex: 'Type_Name', key: 'Type_Name' },
@@ -195,7 +239,8 @@ const ProjectManagementPage: React.FC = () => {
       title: 'Дата окончания',
       dataIndex: 'End_Date',
       key: 'End_Date',
-      render: (date: string): string => date ? dayjs(date).format('YYYY-MM-DD') : '',
+      render: (date: string): string =>
+        date ? dayjs(date).format('YYYY-MM-DD') : '',
     },
     { title: 'Статус', dataIndex: 'Status', key: 'Status' },
     {
@@ -211,7 +256,7 @@ const ProjectManagementPage: React.FC = () => {
           <Button
             type="link"
             onClick={() => showModal(record)}
-            icon={<EditOutlined style={{ color: '' }} />}
+            icon={<EditOutlined />}
           >
             Редактировать
           </Button>
@@ -219,7 +264,7 @@ const ProjectManagementPage: React.FC = () => {
             type="link"
             danger
             onClick={() => handleDelete(record.ID_Order)}
-            icon={<DeleteOutlined style={{ color: '#FF4D4F' }} />}
+            icon={<DeleteOutlined />}
           >
             Удалить
           </Button>
@@ -238,9 +283,26 @@ const ProjectManagementPage: React.FC = () => {
           <main className="main-content">
             <div className="project-management-page">
               <h1>Управление проектами</h1>
-              <Button type="primary" onClick={() => showModal()} style={{ marginBottom: 16 }}>
-                Добавить проект
-              </Button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+                <Button type="primary" onClick={() => showModal()}>
+                  Добавить проект
+                </Button>
+                <Dropdown
+  menu={{
+    onClick: ({ key }) => handleExport(key),
+    items: [
+      { key: 'word', label: 'Экспорт в Word' },
+      { key: 'excel', label: 'Экспорт в Excel' },
+      { key: 'pdf', label: 'Экспорт в PDF' },
+    ],
+  }}
+  placement="bottomRight"
+  arrow
+>
+  <Button icon={<DownloadOutlined />}>Экспорт</Button>
+</Dropdown>
+
+              </div>
               <Table dataSource={projects} columns={columns} rowKey="ID_Order" />
               <Modal
                 title={editingProject ? 'Редактировать проект' : 'Создать проект'}
@@ -249,31 +311,59 @@ const ProjectManagementPage: React.FC = () => {
                 onOk={() => form.submit()}
               >
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
-                  <Form.Item name="Order_Name" label="Название проекта" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="Order_Name"
+                    label="Название проекта"
+                    rules={[{ required: true }]}
+                  >
                     <Input />
                   </Form.Item>
-                  <Form.Item name="Type_Name" label="Тип проекта" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="Type_Name"
+                    label="Тип проекта"
+                    rules={[{ required: true }]}
+                  >
                     <Input />
                   </Form.Item>
-                  <Form.Item name="Creation_Date" label="Дата создания" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="Creation_Date"
+                    label="Дата создания"
+                    rules={[{ required: true }]}
+                  >
                     <Input type="date" />
                   </Form.Item>
-                  <Form.Item name="End_Date" label="Дата окончания" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="End_Date"
+                    label="Дата окончания"
+                    rules={[{ required: true }]}
+                  >
                     <Input type="date" />
                   </Form.Item>
-                  <Form.Item name="Status" label="Статус" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="Status"
+                    label="Статус"
+                    rules={[{ required: true }]}
+                  >
                     <Select placeholder="Выберите статус проекта">
                       <Option value="Новый">Новый</Option>
                       <Option value="В процессе">В процессе</Option>
                       <Option value="Завершён">Завершён</Option>
                     </Select>
                   </Form.Item>
-                  <Form.Item name="Team_Name" label="Команда" rules={[{ required: true }]}>
+                  <Form.Item
+                    name="Team_Name"
+                    label="Команда"
+                    rules={[{ required: true }]}
+                  >
                     <AutoComplete
                       placeholder="Введите или выберите команду"
-                      options={teams.map(team => ({ value: team.Team_Name }))}
+                      options={teams.map((team) => ({
+                        value: team.Team_Name,
+                      }))}
                       filterOption={(inputValue, option) =>
-                        (option?.value ?? '').toLowerCase().includes(inputValue.toLowerCase())
+                        (option?.value ?? '')
+                          .toLowerCase()
+                          .includes(inputValue.toLowerCase())
                       }
                     />
                   </Form.Item>

@@ -9,7 +9,7 @@
 
 .main-content.account-content {
   width: 100%;
-  max-width: 1280px; /* увеличено чтобы вмещать графики */
+  max-width: 1280px;
   margin: 0 auto;
   box-sizing: border-box;
 }
@@ -52,33 +52,6 @@
   overflow-x: auto;
 }
 
-/* Канбан, отчёты */
-.reports, .manager-reports {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-
-/* Стиль для круговой диаграммы для менеджера */
-.reports canvas,
-.manager-reports canvas {
-  background-color: transparent;
-  width: 100%;    /* Диаграмма будет растягиваться по ширине */
-  max-width: 650px; /* Максимальная ширина диаграммы */
-  height: 650px;   /* Устанавливаем нормальный размер диаграммы */
-  margin: 20px auto; /* Центрируем диаграмму и добавляем отступы */
-  display: block;   /* Обеспечивает правильную центровку на странице */
-}
-
-/* Для мобильных устройств уменьшаем диаграммы, но не слишком сильно */
-@media (max-width: 768px) {
-  .reports canvas,
-  .manager-reports canvas {
-    height: 600px;  /* Уменьшаем немного для мобильных устройств */
-    width: 100%;    /* Диаграмма будет растягиваться по ширине */
-    max-width: 600px; /* Максимальная ширина диаграммы на мобильных устройствах */
-  }
-}
 /* === Светлая тема: Страница аккаунта === */
 [data-theme="light"] .account-container {
   background-color: #ffffff;

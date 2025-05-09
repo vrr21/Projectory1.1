@@ -21,7 +21,6 @@ import type { UploadChangeParam } from 'antd/es/upload';
 import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
 import HeaderManager from '../components/HeaderManager';
-import ManagerReports from '../components/ManagerReports';
 import '../styles/pages/ManagerAccount.css';
 
 const { Title, Text } = Typography;
@@ -201,7 +200,6 @@ const ManagerAccount: React.FC = () => {
                     <BarChartOutlined /> Все отчёты
                   </>
                 ),
-                children: <ManagerReports />,
               },
             ]}
           />

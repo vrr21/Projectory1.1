@@ -16,6 +16,8 @@ import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
+import { DownloadOutlined } from '@ant-design/icons';
+import { Dropdown } from 'antd';
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -92,6 +94,32 @@ const TeamManagementPage: React.FC = () => {
     fetchUsers();
   }, [fetchTeams, fetchUsers]);
 
+  const handleExport = async (format: string) => {
+    try {
+      const response = await fetch(`http://localhost:3002/api/export/teams?format=${format}`);
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+  
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      let extension = 'txt';
+  
+      if (format === 'excel') extension = 'xlsx';
+      else if (format === 'word') extension = 'docx';
+      else if (format === 'pdf') extension = 'pdf';
+  
+      a.href = url;
+      a.download = `teams.${extension}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+  };
+  
+  
   const getTeamNameFilters = () => {
     const unique = Array.from(new Set(teams.map(t => t.Team_Name)));
     return unique.map(name => ({ text: name, value: name }));
@@ -260,17 +288,33 @@ const TeamManagementPage: React.FC = () => {
           <Header />
           <div className="dashboard-body">
             <SidebarManager />
-            <main className="main-content">
+            <main className="main-content team-management-page">
+
               <h1>Управление командами</h1>
-              <div className="button-wrapper">
-                <Button
-                  type="primary"
-                  className="create-team-button"
-                  onClick={() => setIsTeamModalVisible(true)}
-                >
-                  Создать команду
-                </Button>
-              </div>
+              <div className="button-wrapper" style={{ display: 'flex', justifyContent: 'space-between' }}>
+
+  <Button
+    type="primary"
+    onClick={() => setIsTeamModalVisible(true)}
+  >
+    Создать команду
+  </Button>
+  <Dropdown
+    menu={{
+      onClick: ({ key }) => handleExport(key),
+      items: [
+        { key: 'word', label: 'Экспорт в Word' },
+        { key: 'excel', label: 'Экспорт в Excel' },
+        { key: 'pdf', label: 'Экспорт в PDF' },
+      ],
+    }}
+    placement="bottomRight"
+    arrow
+  >
+    <Button icon={<DownloadOutlined />}>Экспорт</Button>
+  </Dropdown>
+</div>
+
               <Table
                 dataSource={teams}
                 columns={columns}

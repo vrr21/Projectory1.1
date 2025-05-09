@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Card, Spin, Typography, Progress } from 'antd';
+import { Layout, Card, Spin, Typography, Progress, Button, Dropdown, Menu } from 'antd';
 import { Pie, Bar } from '@ant-design/plots';
+import { DownloadOutlined } from '@ant-design/icons';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import LineChart from '../components/LineChart';
@@ -67,8 +68,41 @@ const PageManagerReports: React.FC = () => {
     fetchData();
   }, []);
 
+  const handleExportReports = async (format: 'word' | 'excel' | 'pdf') => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_URL}/api/export/reports?format=${format}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error('Ошибка при экспорте');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `reports.${format === 'word' ? 'docx' : format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Ошибка при экспорте отчётов', error);
+    }
+  };
+
+  const exportMenu = (
+    <Menu
+      onClick={({ key }) => handleExportReports(key as 'word' | 'excel' | 'pdf')}
+      items={[
+        { key: 'word', label: 'Экспорт в Word (.docx)' },
+        { key: 'excel', label: 'Экспорт в Excel (.xlsx)' },
+        { key: 'pdf', label: 'Экспорт в PDF (.pdf)' },
+      ]}
+    />
+  );
+
   const totalTasks = lineOrders.reduce((sum, o) => sum + (o.Total_Tasks ?? 0), 0);
-  const completedTasks = Math.floor(totalTasks * 0.6); // placeholder
+  const completedTasks = Math.floor(totalTasks * 0.6); // Placeholder
 
   const themeOverrides = {
     styleSheet: {
@@ -86,7 +120,7 @@ const PageManagerReports: React.FC = () => {
     },
   };
 
-  const pieData: EmployeeHoursReport[] = hours.filter(
+  const pieData = hours.filter(
     (item): item is EmployeeHoursReport =>
       typeof item.Employee_Name === 'string' &&
       item.Employee_Name.trim().length > 0 &&
@@ -102,8 +136,7 @@ const PageManagerReports: React.FC = () => {
     colorField: 'Employee_Name',
     radius: 1,
     label: {
-      type: 'inner',
-      offset: '-30%',
+      position: 'inside',
       content: (data: EmployeeHoursReport) =>
         `${data.Employee_Name}\n${data.Total_Hours} ч`,
       style: {
@@ -113,18 +146,10 @@ const PageManagerReports: React.FC = () => {
         fontWeight: 'bold',
       },
     },
-    interactions: [
-      { type: 'element-selected' },
-      { type: 'element-active' },
-    ],
+    interactions: [{ type: 'element-selected' }, { type: 'element-active' }],
     legend: {
       position: 'bottom',
-      itemName: {
-        style: {
-          fill: '#ffffff',
-          fontSize: 12,
-        },
-      },
+      itemName: { style: { fill: '#ffffff', fontSize: 12 } },
     },
     tooltip: {
       fields: ['Employee_Name', 'Total_Hours'],
@@ -137,18 +162,13 @@ const PageManagerReports: React.FC = () => {
   };
 
   const barConfig = {
-    data: statusSummary
-      .filter(item => typeof item.Task_Count === 'number' && !isNaN(item.Task_Count))
-      .map(item => ({
-        Status_Name: item.Status_Name || 'Неизвестно',
-        Task_Count: item.Task_Count ?? 0,
-      })),
+    data: statusSummary.map(item => ({
+      Status_Name: item.Status_Name || 'Неизвестно',
+      Task_Count: item.Task_Count ?? 0,
+    })),
     xField: 'Task_Count',
     yField: 'Status_Name',
-    label: {
-      position: 'right',
-      style: { fill: '#ffffff', fontSize: 12 },
-    },
+    label: { position: 'right', style: { fill: '#ffffff', fontSize: 12 } },
     xAxis: {
       label: { style: { fill: '#ffffff', fontSize: 12 } },
       line: { style: { stroke: '#ffffff' } },
@@ -163,17 +183,10 @@ const PageManagerReports: React.FC = () => {
     theme: themeOverrides,
   };
 
-  const lineData: LineDatum[] = lineOrders
-    .filter(
-      (order): order is LineOrder =>
-        !!order?.Creation_Date &&
-        typeof order.Total_Tasks === 'number' &&
-        !isNaN(order.Total_Tasks)
-    )
-    .map(order => ({
-      date: new Date(order.Creation_Date).toLocaleDateString('ru-RU'),
-      tasks: order.Total_Tasks,
-    }));
+  const lineData: LineDatum[] = lineOrders.map(order => ({
+    date: new Date(order.Creation_Date).toLocaleDateString('ru-RU'),
+    tasks: order.Total_Tasks,
+  }));
 
   return (
     <Layout className="layout">
@@ -182,19 +195,23 @@ const PageManagerReports: React.FC = () => {
         <HeaderManager />
         <Content className="page-content reports-page">
           <Title level={2}>Отчёты менеджера</Title>
+          <Dropdown overlay={exportMenu} placement="bottomRight" arrow>
+            <Button icon={<DownloadOutlined />} style={{ marginBottom: 16 }}>
+              Экспорт отчётов
+            </Button>
+          </Dropdown>
           {loading ? (
             <Spin size="large" />
           ) : (
             <>
               <Card title="Выполненные задач (процент выполнения)" className="card">
-              <Progress
-  type="circle"
-  percent={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
-  format={(percent?: number) => `${percent ?? 0}%`}
-  strokeColor="#5B8FF9"
-  trailColor={document.documentElement.getAttribute('data-theme') === 'light' ? '#d9d9d9' : '#3a3a3a'}
-/>
-
+                <Progress
+                  type="circle"
+                  percent={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
+                  format={(percent?: number) => `${percent ?? 0}%`}
+                  strokeColor="#5B8FF9"
+                  trailColor={document.documentElement.getAttribute('data-theme') === 'light' ? '#d9d9d9' : '#3a3a3a'}
+                />
               </Card>
 
               <Card title="Потраченные часы по сотрудникам" className="card">

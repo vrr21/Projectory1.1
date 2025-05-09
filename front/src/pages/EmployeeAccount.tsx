@@ -20,7 +20,6 @@ import type { UploadChangeParam } from 'antd/es/upload';
 import type { RcFile, UploadFile } from 'antd/es/upload/interface';
 import { useAuth } from '../contexts/useAuth';
 import HeaderEmployee from '../components/HeaderEmployee';
-import Reports from '../components/Reports';
 import '../styles/pages/EmployeeAccount.css';
 
 const { Title, Text } = Typography;
@@ -250,7 +249,6 @@ const EmployeeAccount: React.FC = () => {
                     {
                       key: 'reports',
                       label: 'Мои отчёты',
-                      children: <Reports />,
                     },
                   ]}
                 />

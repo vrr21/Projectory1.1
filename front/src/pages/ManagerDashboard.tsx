@@ -18,7 +18,7 @@ import '../styles/pages/ManagerDashboard.css';
 import '@ant-design/v5-patch-for-react-19';
 import type { UploadFile } from 'antd/es/upload';
 import { Dropdown} from 'antd';  
-
+import { DownloadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 const { darkAlgorithm } = theme;
@@ -115,6 +115,48 @@ const ManagerDashboard: React.FC = () => {
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
  const [editedCommentText, setEditedCommentText] = useState('');
+
+ const handleExport = async (format: string) => {
+  try {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/export/tasks?format=${format}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: '*/*',
+      },
+    });
+
+    if (!res.ok) throw new Error('Ошибка при экспорте');
+
+    const blob = await res.blob();
+
+    // Извлекаем имя файла из заголовков
+    const contentDisposition = res.headers.get('Content-Disposition');
+    let filename = `tasks_export.${format === 'word' ? 'docx' : format}`;
+
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+    }
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      messageApi.error(error.message);
+    } else {
+      messageApi.error('Неизвестная ошибка при экспорте данных');
+    }
+  }
+};
+
 
   const openCommentsModal = async (taskId: number) => {
     try {
@@ -637,17 +679,35 @@ const ManagerDashboard: React.FC = () => {
                         >
                           ➕ Добавить задачу
                         </Button>
+                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+  {/* Кнопка фильтров */}
+  <Dropdown
+    menu={{ items: [] }}
+    open={isDropdownOpen}
+    onOpenChange={setIsDropdownOpen}
+    dropdownRender={() => filterMenu}
+  >
+    <Button className="filters-button" icon={<FilterOutlined />}>
+      Фильтры
+    </Button>
+  </Dropdown>
 
-                        <Dropdown
-  menu={{ items: [] }} // временно пусто, мы заменим это ниже
-  open={isDropdownOpen}
-  onOpenChange={setIsDropdownOpen}
-  dropdownRender={() => filterMenu}
+  {/* Кнопка экспорта */}
+  <Dropdown
+  menu={{
+    onClick: ({ key }) => handleExport(key),
+    items: [
+      { key: 'word', label: 'Экспорт в Word' },
+      { key: 'excel', label: 'Экспорт в Excel' },
+      { key: 'pdf', label: 'Экспорт в PDF' },
+    ],
+  }}
+  placement="bottomRight"
+  arrow
 >
-  <Button className="filters-button" icon={<FilterOutlined />} style={{ marginBottom: 16 }}>
-    Фильтры
-  </Button>
+  <Button icon={<DownloadOutlined />}>Экспорт</Button>
 </Dropdown>
+</div>
 
 
 <DragDropContext onDragEnd={handleDragEnd}>
@@ -730,7 +790,7 @@ const ManagerDashboard: React.FC = () => {
                           ) : (
                             <div className="deadline-box undefined">
                               <ClockCircleOutlined style={{ marginRight: 6 }} />
-                              Дедлайн: не назначено
+                              Без срока
                             </div>
                           )}
                         </div>
@@ -764,6 +824,7 @@ const ManagerDashboard: React.FC = () => {
                       </>
                     ),
                   }
+                  
                 ]}
               />
               {/* Модальное окно редактирования или создания задачи */}
