@@ -25,6 +25,7 @@ const exportRoutes = require('./routes/export.routes');
 const exportTeamsRoutes = require('./routes/exportTeams.routes');
 const exportTasksRoutes = require('./routes/exportTasks.routes');
 const exportReportsRoutes = require('./routes/exportReports.routes');
+const roleRoutes = require('./routes/roles');
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -60,8 +61,9 @@ app.use('/api/export', exportRoutes);         // Стандартные эксп
 app.use('/api/export', exportTeamsRoutes);    // Экспорт команд
 app.use('/api/export', exportTasksRoutes);    // Экспорт задач
 app.use('/api/export', exportReportsRoutes);  // Экспорт отчётов
+app.use('/api/roles', roleRoutes);
 
-// ✅ Проверка запуска
+
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 // ✅ Запуск сервера

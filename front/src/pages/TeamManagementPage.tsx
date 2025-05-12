@@ -12,11 +12,11 @@ import {
   App as AntdApp,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/icons';
+
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
-import { DownloadOutlined } from '@ant-design/icons';
 import { Dropdown } from 'antd';
 
 const { darkAlgorithm } = theme;
@@ -41,14 +41,7 @@ interface Team {
   members: TeamMember[];
 }
 
-const roleOptions = [
-  'Менеджер', 'Сотрудник', 'Scrum Master', 'Product Owner', 'Разработчик',
-  'Тестировщик', 'Дизайнер UX/UI', 'Аналитик', 'DevOps-инженер', 'Технический писатель',
-  'Менеджер (Администратор)', 'Тимлид', 'Бизнес-аналитик', 'Архитектор ПО',
-  'Frontend-разработчик', 'Backend-разработчик', 'Fullstack-разработчик',
-  'Системный администратор', 'Специалист по безопасности', 'Маркетолог',
-  'HR-менеджер', 'Координатор проектов'
-].map(role => ({ label: role, value: role }));
+
 
 const TeamManagementPage: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -59,29 +52,52 @@ const TeamManagementPage: React.FC = () => {
   const [teamForm] = Form.useForm();
   const [memberForm] = Form.useForm();
   const [messageApi, contextHolder] = message.useMessage();
+  const [roles, setRoles] = useState<{ label: string; value: string }[]>([]);
+  const [showArchive, setShowArchive] = useState(false);
+  const [archivedTeams, setArchivedTeams] = useState<Team[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/roles`);
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setRoles(data.map((role: string) => ({ label: role, value: role })));
+    } catch (err) {
+      console.error(err);
+      messageApi.error('Ошибка при загрузке ролей');
+    }
+  }, [messageApi]);
+  
   const fetchTeams = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/teams`);
       if (!res.ok) throw new Error(await res.text());
       const data: Team[] = await res.json();
-      setTeams(data);
+      const active = data.filter(t => t.members.length > 0);  // или по другому признаку активности
+      const archived = data.filter(t => t.members.length === 0);  // или другой признак архивации
+  
+      setTeams(active);
+      setArchivedTeams(archived);
     } catch (err) {
       console.error(err);
       messageApi.error('Ошибка при загрузке команд');
     }
   }, [messageApi]);
+  
 
   const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/api/employees`);
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      const formattedUsers: User[] = data.map((u: { ID_User: number; FullName: string; Email?: string }) => ({
+      const formattedUsers: User[] = data.map((u: { ID_User: number; First_Name: string; Last_Name: string; Email?: string }) => ({
         id: u.ID_User,
-        fullName: u.FullName,
+        fullName: `${u.First_Name} ${u.Last_Name}`,
         email: u.Email ?? 'no-email@example.com',
       }));
+      
       setUsers(formattedUsers);
     } catch (err) {
       console.error(err);
@@ -92,7 +108,9 @@ const TeamManagementPage: React.FC = () => {
   useEffect(() => {
     fetchTeams();
     fetchUsers();
-  }, [fetchTeams, fetchUsers]);
+    fetchRoles();
+  }, [fetchTeams, fetchUsers, fetchRoles]);
+  
 
   const handleExport = async (format: string) => {
     try {
@@ -158,31 +176,33 @@ const TeamManagementPage: React.FC = () => {
 
   const handleAddMember = async (values: { userId: number; role: string }) => {
     if (!currentTeamId) return;
-
-    const user = users.find(u => u.id === values.userId);
-    if (!user) {
+  
+    const selectedUser = users.find(user => user.id === values.userId);
+    if (!selectedUser) {
       messageApi.error('Пользователь не найден');
       return;
     }
-
+  
+    const body = {
+      teamId: currentTeamId,
+      fullName: selectedUser.fullName,
+      email: selectedUser.email,
+      role: values.role,
+    };
+  
     try {
       const res = await fetch(`${API_URL}/api/teams/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teamId: currentTeamId,
-          fullName: user.fullName,
-          email: user.email,
-          role: values.role,
-        }),
+        body: JSON.stringify(body),
       });
-
-      if (res.status === 400) {
-        const { message: errMsg } = await res.json();
-        return messageApi.error(errMsg || 'Ошибка валидации участника');
+  
+      const result = await res.json();
+      if (!res.ok) {
+        messageApi.error(result.message || 'Ошибка при добавлении участника');
+        return;
       }
-
-      if (!res.ok) throw new Error(await res.text());
+  
       memberForm.resetFields();
       fetchTeams();
       messageApi.success('Участник добавлен');
@@ -191,6 +211,7 @@ const TeamManagementPage: React.FC = () => {
       messageApi.error('Ошибка при добавлении участника');
     }
   };
+  
 
   const handleDeleteMember = async (teamId: number, memberId: number) => {
     try {
@@ -255,31 +276,66 @@ const TeamManagementPage: React.FC = () => {
     {
       title: 'Действия',
       key: 'actions',
-      render: (_, team) => (
-        <>
-          <Button
-            type="link"
-            onClick={() => {
-              setCurrentTeamId(team.ID_Team);
-              setIsAddMembersModalVisible(true);
-            }}
-            icon={<EditOutlined />}
-          >
-            Добавить участников
-          </Button>
-          <Button
-            type="link"
-            danger
-            onClick={() => handleDeleteTeam(team.ID_Team)}
-            icon={<DeleteOutlined />}
-          >
-            Удалить команду
-          </Button>
-        </>
-      ),
+      render: (_, team) => {
+        if (showArchive) {
+          return (
+            <Button
+              type="link"
+              onClick={async () => {
+                await handleRestoreTeam(team.ID_Team);
+              }}
+            >
+              Восстановить команду
+            </Button>
+          );
+        }
+    
+        return (
+          <>
+            <Button
+              type="link"
+              onClick={() => {
+                setCurrentTeamId(team.ID_Team);
+                setIsAddMembersModalVisible(true);
+              }}
+              icon={<EditOutlined />}
+            >
+              Добавить участников
+            </Button>
+            <Button
+              type="link"
+              danger
+              onClick={() => handleDeleteTeam(team.ID_Team)}
+              icon={<DeleteOutlined />}
+            >
+              Удалить команду
+            </Button>
+          </>
+        );
+      },
     },
   ];
 
+  const handleRestoreTeam = async (teamId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/teams/${teamId}/restore`, {
+        method: 'PATCH',
+      });
+      if (!res.ok) throw new Error(await res.text());
+      messageApi.success('Команда восстановлена');
+      fetchTeams();
+    } catch (err) {
+      console.error(err);
+      messageApi.error('Ошибка при восстановлении команды');
+    }
+  };
+ 
+  const filteredTeams = (showArchive ? archivedTeams : teams).filter(team => {
+    const combinedFields = `${team.Team_Name} ${team.members.map(m => `${m.fullName} ${m.role} ${m.email}`).join(' ')}`.toLowerCase();
+    return combinedFields.includes(searchTerm.toLowerCase());
+  });
+  
+  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <AntdApp>
@@ -292,31 +348,55 @@ const TeamManagementPage: React.FC = () => {
 
               <h1>Управление командами</h1>
               <div className="button-wrapper" style={{ display: 'flex', justifyContent: 'space-between' }}>
-
   <Button
     type="primary"
     onClick={() => setIsTeamModalVisible(true)}
   >
     Создать команду
   </Button>
-  <Dropdown
-    menu={{
-      onClick: ({ key }) => handleExport(key),
-      items: [
-        { key: 'word', label: 'Экспорт в Word' },
-        { key: 'excel', label: 'Экспорт в Excel' },
-        { key: 'pdf', label: 'Экспорт в PDF' },
-      ],
-    }}
-    placement="bottomRight"
-    arrow
-  >
-    <Button icon={<DownloadOutlined />}>Экспорт</Button>
-  </Dropdown>
+  <div style={{ display: 'flex', gap: '8px' }}>
+    <Button
+      onClick={() => setShowArchive(!showArchive)}
+      icon={<InboxOutlined />}
+    >
+      {showArchive ? 'Назад к активным командам' : 'Архив команд'}
+    </Button>
+    <Dropdown
+      menu={{
+        onClick: ({ key }) => handleExport(key),
+        items: [
+          { key: 'word', label: 'Экспорт в Word' },
+          { key: 'excel', label: 'Экспорт в Excel' },
+          { key: 'pdf', label: 'Экспорт в PDF' },
+        ],
+      }}
+      placement="bottomRight"
+      arrow
+    >
+      <Button icon={<DownloadOutlined />}>Экспорт</Button>
+    </Dropdown>
+  </div>
 </div>
 
-              <Table
-                dataSource={teams}
+
+
+<h2 style={{ marginBottom: '8px', fontWeight: '400' }}>
+  {showArchive ? 'Удалённые команды' : 'Список команд'}
+</h2>
+
+<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+  <Input.Search
+    placeholder="Поиск по всем данным..."
+    allowClear
+    onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+    style={{ width: 300 }}
+  />
+</div>
+
+<Table
+  dataSource={filteredTeams}
+
+
                 columns={columns}
                 rowKey="ID_Team"
                 style={{ marginTop: 20 }}
@@ -351,37 +431,39 @@ const TeamManagementPage: React.FC = () => {
                 footer={null}
               >
                 <Form form={memberForm} layout="vertical" onFinish={handleAddMember}>
-                  <Form.Item
-                    name="userId"
-                    label="Сотрудник"
-                    rules={[{ required: true, message: 'Выберите сотрудника' }]}
-                  >
-                    <Select
-                      showSearch
-                      placeholder="Выберите сотрудника"
-                      optionFilterProp="children"
-                      allowClear
-                    >
-                      {users.map(user => (
-                        <Select.Option key={user.id} value={user.id}>
-                          {user.fullName} — {user.email}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+                <Form.Item
+  name="userId"
+  label="Сотрудник"
+  rules={[{ required: true, message: 'Выберите сотрудника' }]}
+>
+<Select
+  showSearch
+  placeholder="Выберите сотрудника"
+  optionFilterProp="children"
+  allowClear
+>
+  {users.map(user => (
+    <Select.Option key={user.id} value={user.id}>
+  {user.fullName} — {user.email}
+</Select.Option>
 
-                  <Form.Item
-                    name="role"
-                    label="Должность"
-                    rules={[{ required: true, message: 'Выберите должность' }]}
-                  >
-                    <Select
-                      options={roleOptions}
-                      showSearch
-                      optionFilterProp="label"
-                      allowClear
-                    />
-                  </Form.Item>
+  ))}
+</Select>
+
+</Form.Item>
+
+<Form.Item
+  name="role"
+  label="Должность"
+  rules={[{ required: true, message: 'Выберите должность' }]}
+>
+  <Select
+    options={roles}
+    showSearch
+    optionFilterProp="label"
+    allowClear
+  />
+</Form.Item>
 
                   <Form.Item>
                     <Button type="dashed" htmlType="submit" block>

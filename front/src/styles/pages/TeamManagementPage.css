@@ -57,3 +57,24 @@
 .team-management-page .ant-table-wrapper {
   margin-top: 0 !important;
 }
+
+
+/* Снижаем расстояния между блоками управления */
+.team-management-page .button-wrapper {
+  margin-bottom: 0rem !important;
+}
+
+/* Уменьшаем отступ под заголовком "Список команд" */
+.team-management-page h2 {
+  margin-bottom: 0rem !important;
+}
+
+/* Снижаем отступ перед поисковой строкой */
+.team-management-page .ant-input-search {
+  margin-bottom: 0rem !important;
+}
+
+/* Уменьшаем отступ справа между кнопками */
+.team-management-page .button-wrapper > div {
+  gap: 4px !important;
+}

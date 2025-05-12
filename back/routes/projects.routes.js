@@ -71,28 +71,29 @@ router.post('/', async (req, res) => {
 
 // ✏️ Обновить проект
 router.put('/:id', async (req, res) => {
+  console.log('Тело запроса на обновление проекта:', req.body);  // Лог для отладки
+
   const { id } = req.params;
   const { Order_Name, Type_Name, Creation_Date, End_Date, Status, ID_Team } = req.body;
+
+  if (!Order_Name || !Type_Name || !Creation_Date || !Status || !ID_Team) {
+    return res.status(400).json({ message: 'Не все обязательные поля заполнены' });
+  }
+
   try {
     await poolConnect;
 
-    // Проверяем, существует ли уже такой тип проекта
     let projectTypeResult = await pool.request()
       .input('typeName', sql.NVarChar, Type_Name)
       .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @typeName');
 
-    let ID_ProjectType;
-    if (projectTypeResult.recordset.length > 0) {
-      ID_ProjectType = projectTypeResult.recordset[0].ID_ProjectType;
-    } else {
-      // Если типа проекта нет, создаем новый
-      const insertResult = await pool.request()
-        .input('typeName', sql.NVarChar, Type_Name)
-        .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)');
-      ID_ProjectType = insertResult.recordset[0].ID_ProjectType;
-    }
+    let ID_ProjectType = projectTypeResult.recordset.length > 0
+      ? projectTypeResult.recordset[0].ID_ProjectType
+      : (await pool.request()
+          .input('typeName', sql.NVarChar, Type_Name)
+          .query('INSERT INTO ProjectTypes (Type_Name) OUTPUT INSERTED.ID_ProjectType VALUES (@typeName)')
+        ).recordset[0].ID_ProjectType;
 
-    // Обновляем данные о проекте
     await pool.request()
       .input('ID_Order', sql.Int, id)
       .input('Order_Name', sql.NVarChar, Order_Name)
@@ -150,6 +151,36 @@ router.get('/search', async (req, res) => {
   } catch (error) {
     console.error('Ошибка поиска проектов:', error);
     res.status(500).json({ message: 'Ошибка поиска проектов' });
+  }
+});
+
+// ✅ Закрыть проект
+router.patch('/:id/close', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await poolConnect;
+    await pool.request()
+      .input('ID_Order', sql.Int, id)
+      .query("UPDATE Orders SET Status = 'Завершён' WHERE ID_Order = @ID_Order");
+    res.status(200).json({ message: 'Проект закрыт' });
+  } catch (error) {
+    console.error('Ошибка при закрытии проекта:', error);
+    res.status(500).json({ message: 'Ошибка сервера при закрытии проекта' });
+  }
+});
+
+// ✅ Восстановить проект
+router.patch('/:id/restore', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await poolConnect;
+    await pool.request()
+      .input('ID_Order', sql.Int, id)
+      .query("UPDATE Orders SET Status = 'В процессе' WHERE ID_Order = @ID_Order");
+    res.status(200).json({ message: 'Проект восстановлен' });
+  } catch (error) {
+    console.error('Ошибка при восстановлении проекта:', error);
+    res.status(500).json({ message: 'Ошибка сервера при восстановлении проекта' });
   }
 });
 

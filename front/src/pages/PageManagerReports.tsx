@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Card, Spin, Typography, Progress, Button, Dropdown, Menu } from 'antd';
+import { Layout, Card, Spin, Typography, Progress, Button, Dropdown, MenuProps } from 'antd';
 import { Pie, Bar } from '@ant-design/plots';
 import { DownloadOutlined } from '@ant-design/icons';
 import HeaderManager from '../components/HeaderManager';
@@ -27,7 +27,7 @@ interface TaskStatusSummary {
 }
 
 interface LineOrder {
-  Creation_Date: string;
+  TaskDate: string;
   Total_Tasks: number;
 }
 
@@ -55,9 +55,18 @@ const PageManagerReports: React.FC = () => {
           lineDataRes.json(),
         ]);
 
-        setHours(Array.isArray(hoursData) ? hoursData : []);
-        setStatusSummary(Array.isArray(statusData) ? statusData : []);
-        setLineOrders(Array.isArray(lineDataJson) ? lineDataJson : []);
+        setHours(Array.isArray(hoursData)
+          ? hoursData.filter(h => typeof h.Employee_Name === 'string' && h.Employee_Name.trim() !== '' && typeof h.Total_Hours === 'number' && h.Total_Hours > 0)
+          : []);
+
+        setStatusSummary(Array.isArray(statusData)
+          ? statusData.filter(s => typeof s.Status_Name === 'string' && s.Status_Name.trim() !== '' && typeof s.Task_Count === 'number' && s.Task_Count > 0)
+          : []);
+
+        setLineOrders(Array.isArray(lineDataJson)
+          ? lineDataJson.filter(o => typeof o.TaskDate === 'string' && o.TaskDate.trim() !== '' && typeof o.Total_Tasks === 'number' && o.Total_Tasks > 0)
+          : []);
+
       } catch (error) {
         console.error('Ошибка при загрузке данных', error);
       } finally {
@@ -71,9 +80,7 @@ const PageManagerReports: React.FC = () => {
   const handleExportReports = async (format: 'word' | 'excel' | 'pdf') => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API_URL}/api/export/reports?format=${format}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API_URL}/api/export/reports?format=${format}`, { headers: { Authorization: `Bearer ${token}` } });
 
       if (!res.ok) throw new Error('Ошибка при экспорте');
 
@@ -90,19 +97,17 @@ const PageManagerReports: React.FC = () => {
     }
   };
 
-  const exportMenu = (
-    <Menu
-      onClick={({ key }) => handleExportReports(key as 'word' | 'excel' | 'pdf')}
-      items={[
-        { key: 'word', label: 'Экспорт в Word (.docx)' },
-        { key: 'excel', label: 'Экспорт в Excel (.xlsx)' },
-        { key: 'pdf', label: 'Экспорт в PDF (.pdf)' },
-      ]}
-    />
-  );
+  const exportMenu: MenuProps = {
+    onClick: ({ key }) => handleExportReports(key as 'word' | 'excel' | 'pdf'),
+    items: [
+      { key: 'word', label: 'Экспорт в Word (.docx)' },
+      { key: 'excel', label: 'Экспорт в Excel (.xlsx)' },
+      { key: 'pdf', label: 'Экспорт в PDF (.pdf)' },
+    ],
+  };
 
-  const totalTasks = lineOrders.reduce((sum, o) => sum + (o.Total_Tasks ?? 0), 0);
-  const completedTasks = Math.floor(totalTasks * 0.6); // Placeholder
+  const totalTasks = lineOrders.reduce((sum, o) => sum + o.Total_Tasks, 0);
+  const completedTasks = Math.floor(totalTasks * 0.6);
 
   const themeOverrides = {
     styleSheet: {
@@ -120,14 +125,11 @@ const PageManagerReports: React.FC = () => {
     },
   };
 
-  const pieData = hours.filter(
-    (item): item is EmployeeHoursReport =>
-      typeof item.Employee_Name === 'string' &&
-      item.Employee_Name.trim().length > 0 &&
-      typeof item.Total_Hours === 'number' &&
-      !isNaN(item.Total_Hours) &&
-      item.Total_Hours > 0
-  );
+  const pieData = hours;
+  const barData = statusSummary.map(s => ({ Status_Name: s.Status_Name, Task_Count: s.Task_Count }));
+  const lineData: LineDatum[] = lineOrders
+    .filter(o => o.TaskDate && o.Total_Tasks > 0)
+    .map(o => ({ date: new Date(o.TaskDate).toLocaleDateString('ru-RU'), tasks: o.Total_Tasks }));
 
   const pieConfig = {
     appendPadding: 10,
@@ -137,35 +139,23 @@ const PageManagerReports: React.FC = () => {
     radius: 1,
     label: {
       position: 'inside',
-      content: (data: EmployeeHoursReport) =>
-        `${data.Employee_Name}\n${data.Total_Hours} ч`,
-      style: {
-        fill: '#ffffff',
-        fontSize: 12,
-        textAlign: 'center',
-        fontWeight: 'bold',
-      },
+      content: (data: EmployeeHoursReport) => `${data.Employee_Name}\n${data.Total_Hours} ч`,
+      style: { fill: '#ffffff', fontSize: 12, textAlign: 'center', fontWeight: 'bold' },
     },
     interactions: [{ type: 'element-selected' }, { type: 'element-active' }],
-    legend: {
-      position: 'bottom',
-      itemName: { style: { fill: '#ffffff', fontSize: 12 } },
-    },
+    legend: { position: 'bottom', itemName: { style: { fill: '#ffffff', fontSize: 12 } } },
     tooltip: {
       fields: ['Employee_Name', 'Total_Hours'],
       formatter: (datum: EmployeeHoursReport) => ({
-        name: datum.Employee_Name,
-        value: `${datum.Total_Hours} ч`,
+        name: datum.Employee_Name || 'Неизвестно',
+        value: datum.Total_Hours != null ? `${datum.Total_Hours} ч` : 'Нет данных',
       }),
     },
     theme: themeOverrides,
   };
 
   const barConfig = {
-    data: statusSummary.map(item => ({
-      Status_Name: item.Status_Name || 'Неизвестно',
-      Task_Count: item.Task_Count ?? 0,
-    })),
+    data: barData,
     xField: 'Task_Count',
     yField: 'Status_Name',
     label: { position: 'right', style: { fill: '#ffffff', fontSize: 12 } },
@@ -183,11 +173,6 @@ const PageManagerReports: React.FC = () => {
     theme: themeOverrides,
   };
 
-  const lineData: LineDatum[] = lineOrders.map(order => ({
-    date: new Date(order.Creation_Date).toLocaleDateString('ru-RU'),
-    tasks: order.Total_Tasks,
-  }));
-
   return (
     <Layout className="layout">
       <SidebarManager />
@@ -195,7 +180,7 @@ const PageManagerReports: React.FC = () => {
         <HeaderManager />
         <Content className="page-content reports-page">
           <Title level={2}>Отчёты менеджера</Title>
-          <Dropdown overlay={exportMenu} placement="bottomRight" arrow>
+          <Dropdown menu={exportMenu} placement="bottomRight" arrow>
             <Button icon={<DownloadOutlined />} style={{ marginBottom: 16 }}>
               Экспорт отчётов
             </Button>
@@ -215,19 +200,15 @@ const PageManagerReports: React.FC = () => {
               </Card>
 
               <Card title="Потраченные часы по сотрудникам" className="card">
-                <Pie {...pieConfig} />
+                {pieData.length > 0 ? <Pie {...pieConfig} /> : <Typography.Text>Нет данных для отображения.</Typography.Text>}
               </Card>
 
               <Card title="Задачи по статусам (гистограмма)" className="card">
-                <Bar {...barConfig} />
+                {barData.length > 0 ? <Bar {...barConfig} /> : <Typography.Text>Нет данных для отображения.</Typography.Text>}
               </Card>
 
-              <Card title="Число задач по дате создания (график)" className="card">
-                {lineData.length > 0 ? (
-                  <LineChart data={lineData} />
-                ) : (
-                  <Typography.Text>Нет данных для отображения графика.</Typography.Text>
-                )}
+              <Card title="Число задач по дате дедлайна (график)" className="card">
+                {lineData.length > 0 ? <LineChart data={lineData} /> : <Typography.Text>Нет данных для отображения графика.</Typography.Text>}
               </Card>
             </>
           )}

@@ -6,7 +6,6 @@ import {
   Modal,
   Form,
   Input,
-  Select,
   message,
   theme,
   AutoComplete,
@@ -14,18 +13,13 @@ import {
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
-import {
-  EditOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-} from '@ant-design/icons';
+import { EditOutlined, DownloadOutlined, InboxOutlined } from '@ant-design/icons';
 
 import Header from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/ProjectManagementPage.css';
 
 const { darkAlgorithm } = theme;
-const { Option } = Select;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Project {
@@ -47,7 +41,6 @@ interface Team {
 interface FormValues {
   Order_Name: string;
   Type_Name: string;
-  Creation_Date: string;
   End_Date: string;
   Status: string;
   Team_Name: string;
@@ -60,7 +53,12 @@ const ProjectManagementPage: React.FC = () => {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [form] = Form.useForm<FormValues>();
   const [messageApi, contextHolder] = message.useMessage();
-
+  const [showArchive, setShowArchive] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [confirmCloseVisible, setConfirmCloseVisible] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
+  
   const fetchTeams = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch(`${API_URL}/api/teams`);
@@ -86,6 +84,18 @@ const ProjectManagementPage: React.FC = () => {
         };
       });
 
+      for (const proj of data) {
+        const isExpired =
+          proj.End_Date &&
+          dayjs(proj.End_Date).isBefore(dayjs()) &&
+          proj.Status !== 'Завершён';
+        if (isExpired) {
+          await fetch(`${API_URL}/api/projects/${proj.ID_Order}/close`, {
+            method: 'PATCH',
+          });
+        }
+      }
+
       setProjects(projectsWithTeamNames);
     } catch (error: unknown) {
       if (error instanceof Error) messageApi.error(error.message);
@@ -102,10 +112,10 @@ const ProjectManagementPage: React.FC = () => {
     fetchProjects();
   }, [fetchProjects]);
 
-  const showModal = (project?: Project): void => {
+  const showModal = (project?: Project, restoring: boolean = false): void => {
     setEditingProject(project || null);
+    setIsRestoring(restoring);
     setIsModalVisible(true);
-
     if (project) {
       form.setFieldsValue({
         ...project,
@@ -115,7 +125,7 @@ const ProjectManagementPage: React.FC = () => {
       form.resetFields();
     }
   };
-
+  
   const handleCancel = (): void => {
     setIsModalVisible(false);
     setEditingProject(null);
@@ -144,27 +154,27 @@ const ProjectManagementPage: React.FC = () => {
   const handleFinish = async (values: FormValues): Promise<void> => {
     try {
       const teamId = await getOrCreateTeam(values.Team_Name);
-
-      const payload: Omit<Project, 'ID_Order' | 'Team_Name'> = {
+  
+      const payload = {
         Order_Name: values.Order_Name,
         Type_Name: values.Type_Name,
-        Creation_Date: values.Creation_Date,
+        Creation_Date: editingProject?.Creation_Date ?? dayjs().format('YYYY-MM-DD'), // Важно!
         End_Date: values.End_Date,
-        Status: values.Status,
+        Status: isRestoring ? 'В процессе' : 'Новый',
         ID_Team: teamId,
       };
-
+  
       const url = editingProject
         ? `${API_URL}/api/projects/${editingProject.ID_Order}`
         : `${API_URL}/api/projects`;
       const method = editingProject ? 'PUT' : 'POST';
-
+  
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-
+  
       if (!response.ok) throw new Error('Ошибка при сохранении проекта');
       messageApi.success(editingProject ? 'Проект обновлён' : 'Проект создан');
       fetchProjects();
@@ -173,34 +183,43 @@ const ProjectManagementPage: React.FC = () => {
       if (error instanceof Error) messageApi.error(error.message);
     }
   };
-
-  const handleDelete = async (id: number): Promise<void> => {
+  
+  const handleConfirmClose = (id: number): void => {
+    setSelectedProjectId(id);
+    setConfirmCloseVisible(true);
+  };
+  
+  const handleCloseConfirmed = async (): Promise<void> => {
+    if (!selectedProjectId) return;
+  
     try {
-      const response = await fetch(`${API_URL}/api/projects/${id}`, {
-        method: 'DELETE',
+      const response = await fetch(`${API_URL}/api/projects/${selectedProjectId}/close`, {
+        method: 'PATCH',
       });
-      if (!response.ok) throw new Error('Ошибка при удалении проекта');
-      messageApi.success('Проект удалён');
+      if (!response.ok) throw new Error('Ошибка при закрытии проекта');
+      messageApi.success('Проект закрыт');
       fetchProjects();
     } catch (error: unknown) {
       if (error instanceof Error) messageApi.error(error.message);
+    } finally {
+      setConfirmCloseVisible(false);
+      setSelectedProjectId(null);
     }
   };
-
+  
   const handleExport = async (format: string): Promise<void> => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_URL}/api/export/projects?format=${format}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-  
-      // Новая проверка ошибок с логированием текста ошибки
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error('Ошибка экспорта:', errorText);
         throw new Error(errorText || 'Ошибка при экспорте');
       }
-  
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -209,9 +228,9 @@ const ProjectManagementPage: React.FC = () => {
       if (format === 'excel') extension = 'xlsx';
       else if (format === 'word') extension = 'docx';
       else if (format === 'pdf') extension = 'pdf';
-      
+
       link.setAttribute('download', `projects_export.${extension}`);
-      
+
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -224,52 +243,92 @@ const ProjectManagementPage: React.FC = () => {
       }
     }
   };
-  
 
+  // Фильтр проектов по поисковому запросу и состоянию архива
+const filteredProjects = projects.filter((project) => {
+  const combinedFields = `${project.Order_Name} ${project.Type_Name} ${project.Creation_Date} ${project.End_Date} ${project.Status} ${project.Team_Name || ''}`.toLowerCase();
+  const matchesSearch = combinedFields.includes(searchTerm.toLowerCase());
+  const matchesArchiveFilter = showArchive ? project.Status === 'Завершён' : project.Status !== 'Завершён';
+  return matchesSearch && matchesArchiveFilter;
+});
+
+  
   const columns: ColumnsType<Project> = [
-    { title: 'Название проекта', dataIndex: 'Order_Name', key: 'Order_Name' },
-    { title: 'Тип проекта', dataIndex: 'Type_Name', key: 'Type_Name' },
+    {
+      title: 'Название проекта',
+      dataIndex: 'Order_Name',
+      key: 'Order_Name',
+      sorter: (a, b) => a.Order_Name.localeCompare(b.Order_Name),
+    },
+    {
+      title: 'Тип проекта',
+      dataIndex: 'Type_Name',
+      key: 'Type_Name',
+      sorter: (a, b) => a.Type_Name.localeCompare(b.Type_Name),
+    },
     {
       title: 'Дата создания',
       dataIndex: 'Creation_Date',
       key: 'Creation_Date',
       render: (date: string): string => dayjs(date).format('YYYY-MM-DD'),
+      sorter: (a, b) => dayjs(a.Creation_Date).unix() - dayjs(b.Creation_Date).unix(),
     },
     {
       title: 'Дата окончания',
       dataIndex: 'End_Date',
       key: 'End_Date',
-      render: (date: string): string =>
-        date ? dayjs(date).format('YYYY-MM-DD') : '',
+      render: (date: string): string => date ? dayjs(date).format('YYYY-MM-DD') : '',
+      sorter: (a, b) => dayjs(a.End_Date).unix() - dayjs(b.End_Date).unix(),
     },
-    { title: 'Статус', dataIndex: 'Status', key: 'Status' },
+    {
+      title: 'Статус',
+      dataIndex: 'Status',
+      key: 'Status',
+      sorter: (a, b) => a.Status.localeCompare(b.Status),
+    },
     {
       title: 'Команда',
       dataIndex: 'Team_Name',
       key: 'Team_Name',
+      sorter: (a, b) => (a.Team_Name || '').localeCompare(b.Team_Name || ''),
     },
     {
       title: 'Действия',
       key: 'actions',
-      render: (_text, record) => (
-        <>
-          <Button
-            type="link"
-            onClick={() => showModal(record)}
-            icon={<EditOutlined />}
-          >
-            Редактировать
-          </Button>
-          <Button
-            type="link"
-            danger
-            onClick={() => handleDelete(record.ID_Order)}
-            icon={<DeleteOutlined />}
-          >
-            Удалить
-          </Button>
-        </>
-      ),
+      render: (_text, record) => {
+        if (record.Status === 'Завершён') {
+          return (
+            <Button
+              type="link"
+              onClick={() => showModal({ ...record, Status: 'В процессе' }, true)}
+              icon={<EditOutlined />}
+            >
+              Восстановить
+            </Button>
+          );
+        }
+
+        return (
+          <>
+            <Button
+              type="link"
+              onClick={() => showModal(record)}
+              icon={<EditOutlined />}
+            >
+              Редактировать
+            </Button>
+            <Button
+  type="link"
+  danger
+  onClick={() => handleConfirmClose(record.ID_Order)}
+  icon={<InboxOutlined />}
+>
+  Закрыть проект
+</Button>
+
+          </>
+        );
+      },
     },
   ];
 
@@ -287,7 +346,12 @@ const ProjectManagementPage: React.FC = () => {
                 <Button type="primary" onClick={() => showModal()}>
                   Добавить проект
                 </Button>
-                <Dropdown
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Button onClick={() => setShowArchive(!showArchive)} icon={<InboxOutlined />}>
+                    {showArchive ? 'Назад к активным' : 'Архив проектов'}
+                  </Button>
+
+                  <Dropdown
   menu={{
     onClick: ({ key }) => handleExport(key),
     items: [
@@ -302,8 +366,29 @@ const ProjectManagementPage: React.FC = () => {
   <Button icon={<DownloadOutlined />}>Экспорт</Button>
 </Dropdown>
 
+                </div>
               </div>
-              <Table dataSource={projects} columns={columns} rowKey="ID_Order" />
+
+              <h2 style={{ marginBottom: '8px', fontWeight: '400' }}>
+  {showArchive ? 'Закрытые проекты' : 'Текущие проекты'}
+</h2>
+
+<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+  <Input.Search
+    placeholder="Поиск по всем данным..."
+    allowClear
+    onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+    style={{ width: 300 }}
+  />
+</div>
+
+<Table
+  dataSource={filteredProjects}
+  columns={columns}
+  rowKey="ID_Order"
+/>
+
+
               <Modal
                 title={editingProject ? 'Редактировать проект' : 'Создать проект'}
                 open={isModalVisible}
@@ -314,58 +399,71 @@ const ProjectManagementPage: React.FC = () => {
                   <Form.Item
                     name="Order_Name"
                     label="Название проекта"
-                    rules={[{ required: true }]}
+                    rules={[{ required: true, message: 'Введите название проекта' }]}
                   >
                     <Input />
                   </Form.Item>
+
                   <Form.Item
                     name="Type_Name"
                     label="Тип проекта"
-                    rules={[{ required: true }]}
+                    rules={[{ required: true, message: 'Введите тип проекта' }]}
                   >
                     <Input />
                   </Form.Item>
+
+
                   <Form.Item
-                    name="Creation_Date"
-                    label="Дата создания"
-                    rules={[{ required: true }]}
-                  >
-                    <Input type="date" />
-                  </Form.Item>
-                  <Form.Item
-                    name="End_Date"
-                    label="Дата окончания"
-                    rules={[{ required: true }]}
-                  >
-                    <Input type="date" />
-                  </Form.Item>
-                  <Form.Item
-                    name="Status"
-                    label="Статус"
-                    rules={[{ required: true }]}
-                  >
-                    <Select placeholder="Выберите статус проекта">
-                      <Option value="Новый">Новый</Option>
-                      <Option value="В процессе">В процессе</Option>
-                      <Option value="Завершён">Завершён</Option>
-                    </Select>
-                  </Form.Item>
+  name="End_Date"
+  label="Дата окончания"
+  rules={[
+    { required: true, message: 'Пожалуйста, выберите дату окончания' },
+    {
+      validator: async (_, value) => {
+        if (!value) return Promise.reject(new Error('Пожалуйста, выберите дату окончания'));
+
+        const selectedDate = dayjs(value).startOf('day');
+        const today = dayjs().startOf('day');
+        const minDate = today.add(5, 'day');
+
+        if (selectedDate.isBefore(today)) {
+          return Promise.reject(new Error('Нельзя выбрать прошедшую дату'));
+        }
+
+        if (selectedDate.isBefore(minDate)) {
+          return Promise.reject(new Error('Дата окончания должна быть минимум через 5 дней'));
+        }
+
+        return Promise.resolve();
+      },
+    },
+  ]}
+>
+  <Input type="date" />
+</Form.Item>
+
                   <Form.Item
                     name="Team_Name"
                     label="Команда"
-                    rules={[{ required: true }]}
+                    rules={[{ required: true, message: 'Выберите или введите команду' }]}
                   >
-                    <AutoComplete
-                      placeholder="Введите или выберите команду"
-                      options={teams.map((team) => ({
-                        value: team.Team_Name,
-                      }))}
-                      filterOption={(inputValue, option) =>
-                        (option?.value ?? '')
-                          .toLowerCase()
-                          .includes(inputValue.toLowerCase())
-                      }
-                    />
+<AutoComplete
+  style={{ width: 300, marginBottom: 16 }}
+  options={projects
+    .filter((project) => {
+      const combinedFields = `${project.Order_Name} ${project.Type_Name} ${project.Creation_Date} ${project.End_Date} ${project.Status} ${project.Team_Name || ''}`.toLowerCase();
+      return combinedFields.includes(searchTerm.toLowerCase());
+    })
+    .map((project) => ({
+      value: project.Order_Name,
+      label: `${project.Order_Name} | ${project.Type_Name} | ${project.Status}`,
+    }))}
+  placeholder="Поиск по всем данным..."
+  onSearch={(value) => setSearchTerm(value)}
+  onSelect={(value) => setSearchTerm(value)}
+  allowClear
+/>
+
                   </Form.Item>
                 </Form>
               </Modal>
@@ -373,8 +471,20 @@ const ProjectManagementPage: React.FC = () => {
           </main>
         </div>
       </div>
+      <Modal
+  title="Подтверждение"
+  open={confirmCloseVisible}
+  onOk={handleCloseConfirmed}
+  onCancel={() => setConfirmCloseVisible(false)}
+  okText="Да, закрыть"
+  cancelText="Отмена"
+>
+  <p>Вы уверены, что хотите закрыть этот проект?</p>
+</Modal>
+
     </ConfigProvider>
   );
 };
 
 export default ProjectManagementPage;
+

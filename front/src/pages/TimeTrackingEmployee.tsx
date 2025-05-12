@@ -439,7 +439,8 @@ const TimeTrackingEmployee: React.FC = () => {
     <DatePicker style={{ width: '100%' }} disabledDate={(current) => current && current > dayjs().endOf('day')} />
   </Form.Item>
 
- <Form.Item
+
+  <Form.Item
   label="Прикрепить файлы"
   name="file"
   valuePropName="fileList"
@@ -455,6 +456,13 @@ const TimeTrackingEmployee: React.FC = () => {
     <Button icon={<InboxOutlined />}>Выберите файлы</Button>
   </Upload>
 </Form.Item>
+
+<Form.Item>
+  <Button type="primary" htmlType="submit" block>
+    {editingEntry ? 'Сохранить изменения' : 'Добавить время'}
+  </Button>
+</Form.Item>
+
 
 </Form>
 

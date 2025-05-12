@@ -59,6 +59,19 @@ exports.createProject = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при создании проекта' });
   }
 };
+exports.closeProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await poolConnect;
+    await pool.request()
+      .input('ID_Order', sql.Int, id)
+      .query("UPDATE Orders SET Status = 'Завершён' WHERE ID_Order = @ID_Order");
+    res.status(200).json({ message: 'Проект закрыт' });
+  } catch (error) {
+    console.error('Ошибка при закрытии проекта:', error);
+    res.status(500).json({ message: 'Ошибка при закрытии проекта' });
+  }
+};
 
 // Обновление проекта
 exports.updateProject = async (req, res) => {

@@ -47,15 +47,17 @@ interface Task {
     avatar?: string | null;
   }[];
   attachments?: string[];
-  comments?: Comment[]; // ✅ новое поле
+  comments?: Comment[]; 
+  AutoCompleted?: boolean;
 }
-
 
 interface Team {
   ID_Team: number;
   Team_Name: string;
   members: TeamMember[];
+  IsArchived?: boolean;  // добавлено
 }
+
 
 interface TeamMember {
   id: number;
@@ -72,7 +74,10 @@ interface Project {
   ID_Order: number;
   Order_Name: string;
   ID_Team: number;
+  IsArchived?: boolean;  // добавлено
+  Deadline?: string | null; // добавлено
 }
+
 
 const statuses = ['Новая', 'В работе', 'Завершена', 'Выполнена'];
 
@@ -92,7 +97,16 @@ const ManagerDashboard: React.FC = () => {
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
+  const [pendingDragTask, setPendingDragTask] = useState<{
+    taskId: number;
+    targetStatusId: number;
+    targetStatusName: string;
+  } | null>(null);
+  
+  const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+  
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
   const [filterProject, setFilterProject] = useState<number | null>(null);
@@ -229,11 +243,14 @@ const ManagerDashboard: React.FC = () => {
         onChange={(val) => setFilterTeam(val)}
         value={filterTeam ?? undefined}
       >
-        {teams.map((team) => (
-          <Option key={team.ID_Team} value={team.ID_Team}>
-            {team.Team_Name}
-          </Option>
-        ))}
+{teams
+  .filter(team => !team.IsArchived)
+  .map(team => (
+    <Option key={team.ID_Team} value={team.ID_Team}>
+      {team.Team_Name}
+    </Option>
+))}
+
       </Select>
   
       <Select
@@ -399,62 +416,106 @@ const ManagerDashboard: React.FC = () => {
         fetch(`${API_URL}/api/projects`)
       ]);
   
-      const [tasksData, teamsData, statusesData, projectsData] = await Promise.all([
+      const [tasksData, teamsData, statusesDataRaw, projectsData] = await Promise.all([
         resTasks.json(), resTeams.json(), resStatuses.json(), resProjects.json()
       ]);
+      console.log('Fetched raw teams:', JSON.stringify(teamsData, null, 2));
+
+
+      const completedStatusId = statusesDataRaw.find((s: Status) => s.Status_Name === 'Завершён')?.ID_Status;
   
-      // 👇 Приведение attachments к массиву, если они приходят строкой
-      const parsedTasks = tasksData.map((task: Task) => ({
-        ...task,
-        attachments: typeof task.attachments === 'string'
-          ? JSON.parse(task.attachments)
-          : task.attachments ?? []
-      }));
+      const updatedTasks: Task[] = [];
+      for (const task of tasksData) {
+        const isOverdue = task.Deadline && dayjs(task.Deadline).isBefore(dayjs());
+        const needsUpdate = isOverdue && task.Status_Name !== 'Завершён' && completedStatusId;
   
-      const groupedMap: Record<string, Task[]> = {};
-      parsedTasks.forEach((task: Task) => {
-        if (!groupedMap[task.Status_Name]) {
-          groupedMap[task.Status_Name] = [];
+        if (needsUpdate) {
+          try {
+            const res = await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ID_Status: completedStatusId }),
+            });
+        
+            if (res.ok) {
+              updatedTasks.push({ ...task, Status_Name: 'Завершена', AutoCompleted: true }); // Отметка авто
+              continue;
+            }
+          } catch (err) {
+            console.error(`Ошибка при авто-завершении задачи ID ${task.ID_Task}:`, err);
+          }
         }
-        groupedMap[task.Status_Name].push(task);
-      });
+        
   
-      setTasks(parsedTasks);
-      setTeams(teamsData);
-      setStatusesData(statusesData);
+        updatedTasks.push(task);
+      }
+  
+      setTasks(updatedTasks);
+      const activeTeams = teamsData.filter((team: Team) => !team.IsArchived);
+      setTeams(activeTeams);
+      
+      setStatusesData(statusesDataRaw);
       setProjects(projectsData);
-      const filteredTasks = tasks.filter(task => {
-        const matchesTeam = !filterTeam || teams.find(t => t.Team_Name === task.Team_Name)?.ID_Team === filterTeam;
-        const matchesProject = !filterProject || task.ID_Order === filterProject;
-        const matchesEmployee = !filterEmployee || task.Employees.some(emp => emp.fullName === filterEmployee);
-        return matchesTeam && matchesProject && matchesEmployee;
-      });
-      
-      const filteredGroupedMap: Record<string, Task[]> = {};
-      filteredTasks.forEach(task => {
-        if (!filteredGroupedMap[task.Status_Name]) {
-          filteredGroupedMap[task.Status_Name] = [];
-        }
-        filteredGroupedMap[task.Status_Name].push(task);
-      });
-      
-    } catch {
+    } catch (err) {
+      console.error(err);
       messageApi.error('Ошибка при загрузке данных');
     }
   }, [messageApi]);
   
+  
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+  
+  useEffect(() => {
+    const autoUpdateOverdueTasks = async () => {
+      const overdueTasks = tasks.filter(task =>
+        task.Deadline && dayjs(task.Deadline).isBefore(dayjs()) &&
+        (task.Status_Name === 'Новая' || task.Status_Name === 'В работе')
+      );
+  
+      if (overdueTasks.length === 0) return;
+  
+      const completedStatus = statusesData.find(s => s.Status_Name === 'Завершена');
+      if (!completedStatus) return;
+  
+      for (const task of overdueTasks) {
+        try {
+          const res = await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ID_Status: completedStatus.ID_Status }),
+          });
+          if (!res.ok) throw new Error();
+        } catch (err) {
+          console.error(`Ошибка при авто-завершении задачи ID ${task.ID_Task}:`, err);
+        }
+      }
+  
+      fetchAll();
+    };
+  
+    autoUpdateOverdueTasks();
+  }, [tasks, statusesData, fetchAll]);
   
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const matchesTeam = !filterTeam || teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team === filterTeam;
       const matchesProject = !filterProject || task.ID_Order === filterProject;
       const matchesEmployee = !filterEmployee || task.Employees.some((emp) => emp.fullName === filterEmployee);
-      return matchesTeam && matchesProject && matchesEmployee;
+  
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        task.Task_Name.toLowerCase().includes(query) ||
+        task.Description.toLowerCase().includes(query) ||
+        task.Order_Name.toLowerCase().includes(query) ||
+        task.Employees.some((emp) => emp.fullName.toLowerCase().includes(query));
+  
+      return matchesTeam && matchesProject && matchesEmployee && matchesSearch;
     });
-  }, [tasks, filterTeam, filterProject, filterEmployee, teams]);
+  }, [tasks, filterTeam, filterProject, filterEmployee, teams, searchQuery]);
+  
   
   const filteredGroupedMap: Record<string, Task[]> = useMemo(() => {
     const map: Record<string, Task[]> = {};
@@ -471,24 +532,48 @@ const ManagerDashboard: React.FC = () => {
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination || source.droppableId === destination.droppableId) return;
-
+  
     const taskId = parseInt(draggableId.split('-')[1], 10);
-    const updatedStatusName = destination.droppableId;
-    const statusObj = statusesData.find((s) => s.Status_Name === updatedStatusName);
+    const task = tasks.find(t => t.ID_Task === taskId);
+    if (!task) return;
+  
+    const fromStatus = source.droppableId;
+    const toStatus = destination.droppableId;
+    const isGoingToFinalStatus = toStatus === 'Выполнена' || toStatus === 'Завершена';
+    const isFromInitialStatus = fromStatus === 'Новая' || fromStatus === 'В работе';
+    const isDeadlineValid = !task.Deadline || dayjs(task.Deadline).isAfter(dayjs());
+  
+    const statusObj = statusesData.find(s => s.Status_Name === toStatus);
     if (!statusObj) return;
-
+  
+    if (isFromInitialStatus && isGoingToFinalStatus && isDeadlineValid) {
+      setPendingDragTask({
+        taskId: task.ID_Task,
+        targetStatusId: statusObj.ID_Status,
+        targetStatusName: toStatus,
+      });
+      setIsConfirmModalVisible(true);
+    } else {
+      await updateTaskStatus(taskId, statusObj.ID_Status);
+    }
+  };
+  
+  const updateTaskStatus = async (taskId: number, statusId: number) => {
+    setTasks(prev =>
+      prev.map(t => (t.ID_Task === taskId ? { ...t, Status_Name: statusesData.find(s => s.ID_Status === statusId)?.Status_Name || t.Status_Name } : t))
+    );
     try {
       await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ID_Status: statusObj.ID_Status })
+        body: JSON.stringify({ ID_Status: statusId }),
       });
       fetchAll();
     } catch {
       messageApi.error('Ошибка при изменении статуса');
     }
   };
-
+  
   const handleDelete = async (taskId: number) => {
     try {
       await fetch(`${API_URL}/api/tasks/${taskId}`, {
@@ -506,9 +591,19 @@ const ManagerDashboard: React.FC = () => {
     setIsModalVisible(true);
   
     if (task) {
-      const team = teams.find((t) => t.Team_Name === task.Team_Name);
+      const team = teams.find((t) => t.Team_Name === task.Team_Name) 
+      || { ID_Team: -1, Team_Name: task.Team_Name || 'Удалённая команда', members: [], IsArchived: true };
+    
       setSelectedTeamId(team?.ID_Team || null);
-      setFilteredProjects(projects.filter((proj) => proj.ID_Team === team?.ID_Team));
+      setFilteredProjects(
+        projects.filter(
+          (proj) =>
+            proj.ID_Team === team?.ID_Team &&
+            !proj.IsArchived &&
+            (!proj.Deadline || dayjs(proj.Deadline).isAfter(dayjs()))
+        )
+      );
+      
       setSelectedMembers(task.Employees.map(e => e.fullName));
   
       form.setFieldsValue({
@@ -547,7 +642,6 @@ const ManagerDashboard: React.FC = () => {
   const handleFinish = async (values: {
     Task_Name: string;
     Description: string;
-    ID_Status: number;
     ID_Order: number;
     Time_Norm: number;
     Deadline?: dayjs.Dayjs;
@@ -572,7 +666,7 @@ const ManagerDashboard: React.FC = () => {
   
           if (res.ok) {
             const data = await res.json();
-            uploadedFilenames.push(data.filename); // или data.path — зависит от backend API
+            uploadedFilenames.push(data.filename);
           } else {
             messageApi.error(`Ошибка при загрузке файла: ${file.name}`);
           }
@@ -580,15 +674,22 @@ const ManagerDashboard: React.FC = () => {
           messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name}`);
         }
       } else if (file.url) {
-        uploadedFilenames.push(file.name); // уже загруженный файл
+        uploadedFilenames.push(file.name);
       }
+    }
+  
+    const newStatus = statusesData.find(s => s.Status_Name === 'Новая');
+    if (!newStatus) {
+      messageApi.error('Не найден статус "Новая"');
+      return;
     }
   
     const payload = {
       ...values,
+      ID_Status: newStatus.ID_Status, // Устанавливаем статус "Новая"
       Employee_Names: selectedMembers,
       Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
-      attachments: uploadedFilenames, // ✅ если API требует JSON строку — оберни JSON.stringify
+      attachments: uploadedFilenames,
     };
   
     try {
@@ -612,14 +713,16 @@ const ManagerDashboard: React.FC = () => {
     }
   };
   
-  
-
   const handleTeamChange = (teamId: number) => {
     setSelectedTeamId(teamId);
     setSelectedMembers([]);
-    setFilteredProjects(projects.filter((proj) => proj.ID_Team === teamId));
+    const activeProjects = projects.filter(
+      (proj) => proj.ID_Team === teamId && !proj.IsArchived && (!proj.Deadline || dayjs(proj.Deadline).isAfter(dayjs()))
+    );
+    setFilteredProjects(activeProjects);
     form.setFieldsValue({ ID_Order: undefined });
   };
+  
 
   const openViewModal = (task: Task) => {
     setViewingTask(task);
@@ -672,43 +775,45 @@ const ManagerDashboard: React.FC = () => {
                     key: 'kanban',
                     children: (
                       <>
-                        <Button
-                          className="add-task-button"
-                          onClick={() => showModal()}
-                          style={{ marginBottom: 16 }}
-                        >
-                          ➕ Добавить задачу
-                        </Button>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-  {/* Кнопка фильтров */}
-  <Dropdown
-    menu={{ items: [] }}
-    open={isDropdownOpen}
-    onOpenChange={setIsDropdownOpen}
-    dropdownRender={() => filterMenu}
-  >
-    <Button className="filters-button" icon={<FilterOutlined />}>
-      Фильтры
-    </Button>
-  </Dropdown>
-
-  {/* Кнопка экспорта */}
-  <Dropdown
-  menu={{
-    onClick: ({ key }) => handleExport(key),
-    items: [
-      { key: 'word', label: 'Экспорт в Word' },
-      { key: 'excel', label: 'Экспорт в Excel' },
-      { key: 'pdf', label: 'Экспорт в PDF' },
-    ],
-  }}
-  placement="bottomRight"
-  arrow
->
-  <Button icon={<DownloadOutlined />}>Экспорт</Button>
-</Dropdown>
-</div>
-
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+                          <Button className="add-task-button" onClick={() => showModal()}>
+                            ➕ Добавить задачу
+                          </Button>
+  
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
+                            <Input
+                              placeholder="Поиск по задачам..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              style={{ minWidth: 250 }}
+                            />
+                            <Dropdown
+                              menu={{ items: [] }}
+                              open={isDropdownOpen}
+                              onOpenChange={setIsDropdownOpen}
+                              dropdownRender={() => filterMenu}
+                            >
+                              <Button className="filters-button" icon={<FilterOutlined />}>
+                                Фильтры
+                              </Button>
+                            </Dropdown>
+                            <Dropdown
+                              menu={{
+                                onClick: ({ key }) => handleExport(key),
+                                items: [
+                                  { key: 'word', label: 'Экспорт в Word' },
+                                  { key: 'excel', label: 'Экспорт в Excel' },
+                                  { key: 'pdf', label: 'Экспорт в PDF' },
+                                ],
+                              }}
+                              placement="bottomRight"
+                              arrow
+                            >
+                              <Button icon={<DownloadOutlined />}>Экспорт</Button>
+                            </Dropdown>
+                          </div>
+                        </div>
+  
 
 <DragDropContext onDragEnd={handleDragEnd}>
   <div className="kanban-wrapper">
@@ -770,29 +875,47 @@ const ManagerDashboard: React.FC = () => {
                             onClick={() => openCommentsModal(task.ID_Task)}
                             style={{ padding: 0, height: 'auto' }}
                           />
-                          {task.Deadline ? (
-                            <div
-                              className={`deadline-box ${
-                                dayjs(task.Deadline).isBefore(dayjs())
-                                  ? 'expired'
-                                  : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
-                                  ? 'warning'
-                                  : 'safe'
-                              }`}
-                            >
-                              <ClockCircleOutlined style={{ marginRight: 6 }} />
-                              {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
-                                ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
-                                : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
-                                ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
-                                : 'Срок истёк'}
-                            </div>
-                          ) : (
-                            <div className="deadline-box undefined">
-                              <ClockCircleOutlined style={{ marginRight: 6 }} />
-                              Без срока
-                            </div>
-                          )}
+                    {task.Status_Name === 'Завершена' && task.AutoCompleted ? (
+  <div className="deadline-box expired">
+    <ClockCircleOutlined style={{ marginRight: 6 }} />
+    Срок истёк
+  </div>
+) : task.Status_Name === 'Завершена' ? (
+  <div className="deadline-box completed">
+    <ClockCircleOutlined style={{ marginRight: 6 }} />
+    Завершена
+  </div>
+) : task.Status_Name === 'Выполнена' ? (
+  <div className="deadline-box completed">
+    <ClockCircleOutlined style={{ marginRight: 6 }} />
+    Выполнено
+  </div>
+) : task.Deadline ? (
+  <div
+    className={`deadline-box ${
+      dayjs(task.Deadline).isBefore(dayjs())
+        ? 'expired'
+        : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
+        ? 'warning'
+        : 'safe'
+    }`}
+  >
+    <ClockCircleOutlined style={{ marginRight: 6 }} />
+    {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
+      ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
+      : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
+      ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
+      : 'Срок истёк'}
+  </div>
+) : (
+  <div className="deadline-box undefined">
+    <ClockCircleOutlined style={{ marginRight: 6 }} />
+    Без срока
+  </div>
+)}
+
+
+
                         </div>
                       </div>
                     </div>
@@ -816,14 +939,59 @@ const ManagerDashboard: React.FC = () => {
                     key: 'table',
                     children: (
                       <>
-                        <Button className="add-task-button" onClick={() => showModal()} style={{ marginBottom: 16 }}>
-                          ➕ Добавить задачу
-                        </Button>
-
+                        <div style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          marginBottom: 16,
+                          flexWrap: 'wrap',
+                          gap: 8
+                        }}>
+                          {/* Левая сторона — кнопка добавления */}
+                          <Button className="add-task-button" onClick={() => showModal()}>
+                            ➕ Добавить задачу
+                          </Button>
+                  
+                          {/* Правая сторона — строка поиска, фильтры и экспорт */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Input
+                              placeholder="Поиск по задачам, проектам, описаниям и исполнителям..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              style={{ minWidth: 250 }}
+                            />
+                            <Dropdown
+                              menu={{ items: [] }}
+                              open={isDropdownOpen}
+                              onOpenChange={setIsDropdownOpen}
+                              dropdownRender={() => filterMenu}
+                            >
+                              <Button className="filters-button" icon={<FilterOutlined />}>
+                                Фильтры
+                              </Button>
+                            </Dropdown>
+                            <Dropdown
+                              menu={{
+                                onClick: ({ key }) => handleExport(key),
+                                items: [
+                                  { key: 'word', label: 'Экспорт в Word' },
+                                  { key: 'excel', label: 'Экспорт в Excel' },
+                                  { key: 'pdf', label: 'Экспорт в PDF' },
+                                ],
+                              }}
+                              placement="bottomRight"
+                              arrow
+                            >
+                              <Button icon={<DownloadOutlined />}>Экспорт</Button>
+                            </Dropdown>
+                          </div>
+                        </div>
+                  
                         <Table dataSource={tasks} columns={tableColumns} rowKey="ID_Task" />
                       </>
                     ),
                   }
+                  
                   
                 ]}
               />
@@ -837,28 +1005,39 @@ const ManagerDashboard: React.FC = () => {
 
                 
                 <Form form={form} layout="vertical" onFinish={handleFinish}>
-                  <Form.Item label="Команда" required>
-                    <Select
-                      placeholder="Выберите команду"
-                      onChange={handleTeamChange}
-                      value={selectedTeamId ?? undefined}
-                    >
-                      {teams.map((team) => (
-                        <Option key={`team-${team.ID_Team}`} value={team.ID_Team}>
-                          {team.Team_Name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+                <Form.Item label="Команда" required>
+  <Select
+    placeholder="Выберите команду"
+    onChange={handleTeamChange}
+    value={selectedTeamId ?? undefined}
+  >
+    {teams
+      .filter(team => {
+        const isArchived = team.IsArchived ?? false;
+        const isSelected = team.ID_Team === selectedTeamId;
+        return !isArchived || isSelected;
+      })
+      .map(team => (
+        <Option key={`team-${team.ID_Team}`} value={team.ID_Team}>
+          {team.Team_Name}{team.IsArchived ? ' (архив)' : ''}
+        </Option>
+      ))}
+  </Select>
+</Form.Item>
+
+
                   <Form.Item name="ID_Order" label="Проект" rules={[{ required: true }]}>
-                    <Select placeholder="Выберите проект">
-                      {filteredProjects.map((proj) => (
-                        <Option key={`order-${proj.ID_Order}`} value={proj.ID_Order}>
-                          {proj.Order_Name}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+  <Select placeholder="Выберите проект">
+    {filteredProjects
+      .filter(proj => !proj.IsArchived && (!proj.Deadline || dayjs(proj.Deadline).isAfter(dayjs())))
+      .map(proj => (
+        <Option key={`order-${proj.ID_Order}`} value={proj.ID_Order}>
+          {proj.Order_Name}
+        </Option>
+      ))}
+  </Select>
+</Form.Item>
+
                   <Form.Item label="Исполнители">
                     <Select
                       mode="multiple"
@@ -879,15 +1058,6 @@ const ManagerDashboard: React.FC = () => {
                   </Form.Item>
                   <Form.Item name="Description" label="Описание" rules={[{ required: true }]}>
                     <Input.TextArea />
-                  </Form.Item>
-                  <Form.Item name="ID_Status" label="Статус" rules={[{ required: true }]}>
-                    <Select>
-                      {statusesData.map((s) => (
-                        <Option key={s.ID_Status} value={s.ID_Status}>
-                          {s.Status_Name}
-                        </Option>
-                      ))}
-                    </Select>
                   </Form.Item>
                   <Form.Item name="Deadline" label="Дедлайн" rules={[{
                       validator: (_, value) => {
@@ -1082,6 +1252,23 @@ const ManagerDashboard: React.FC = () => {
   </Button>
 </Modal>
 
+<Modal
+  title="Подтвердите действие"
+  open={isConfirmModalVisible}
+  onOk={async () => {
+    if (pendingDragTask) {
+      await updateTaskStatus(pendingDragTask.taskId, pendingDragTask.targetStatusId);
+      setPendingDragTask(null);
+    }
+    setIsConfirmModalVisible(false);
+  }}
+  onCancel={() => {
+    setPendingDragTask(null);
+    setIsConfirmModalVisible(false);
+  }}
+>
+  <p>Вы уверены, что хотите переместить задачу в статус «{pendingDragTask?.targetStatusName}»?</p>
+</Modal>
 
             </main>
           </div>
