@@ -99,3 +99,33 @@
 .custom-phone-container {
   width: 100%;
 }
+
+html body .react-tel-input .country-list *,
+html body .react-tel-input .country-list .country *,
+html body .react-tel-input .country-list .country .country-name {
+  color: #000 !important;
+  background-color: #f5f5f5 !important;
+  font-weight: bold !important;
+}
+
+/* Повышенная специфичность для списка */
+html body .react-tel-input .country-list {
+  background-color: #f5f5f5 !important;
+  color: #000 !important;
+  border: 1px solid #ccc !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Подсветка */
+html body .react-tel-input .country-list .country:hover *,
+html body .react-tel-input .country-list .country.highlight * {
+  background-color: #e6f7ff !important;
+  color: #000 !important;
+}
+
+/* Поле поиска */
+html body .react-tel-input .search-box {
+  background-color: #f5f5f5 !important;
+  color: #000 !important;
+  border: 1px solid #ccc !important;
+}

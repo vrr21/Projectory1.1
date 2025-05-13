@@ -8,19 +8,36 @@ const {
   addTeamMember,
   removeTeamMember,
   deleteTeam,
+  archiveTeam,
+  restoreTeam
 } = require('../controllers/team.controller');
 
+// Получение всех команд
 router.get('/', getAllTeams);
+
+// Создание новой команды
 router.post('/', createTeam);
+
+// Добавление участника в команду
 router.post('/add', addTeamMember);
+
+// Удаление участника из команды
 router.delete('/:teamId/remove/:memberId', removeTeamMember);
+
+// Полное удаление команды
 router.delete('/:teamId', deleteTeam);
 
-// Поиск команд
+// ✅ Архивация команды (обновление статуса на "Архив")
+router.patch('/:teamId/archive', archiveTeam);
+
+// ✅ Восстановление команды (обновление статуса на "В процессе")
+router.patch('/:teamId/restore', restoreTeam);
+
+// Поиск команд по названию
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {
-    await poolConnect; // ✅ Используем готовое подключение
+    await poolConnect;
     const result = await pool.request()
       .input('query', sql.NVarChar, `%${q}%`)
       .query(`

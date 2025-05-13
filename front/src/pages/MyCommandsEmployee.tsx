@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Table, ConfigProvider, theme, message, TableColumnsType } from 'antd';
+import { Table, ConfigProvider, theme, message, Tabs, Input, Button } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import Header from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
 import '../styles/pages/TeamManagementPage.css';
 import dayjs from 'dayjs';
+import type { ColumnsType } from 'antd/es/table';
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -35,6 +37,9 @@ const MyCommandsEmployee: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const [activeTab, setActiveTab] = useState<string>('teams');
+  const [teamSearch, setTeamSearch] = useState<string>('');
+  const [projectSearch, setProjectSearch] = useState<string>('');
 
   const fetchTeamsAndProjects = async () => {
     try {
@@ -64,42 +69,82 @@ const MyCommandsEmployee: React.FC = () => {
     fetchTeamsAndProjects();
   }, []);
 
-  const teamColumns: TableColumnsType<Team> = [
+  const teamColumns: ColumnsType<Team> = [
     {
-      title: 'Название команды',
+      title: <div style={{ textAlign: 'center' }}>Название команды</div>,
       dataIndex: 'Team_Name',
       key: 'Team_Name',
+      align: 'center',
+      render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
     },
     {
-      title: 'Роль участника',
+      title: <div style={{ textAlign: 'center' }}>Роль участника</div>,
       key: 'members',
-      render: (_, team) =>
+      align: 'center',
+      render: (_: unknown, team: Team) =>
         team.members.map((m, index) => (
-          <div key={`${m.ID_User}-${index}`} style={{ marginBottom: 6 }}>
+          <div key={`${m.ID_User}-${index}`} style={{ textAlign: 'left', marginBottom: 6 }}>
             {m.fullName} ({m.role}) — {m.email}
           </div>
         )),
     },
   ];
 
-  const projectColumns: TableColumnsType<Project> = [
-    { title: 'Название проекта', dataIndex: 'Order_Name', key: 'Order_Name' },
-    { title: 'Тип проекта', dataIndex: 'Type_Name', key: 'Type_Name' },
+  const projectColumns: ColumnsType<Project> = [
     {
-      title: 'Дата создания',
+      title: <div style={{ textAlign: 'center' }}>Название проекта</div>,
+      dataIndex: 'Order_Name',
+      key: 'Order_Name',
+      align: 'center',
+      render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>Тип проекта</div>,
+      dataIndex: 'Type_Name',
+      key: 'Type_Name',
+      align: 'center',
+      render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>Дата создания</div>,
       dataIndex: 'Creation_Date',
       key: 'Creation_Date',
-      render: date => dayjs(date).format('YYYY-MM-DD'),
+      align: 'center',
+      render: (date: string) => <div style={{ textAlign: 'left' }}>{dayjs(date).format('YYYY-MM-DD')}</div>,
     },
     {
-      title: 'Дата окончания',
+      title: <div style={{ textAlign: 'center' }}>Дата окончания</div>,
       dataIndex: 'End_Date',
       key: 'End_Date',
-      render: date => date ? dayjs(date).format('YYYY-MM-DD') : '',
+      align: 'center',
+      render: (date: string | null) => <div style={{ textAlign: 'left' }}>{date ? dayjs(date).format('YYYY-MM-DD') : ''}</div>,
     },
-    { title: 'Статус', dataIndex: 'Status', key: 'Status' },
-    { title: 'Команда', dataIndex: 'Team_Name', key: 'Team_Name' },
+    {
+      title: <div style={{ textAlign: 'center' }}>Статус</div>,
+      dataIndex: 'Status',
+      key: 'Status',
+      align: 'center',
+      render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    },
+    {
+      title: <div style={{ textAlign: 'center' }}>Команда</div>,
+      dataIndex: 'Team_Name',
+      key: 'Team_Name',
+      align: 'center',
+      render: (text: string | undefined) => <div style={{ textAlign: 'left' }}>{text || 'Без команды'}</div>,
+    },
   ];
+
+  const filteredTeams = teams.filter(team =>
+    team.Team_Name.toLowerCase().includes(teamSearch.toLowerCase()) ||
+    team.members.some(m => m.fullName.toLowerCase().includes(teamSearch.toLowerCase()))
+  );
+
+  const filteredProjects = projects.filter(project =>
+    project.Order_Name.toLowerCase().includes(projectSearch.toLowerCase()) ||
+    project.Type_Name.toLowerCase().includes(projectSearch.toLowerCase()) ||
+    project.Status.toLowerCase().includes(projectSearch.toLowerCase())
+  );
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -109,26 +154,58 @@ const MyCommandsEmployee: React.FC = () => {
         <div className="dashboard-body">
           <Sidebar role="employee" />
           <main className="main-content">
-  <h1>Мои команды</h1>
-  <Table
-    dataSource={teams}
-    columns={teamColumns}
-    rowKey="ID_Team"
-    pagination={{ pageSize: 5 }}
-    style={{ marginBottom: 40 }}
+            <h2 className="dashboard-title">Управление командами и проектами</h2>
+            <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" items={[
+              {
+                key: 'teams',
+                label: 'Мои команды',
+                children: (
+                  <>
+<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+  <Input
+    placeholder="Поиск по командам..."
+    value={teamSearch}
+    onChange={(e) => setTeamSearch(e.target.value)}
+    style={{ width: 250 }}
   />
+  <Button icon={<DownloadOutlined />}>Экспорт</Button>
+</div>
 
-  <hr style={{ borderColor: '#555', margin: '1px 0' }} />
-
-  <h1>Мои проекты</h1>
-  <Table
-    dataSource={projects}
-    columns={projectColumns}
-    rowKey="ID_Order"
-    pagination={{ pageSize: 5 }}
+                    <Table
+                      dataSource={filteredTeams}
+                      columns={teamColumns}
+                      rowKey="ID_Team"
+                      pagination={{ pageSize: 5 }}
+                    />
+                  </>
+                )
+              },
+              {
+                key: 'projects',
+                label: 'Мои проекты',
+                children: (
+                  <>
+<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+  <Input
+    placeholder="Поиск по проектам..."
+    value={projectSearch}
+    onChange={(e) => setProjectSearch(e.target.value)}
+    style={{ width: 250 }}
   />
-</main>
+  <Button icon={<DownloadOutlined />}>Экспорт</Button>
+</div>
 
+                    <Table
+                      dataSource={filteredProjects}
+                      columns={projectColumns}
+                      rowKey="ID_Order"
+                      pagination={{ pageSize: 5 }}
+                    />
+                  </>
+                )
+              }
+            ]} />
+          </main>
         </div>
       </div>
     </ConfigProvider>

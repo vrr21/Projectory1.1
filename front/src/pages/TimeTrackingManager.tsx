@@ -9,6 +9,7 @@ import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TimeTrackingEmployee.css';
 
+
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import weekday from 'dayjs/plugin/weekday';
@@ -72,7 +73,7 @@ const TimeTrackingManager: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
   const fetchData = useCallback(async () => {
@@ -102,14 +103,25 @@ const TimeTrackingManager: React.FC = () => {
 
   useEffect(() => {
     let filtered = timeEntries;
+  
     if (selectedTeam) {
       filtered = filtered.filter(e => e.Team_Name === selectedTeam);
     }
+  
     if (selectedUser) {
       filtered = filtered.filter(e => e.ID_User === selectedUser);
     }
+  
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(e =>
+        `${e.Task_Name} ${e.Order_Name} ${e.Employee_Name}`.toLowerCase().includes(query)
+      );
+    }
+  
     setFilteredEntries(filtered);
-  }, [selectedTeam, selectedUser, timeEntries]);
+  }, [selectedTeam, selectedUser, timeEntries, searchQuery]);
+  
 
   const fetchComments = async (taskId: string) => {
     try {
@@ -155,9 +167,10 @@ const TimeTrackingManager: React.FC = () => {
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, 'day'));
 
-  const getEntriesByDay = (day: dayjs.Dayjs) =>
+  const getEntriesByDay = (day: dayjs.Dayjs) => 
     filteredEntries.filter(entry => dayjs(entry.Start_Date).isSame(day, 'day'));
-
+  
+  
   const filterMenu = (
     <div style={{ padding: 8, minWidth: 220 }}>
       <Select
@@ -217,42 +230,49 @@ const TimeTrackingManager: React.FC = () => {
         <Layout className="main-layout">
           <HeaderManager />
           <Content className="content">
-            <div className="page-content">
-              <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '1rem' }}>
-                <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: 0, flexBasis: '100%' }}>Учёт времени сотрудников</h1>
+          <div className="page-content">
+          <div className="time-tracking-header" style={{ display: 'flex', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: '1rem' }}>
+  <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: 0, flexBasis: '100%' }}>Учёт времени сотрудников</h1>
 
-                <Dropdown
-                  menu={{ items: [] }}
-                  open={isDropdownOpen}
-                  onOpenChange={setIsDropdownOpen}
-                  dropdownRender={() => filterMenu}
-                >
-                  <Button icon={<FilterOutlined />}>Фильтры</Button>
-                </Dropdown>
+  <div style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto', gap: '8px' }}>
+    <Input
+      placeholder="Поиск по всем данным..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      allowClear
+      style={{ width: 250 }}
+    />
+    <Dropdown
+      menu={{ items: [] }}
+      open={isDropdownOpen}
+      onOpenChange={setIsDropdownOpen}
+      dropdownRender={() => filterMenu}
+    >
+      <Button icon={<FilterOutlined />} className="filter-button">Фильтры</Button>
+    </Dropdown>
+  </div>
 
-                <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week'))} />
-                <h2 style={{ margin: '0 1rem' }}>
-                  {weekStart.format('D MMMM')} – {weekStart.add(6, 'day').format('D MMMM YYYY')}
-                </h2>
-                <Button icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.add(1, 'week'))} />
+  <Button icon={<LeftOutlined />} onClick={() => setWeekStart(weekStart.subtract(1, 'week'))} className="arrow-button" />
+  <h2 style={{ margin: '0 1rem' }}>
+    {weekStart.format('D MMMM')} – {weekStart.add(6, 'day').format('D MMMM YYYY')}
+  </h2>
+  <Button icon={<RightOutlined />} onClick={() => setWeekStart(weekStart.add(1, 'week'))} className="arrow-button" />
+  <DatePicker
+    value={weekStart}
+    format="DD.MM.YYYY"
+    allowClear={false}
+    suffixIcon={<CalendarOutlined />}
+    style={{ marginLeft: 12 }}
+    inputReadOnly
+    onChange={(date) => {
+      if (date && dayjs.isDayjs(date)) {
+        setWeekStart(date.startOf('isoWeek'));
+      }
+    }}
+    disabledDate={(current) => current && (current.year() < 2000 || current.year() > 2100)}
+  />
+</div>
 
-                <DatePicker
-                  value={weekStart}
-                  format="DD.MM.YYYY"
-                  allowClear={false}
-                  suffixIcon={<CalendarOutlined />}
-                  style={{ marginLeft: 12 }}
-                  inputReadOnly
-                  onChange={(date) => {
-                    if (date && dayjs.isDayjs(date)) {
-                      setWeekStart(date.startOf('isoWeek'));
-                    }
-                  }}
-                  disabledDate={(current) =>
-                    current && (current.year() < 2000 || current.year() > 2100)
-                  }
-                />
-              </div>
 
               <div className="horizontal-columns">
                 {getWeekDays().map(day => (

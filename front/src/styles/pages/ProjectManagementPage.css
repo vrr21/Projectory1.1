@@ -1,4 +1,4 @@
-/* Обёртка страницы */
+/* Структура страницы */
 .dashboard {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -11,6 +11,7 @@
 .dashboard-body {
   display: flex;
   margin-top: var(--header-height);
+  background-color: var(--bg-color) !important;
 }
 
 /* Основная часть контента */
@@ -18,7 +19,7 @@
   flex-grow: 1;
   padding: 2rem;
   margin-left: var(--sidebar-width);
-  background-color: var(--bg-color);
+  background-color: var(--bg-color) !important;
   color: var(--text-color);
   min-height: calc(100vh - var(--header-height));
   box-sizing: border-box;
@@ -26,7 +27,7 @@
 
 /* Стиль для блока управления проектами */
 .project-management-page {
-  background-color: var(--bg-color);
+  background-color: var(--bg-color) !important;
   color: var(--text-color);
 }
 
@@ -38,46 +39,44 @@
 
 /* Кнопка */
 .ant-btn-primary {
-  background-color: #000000 !important;
-  border-color: var(--border-color) !important;
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+  color: #ffffff !important;
 }
 
 .ant-btn-primary:hover {
-  background-color: #000000 !important;
-  color: var(--accent-color) !important;
-  border-color: var(--accent-color) !important;
+  background-color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  color: #ffffff !important;
 }
 
 /* Таблица */
 .ant-table {
-  background-color: #2c2c2c;
-  color: var(--text-color);
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
 }
 
 .ant-table-thead > tr > th {
-  background-color: #3a3a3a;
-  color: var(--text-color);
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
 .ant-table-tbody > tr > td {
-  background-color: #2c2c2c;
-  color: var(--text-color);
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
 }
 
 .ant-table-tbody > tr:hover > td {
-  background-color: #3d3d3d;
+  background-color: var(--hover-bg-color) !important;
 }
 
 /* Модальное окно */
-.ant-modal-content {
-  background-color: #2c2c2c !important;
-  color: var(--text-color) !important;
-}
-
+.ant-modal-content,
 .ant-modal-header {
-  background-color: #2c2c2c !important;
+  background-color: var(--card-bg-color) !important;
   color: var(--text-color) !important;
-  border-bottom: 1px solid #444;
+  border-bottom: 1px solid var(--border-color) !important;
 }
 
 .ant-modal-title {
@@ -96,21 +95,120 @@
 .ant-select-selector,
 .ant-picker,
 .ant-input {
-  background-color: #1f1f1f;
-  color: var(--text-color);
-  border: 1px solid #555;
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
 /* Выпадающие списки */
 .ant-select-dropdown {
-  background-color: #2c2c2c;
-  color: var(--text-color);
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
 }
 
 .ant-select-item-option {
-  color: var(--text-color);
+  color: var(--text-color) !important;
 }
 
 .ant-select-item-option-active {
-  background-color: #444;
+  background-color: var(--hover-bg-color) !important;
+}
+
+/* Полностью корректный стиль для поля поиска */
+.project-search-input,
+.project-search-input .ant-input,
+.project-search-input .ant-input-affix-wrapper,
+.project-search-input .ant-input-affix-wrapper > input {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+/* Плейсхолдеры для поля поиска */
+.project-search-input .ant-input::placeholder,
+.project-search-input .ant-input-affix-wrapper > input::placeholder {
+  color: var(--text-color) !important;
+  opacity: 0.6;
+}
+
+/* Глобальные поля ввода */
+.ant-input,
+.ant-input-affix-wrapper > input {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+/* Плейсхолдеры для всех полей */
+.ant-input::placeholder,
+.ant-input-affix-wrapper > input::placeholder,
+.project-search-input input::placeholder,
+.ant-picker-input > input::placeholder,
+.ant-select-selection-placeholder {
+  color: var(--text-color) !important;
+  opacity: 0.6;
+}
+
+/* Фокус */
+.ant-input:focus,
+.ant-input-focused,
+.ant-picker-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--accent-color) !important;
+  box-shadow: none !important;
+}
+
+/* Убрать серый фон текста внутри */
+.ant-input-affix-wrapper > input {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+}
+
+
+/* Универсальные стили для всех кнопок */
+.ant-btn,
+.ant-btn-default,
+.ant-btn-link,
+.ant-btn[role="button"] {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+/* Hover и Active состояния */
+.ant-btn:hover,
+.ant-btn-default:hover,
+.ant-btn-link:hover,
+.ant-btn[role="button"]:hover,
+.ant-btn:active,
+.ant-btn-default:active,
+.ant-btn-link:active,
+.ant-btn[role="button"]:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* DropDown Menu Buttons */
+.ant-dropdown-menu-item > .ant-btn,
+.ant-dropdown-menu-item > .ant-btn:hover {
+  color: var(--text-color) !important;
+  background-color: transparent !important;
+  border: none !important;
+}
+
+/* Контейнер для кнопок в таблице */
+.table-action-buttons {
+  display: flex;
+  gap: 8px; /* Отступ между кнопками */
+}
+
+/* Сделать кнопки одинаковой ширины */
+.table-action-buttons .ant-btn {
+  flex: 1;
+  min-width: 120px; /* Минимальная ширина по вашему усмотрению */
+  justify-content: center;
 }

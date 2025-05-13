@@ -252,85 +252,96 @@ const filteredProjects = projects.filter((project) => {
   return matchesSearch && matchesArchiveFilter;
 });
 
-  
-  const columns: ColumnsType<Project> = [
-    {
-      title: 'Название проекта',
-      dataIndex: 'Order_Name',
-      key: 'Order_Name',
-      sorter: (a, b) => a.Order_Name.localeCompare(b.Order_Name),
-    },
-    {
-      title: 'Тип проекта',
-      dataIndex: 'Type_Name',
-      key: 'Type_Name',
-      sorter: (a, b) => a.Type_Name.localeCompare(b.Type_Name),
-    },
-    {
-      title: 'Дата создания',
-      dataIndex: 'Creation_Date',
-      key: 'Creation_Date',
-      render: (date: string): string => dayjs(date).format('YYYY-MM-DD'),
-      sorter: (a, b) => dayjs(a.Creation_Date).unix() - dayjs(b.Creation_Date).unix(),
-    },
-    {
-      title: 'Дата окончания',
-      dataIndex: 'End_Date',
-      key: 'End_Date',
-      render: (date: string): string => date ? dayjs(date).format('YYYY-MM-DD') : '',
-      sorter: (a, b) => dayjs(a.End_Date).unix() - dayjs(b.End_Date).unix(),
-    },
-    {
-      title: 'Статус',
-      dataIndex: 'Status',
-      key: 'Status',
-      sorter: (a, b) => a.Status.localeCompare(b.Status),
-    },
-    {
-      title: 'Команда',
-      dataIndex: 'Team_Name',
-      key: 'Team_Name',
-      sorter: (a, b) => (a.Team_Name || '').localeCompare(b.Team_Name || ''),
-    },
-    {
-      title: 'Действия',
-      key: 'actions',
-      render: (_text, record) => {
-        if (record.Status === 'Завершён') {
-          return (
-            <Button
-              type="link"
-              onClick={() => showModal({ ...record, Status: 'В процессе' }, true)}
-              icon={<EditOutlined />}
-            >
-              Восстановить
-            </Button>
-          );
-        }
-
+const columns: ColumnsType<Project> = [
+  {
+    title: <div style={{ textAlign: 'center' }}>Название проекта</div>,
+    dataIndex: 'Order_Name',
+    key: 'Order_Name',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    sorter: (a, b) => a.Order_Name.localeCompare(b.Order_Name),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Тип проекта</div>,
+    dataIndex: 'Type_Name',
+    key: 'Type_Name',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    sorter: (a, b) => a.Type_Name.localeCompare(b.Type_Name),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Дата создания</div>,
+    dataIndex: 'Creation_Date',
+    key: 'Creation_Date',
+    align: 'center',
+    render: (date: string) => <div style={{ textAlign: 'left' }}>{dayjs(date).format('YYYY-MM-DD')}</div>,
+    sorter: (a, b) => dayjs(a.Creation_Date).unix() - dayjs(b.Creation_Date).unix(),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Дата окончания</div>,
+    dataIndex: 'End_Date',
+    key: 'End_Date',
+    align: 'center',
+    render: (date: string) => <div style={{ textAlign: 'left' }}>{date ? dayjs(date).format('YYYY-MM-DD') : ''}</div>,
+    sorter: (a, b) => dayjs(a.End_Date).unix() - dayjs(b.End_Date).unix(),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Статус</div>,
+    dataIndex: 'Status',
+    key: 'Status',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    sorter: (a, b) => a.Status.localeCompare(b.Status),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Команда</div>,
+    dataIndex: 'Team_Name',
+    key: 'Team_Name',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+    sorter: (a, b) => (a.Team_Name || '').localeCompare(b.Team_Name || ''),
+  },
+  {
+    title: <div style={{ textAlign: 'center' }}>Действия</div>,
+    key: 'actions',
+    align: 'center',
+    render: (_text, record) => {
+      if (record.Status === 'Завершён') {
         return (
-          <>
-            <Button
-              type="link"
-              onClick={() => showModal(record)}
-              icon={<EditOutlined />}
-            >
-              Редактировать
-            </Button>
-            <Button
-  type="link"
-  danger
-  onClick={() => handleConfirmClose(record.ID_Order)}
-  icon={<InboxOutlined />}
->
-  Закрыть проект
-</Button>
-
-          </>
+          <Button
+            type="link"
+            onClick={() => showModal({ ...record, Status: 'В процессе' }, true)}
+            icon={<EditOutlined />}
+          >
+            Восстановить
+          </Button>
         );
-      },
+      }
+
+      return (
+        <div className="table-action-buttons">
+          <Button
+            type="link"
+            onClick={() => showModal(record)}
+            icon={<EditOutlined />}
+          >
+            Редактировать
+          </Button>
+          <Button
+            type="link"
+            danger
+            onClick={() => handleConfirmClose(record.ID_Order)}
+            icon={<InboxOutlined />}
+          >
+            Закрыть проект
+          </Button>
+        </div>
+      );
+      
     },
-  ];
+  },
+];
+
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -341,53 +352,53 @@ const filteredProjects = projects.filter((project) => {
           <SidebarManager />
           <main className="main-content">
             <div className="project-management-page">
-              <h1>Управление проектами</h1>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Button type="primary" onClick={() => showModal()}>
-                  Добавить проект
-                </Button>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <Button onClick={() => setShowArchive(!showArchive)} icon={<InboxOutlined />}>
-                    {showArchive ? 'Назад к активным' : 'Архив проектов'}
-                  </Button>
+            <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: '24px' }}>Управление проектами</h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: '8px' }}>
+              <Button className="dark-action-button" onClick={() => showModal()}>
+  Добавить проект
+</Button>
 
-                  <Dropdown
-  menu={{
-    onClick: ({ key }) => handleExport(key),
-    items: [
-      { key: 'word', label: 'Экспорт в Word' },
-      { key: 'excel', label: 'Экспорт в Excel' },
-      { key: 'pdf', label: 'Экспорт в PDF' },
-    ],
-  }}
-  placement="bottomRight"
-  arrow
->
-  <Button icon={<DownloadOutlined />}>Экспорт</Button>
-</Dropdown>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+  <Input
+  className="project-search-input"
+  placeholder="Поиск по всем проектам..."
+  allowClear
+  value={searchTerm}
+  onChange={(e) => setSearchTerm(e.target.value)}
+  style={{ minWidth: 250 }}
+/>
 
-                </div>
-              </div>
+
+
+    <Button onClick={() => setShowArchive(!showArchive)} icon={<InboxOutlined />}>
+      {showArchive ? 'Назад к активным' : 'Архив проектов'}
+    </Button>
+    <Dropdown
+      menu={{
+        onClick: ({ key }) => handleExport(key),
+        items: [
+          { key: 'word', label: 'Экспорт в Word' },
+          { key: 'excel', label: 'Экспорт в Excel' },
+          { key: 'pdf', label: 'Экспорт в PDF' },
+        ],
+      }}
+      placement="bottomRight"
+      arrow
+    >
+      <Button icon={<DownloadOutlined />}>Экспорт</Button>
+    </Dropdown>
+  </div>
+</div>
 
               <h2 style={{ marginBottom: '8px', fontWeight: '400' }}>
   {showArchive ? 'Закрытые проекты' : 'Текущие проекты'}
 </h2>
-
-<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-  <Input.Search
-    placeholder="Поиск по всем данным..."
-    allowClear
-    onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
-    style={{ width: 300 }}
-  />
-</div>
 
 <Table
   dataSource={filteredProjects}
   columns={columns}
   rowKey="ID_Order"
 />
-
 
               <Modal
                 title={editingProject ? 'Редактировать проект' : 'Создать проект'}

@@ -29,11 +29,6 @@ body.sidebar-collapsed .dashboard-body {
 
 
 
-.dashboard-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 1rem;
-}
 
 .kanban-board {
   display: flex;
@@ -373,19 +368,6 @@ body.sidebar-collapsed .dashboard-body {
 }
 
 
-.kanban-status-header {
-  padding: 10px 12px;
-  font-size: 15px;
-  font-weight: 600;
-  color: #f0f0f0;
-  text-transform: uppercase;
-  background-color: #2a2a2a;
-  border-left: 4px solid #006F7A;
-  width: 100%;
-  text-align: center;
-  box-sizing: border-box;
-}
-
 
 .kanban-column {
   display: flex;
@@ -608,3 +590,18 @@ body.sidebar-collapsed .dashboard-body {
   color: var(--accent-color) !important;
 }
 
+/* Общий стиль для закрепления */
+.sticky-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--bg-color);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Дополнительные стили для светлой темы */
+[data-theme="light"] .sticky-toolbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #ddd;
+}

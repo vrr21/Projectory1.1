@@ -38,9 +38,9 @@ interface User {
 interface Team {
   ID_Team: number;
   Team_Name: string;
+  Status: string;  // добавить это поле
   members: TeamMember[];
 }
-
 
 
 const TeamManagementPage: React.FC = () => {
@@ -75,8 +75,9 @@ const TeamManagementPage: React.FC = () => {
       const res = await fetch(`${API_URL}/api/teams`);
       if (!res.ok) throw new Error(await res.text());
       const data: Team[] = await res.json();
-      const active = data.filter(t => t.members.length > 0);  // или по другому признаку активности
-      const archived = data.filter(t => t.members.length === 0);  // или другой признак архивации
+  
+      const active = data.filter(t => t.Status !== 'Архив');
+      const archived = data.filter(t => t.Status === 'Архив');
   
       setTeams(active);
       setArchivedTeams(archived);
@@ -86,24 +87,24 @@ const TeamManagementPage: React.FC = () => {
     }
   }, [messageApi]);
   
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/employees`);
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      const formattedUsers: User[] = data.map((u: { ID_User: number; First_Name: string; Last_Name: string; Email?: string }) => ({
-        id: u.ID_User,
-        fullName: `${u.First_Name} ${u.Last_Name}`,
-        email: u.Email ?? 'no-email@example.com',
-      }));
-      
-      setUsers(formattedUsers);
-    } catch (err) {
-      console.error(err);
-      messageApi.error('Ошибка при загрузке сотрудников');
-    }
-  }, [messageApi]);
+  
+const fetchUsers = useCallback(async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/employees`);
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    const formattedUsers: User[] = data.map((u: { ID_User: number; First_Name: string; Last_Name: string; Email?: string }) => ({
+      id: u.ID_User,
+      fullName: `${u.First_Name} ${u.Last_Name}`,
+      email: u.Email ?? 'no-email@example.com',
+    }));
+    
+    setUsers(formattedUsers);
+  } catch (err) {
+    console.error(err);
+    messageApi.error('Ошибка при загрузке сотрудников');
+  }
+}, [messageApi]);
 
   useEffect(() => {
     fetchTeams();
@@ -149,30 +150,6 @@ const TeamManagementPage: React.FC = () => {
     return uniqueRoles.map(role => ({ text: role, value: role }));
   };
 
-  const handleCreateTeam = async (values: { name: string }) => {
-    const teamName = values.name.trim();
-    if (!teamName) return messageApi.error('Название команды не может быть пустым');
-
-    const duplicate = teams.some(team => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase());
-    if (duplicate) return messageApi.error('Команда с таким названием уже существует');
-
-    try {
-      const res = await fetch(`${API_URL}/api/teams`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Team_Name: teamName }),
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-      await fetchTeams();
-      teamForm.resetFields();
-      setIsTeamModalVisible(false);
-      messageApi.success('Команда успешно создана');
-    } catch (err) {
-      console.error(err);
-      messageApi.error('Ошибка при создании команды');
-    }
-  };
 
   const handleAddMember = async (values: { userId: number; role: string }) => {
     if (!currentTeamId) return;
@@ -227,44 +204,67 @@ const TeamManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteTeam = async (teamId: number) => {
+  const handleDeleteTeam = async (teamId: number, teamName: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/teams/${teamId}`, {
-        method: 'DELETE',
+      const res = await fetch(`${API_URL}/api/teams/${teamId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Team_Name: teamName }),
       });
+  
       if (!res.ok) throw new Error(await res.text());
-      messageApi.success('Команда удалена');
+      messageApi.success('Команда отправлена в архив');
       fetchTeams();
     } catch (err) {
       console.error(err);
-      messageApi.error('Ошибка при удалении команды');
+      messageApi.error('Ошибка при отправке команды в архив');
     }
   };
-
+  
+  const handleRestoreTeam = async (teamId: number, teamName: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/teams/${teamId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Team_Name: teamName, Status: 'В процессе' }), // восстанавливаем
+      });
+  
+      if (!res.ok) throw new Error(await res.text());
+      messageApi.success('Команда восстановлена');
+      fetchTeams();
+    } catch (err) {
+      console.error(err);
+      messageApi.error('Ошибка при восстановлении команды');
+    }
+  };
+  
   const columns: ColumnsType<Team> = [
     {
-      title: 'Название команды',
+      title: <div style={{ textAlign: 'center' }}>Название команды</div>,
       dataIndex: 'Team_Name',
       key: 'Team_Name',
+      align: 'left',  // Содержимое по левому краю
       filters: getTeamNameFilters(),
       onFilter: (value, record) => record.Team_Name === value,
     },
     {
-      title: 'Участники',
+      title: <div style={{ textAlign: 'center' }}>Участники</div>,
       key: 'members',
+      align: 'left',  // Содержимое по левому краю
       filters: getRoleFilters(),
       onFilter: (value, record) => record.members.some(m => m.role === value),
       render: (_, team) => (
         <div>
           {team.members.map(m => (
             <div key={`${team.ID_Team}-${m.id}`}>
-              {m.fullName} ({m.role}) — {m.email}{' '}
+              {m.fullName} ({m.role}) — {m.email}
               <Button
                 type="link"
                 danger
                 size="small"
                 onClick={() => handleDeleteMember(team.ID_Team, m.id)}
                 icon={<DeleteOutlined />}
+                style={{ marginLeft: 8 }}
               >
                 Удалить
               </Button>
@@ -274,62 +274,94 @@ const TeamManagementPage: React.FC = () => {
       ),
     },
     {
-      title: 'Действия',
+      title: <div style={{ textAlign: 'center' }}>Действия</div>,
       key: 'actions',
+      align: 'center',  // Кнопки по центру
       render: (_, team) => {
         if (showArchive) {
           return (
-            <Button
-              type="link"
-              onClick={async () => {
-                await handleRestoreTeam(team.ID_Team);
-              }}
-            >
-              Восстановить команду
-            </Button>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <Button
+                type="default"
+                style={{
+                  minWidth: '150px',
+                  justifyContent: 'center',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-color)',
+                }}
+                onClick={() => handleRestoreTeam(team.ID_Team, team.Team_Name)}
+
+              >
+                Восстановить команду
+              </Button>
+            </div>
           );
         }
-    
+        
+  
         return (
-          <>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '4px' }}>
             <Button
-              type="link"
+              type="default"
+              icon={<EditOutlined />}
+              style={{
+                minWidth: '150px',
+                justifyContent: 'center',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-color)',
+              }}
               onClick={() => {
                 setCurrentTeamId(team.ID_Team);
                 setIsAddMembersModalVisible(true);
               }}
-              icon={<EditOutlined />}
             >
               Добавить участников
             </Button>
             <Button
-              type="link"
-              danger
-              onClick={() => handleDeleteTeam(team.ID_Team)}
+              type="default"
               icon={<DeleteOutlined />}
+              danger
+              style={{
+                minWidth: '150px',
+                justifyContent: 'center',
+                border: '1px solid var(--border-color)',
+              }}
+              onClick={() => handleDeleteTeam(team.ID_Team, team.Team_Name)}
+
             >
               Удалить команду
             </Button>
-          </>
+          </div>
         );
       },
     },
   ];
-
-  const handleRestoreTeam = async (teamId: number) => {
+  
+  const handleCreateTeam = async (values: { name: string }) => {
+    const teamName = values.name.trim();
+    if (!teamName) return messageApi.error('Название команды не может быть пустым');
+  
+    const duplicate = teams.some(team => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase());
+    if (duplicate) return messageApi.error('Команда с таким названием уже существует');
+  
     try {
-      const res = await fetch(`${API_URL}/api/teams/${teamId}/restore`, {
-        method: 'PATCH',
+      const res = await fetch(`${API_URL}/api/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Team_Name: teamName, Status: 'В процессе' }), // статус активной команды
       });
+  
       if (!res.ok) throw new Error(await res.text());
-      messageApi.success('Команда восстановлена');
-      fetchTeams();
+      await fetchTeams();
+      teamForm.resetFields();
+      setIsTeamModalVisible(false);
+      messageApi.success('Команда успешно создана');
     } catch (err) {
       console.error(err);
-      messageApi.error('Ошибка при восстановлении команды');
+      messageApi.error('Ошибка при создании команды');
     }
   };
- 
+  
   const filteredTeams = (showArchive ? archivedTeams : teams).filter(team => {
     const combinedFields = `${team.Team_Name} ${team.members.map(m => `${m.fullName} ${m.role} ${m.email}`).join(' ')}`.toLowerCase();
     return combinedFields.includes(searchTerm.toLowerCase());
@@ -346,19 +378,24 @@ const TeamManagementPage: React.FC = () => {
             <SidebarManager />
             <main className="main-content team-management-page">
 
-              <h1>Управление командами</h1>
-              <div className="button-wrapper" style={{ display: 'flex', justifyContent: 'space-between' }}>
-  <Button
-    type="primary"
-    onClick={() => setIsTeamModalVisible(true)}
-  >
-    Создать команду
-  </Button>
-  <div style={{ display: 'flex', gap: '8px' }}>
-    <Button
-      onClick={() => setShowArchive(!showArchive)}
-      icon={<InboxOutlined />}
-    >
+            <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: '24px' }}>Управление командами</h1>
+              <div className="button-wrapper" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+              <Button
+  type="primary"
+  className="create-team-button"
+  onClick={() => setIsTeamModalVisible(true)}
+>
+  Создать команду
+</Button>
+
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+    <Input
+      placeholder="Поиск по всем данным..."
+      allowClear
+      onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
+      style={{ width: 250 }}
+    />
+    <Button onClick={() => setShowArchive(!showArchive)} icon={<InboxOutlined />}>
       {showArchive ? 'Назад к активным командам' : 'Архив команд'}
     </Button>
     <Dropdown
@@ -380,18 +417,12 @@ const TeamManagementPage: React.FC = () => {
 
 
 
+
 <h2 style={{ marginBottom: '8px', fontWeight: '400' }}>
   {showArchive ? 'Удалённые команды' : 'Список команд'}
 </h2>
 
-<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-  <Input.Search
-    placeholder="Поиск по всем данным..."
-    allowClear
-    onChange={(e) => setSearchTerm(e.target.value.toLowerCase())}
-    style={{ width: 300 }}
-  />
-</div>
+
 
 <Table
   dataSource={filteredTeams}

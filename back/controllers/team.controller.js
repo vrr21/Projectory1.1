@@ -6,7 +6,7 @@ const getAllTeams = async (req, res) => {
   try {
     await poolConnect;
     const result = await pool.request().query(`
-      SELECT t.ID_Team AS id, t.Team_Name AS name,
+      SELECT t.ID_Team AS id, t.Team_Name AS name, t.Status,
              u.ID_User AS userId, u.First_Name + ' ' + u.Last_Name AS fullName, u.Email,
              tm.Role
       FROM Teams t
@@ -20,6 +20,7 @@ const getAllTeams = async (req, res) => {
         teamMap[row.id] = {
           ID_Team: row.id,
           Team_Name: row.name,
+          Status: row.Status,   // <- добавляем статус сюда
           members: [],
         };
       }
@@ -39,6 +40,7 @@ const getAllTeams = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении команд' });
   }
 };
+
 
 // Создание команды
 const createTeam = async (req, res) => {
@@ -150,10 +152,51 @@ const deleteTeam = async (req, res) => {
   }
 };
 
+
+// Архивация команды (обновление статуса на 'Архив')
+const archiveTeam = async (req, res) => {
+  try {
+    await poolConnect;
+    const { teamId } = req.params;
+
+    await pool
+      .request()
+      .input('ID_Team', teamId)
+      .input('Status', sql.NVarChar, 'Архив')
+      .query('UPDATE Teams SET Status = @Status WHERE ID_Team = @ID_Team');
+
+    res.status(200).json({ message: 'Команда отправлена в архив' });
+  } catch (error) {
+    console.error('Ошибка при архивации команды:', error);
+    res.status(500).json({ message: 'Ошибка при архивации команды' });
+  }
+};
+
+// Восстановление команды (обновление статуса на 'В процессе')
+const restoreTeam = async (req, res) => {
+  try {
+    await poolConnect;
+    const { teamId } = req.params;
+
+    await pool
+      .request()
+      .input('ID_Team', teamId)
+      .input('Status', sql.NVarChar, 'В процессе')
+      .query('UPDATE Teams SET Status = @Status WHERE ID_Team = @ID_Team');
+
+    res.status(200).json({ message: 'Команда восстановлена' });
+  } catch (error) {
+    console.error('Ошибка при восстановлении команды:', error);
+    res.status(500).json({ message: 'Ошибка при восстановлении команды' });
+  }
+};
+
 module.exports = {
   getAllTeams,
   createTeam,
   addTeamMember,
   removeTeamMember,
   deleteTeam,
+  archiveTeam,
+  restoreTeam,
 };

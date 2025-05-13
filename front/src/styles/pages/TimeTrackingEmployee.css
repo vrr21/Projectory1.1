@@ -1,9 +1,8 @@
 /* Page Content */
 .page-content {
-  padding: 20px;
   background-color: var(--bg-color);
-  color: var(--text-color);
-  position: relative;
+    padding-top: 0 !important;
+    margin-top: 0 !important;
 }
 
 /* Time Tracking Form */
@@ -318,7 +317,7 @@
 [data-theme="light"] .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
 [data-theme="light"] .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner {
   background-color: #e6f7ff !important;
-  border-color: #1890ff !important;
+  border-color: #00bcd4 !important;
   color: #000000 !important;
 }
 
@@ -519,6 +518,117 @@
 [data-theme="light"] .ant-btn-default:hover {
   background-color: #e6f7ff !important;
   color: #000000 !important;
-  border-color: #1890ff !important;
+  border-color: #00bcd4 !important;
 }
 
+/* Поля ввода */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-affix-wrapper > input,
+.ant-picker,
+.ant-select-selector {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Плейсхолдеры */
+.ant-input::placeholder,
+.ant-picker-input > input::placeholder,
+.ant-select-selection-placeholder {
+  color: var(--text-color) !important;
+  opacity: 0.6;
+}
+
+/* Add Time Button (Black with White Border) */
+.add-time-button {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+
+/* Hover and Active States in Dark Theme */
+[data-theme="dark"] .add-time-button:hover,
+[data-theme="dark"] .add-time-button:active {
+  background-color: #000 !important; /* Фон остаётся чёрным */
+  color: #00bcd4 !important;
+  border: 1px solid #00bcd4 !important;
+}
+
+/* Hover and Active States in Light Theme */
+[data-theme="light"] .add-time-button:hover,
+[data-theme="light"] .add-time-button:active {
+  background-color: #000 !important; /* Фон остаётся чёрным */
+  color: #00bcd4 !important;
+  border: 1px solid #00bcd4 !important;
+}
+/* Unified Style for Action Buttons in Time Tracking Cards */
+.entry-card .ant-btn {
+  margin-right: 4px;
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+/* Dark Theme Hover & Active */
+[data-theme="dark"] .entry-card .ant-btn:hover,
+[data-theme="dark"] .entry-card .ant-btn:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Light Theme Hover & Active */
+[data-theme="light"] .entry-card .ant-btn:hover,
+[data-theme="light"] .entry-card .ant-btn:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Style for Arrows and Filter Button Consistent with Card Buttons */
+.arrow-button,
+.filter-button {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+/* Dark Theme Hover & Active */
+[data-theme="dark"] .arrow-button:hover,
+[data-theme="dark"] .arrow-button:active,
+[data-theme="dark"] .filter-button:hover,
+[data-theme="dark"] .filter-button:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Light Theme Hover & Active */
+[data-theme="light"] .arrow-button:hover,
+[data-theme="light"] .arrow-button:active,
+[data-theme="light"] .filter-button:hover,
+[data-theme="light"] .filter-button:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Выделенная дата */
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner {
+  background-color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  color: #ffffff !important;
+}
+
+/* Рамка вокруг сегодняшней даты */
+.ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
+  border-color: #00bcd4 !important;
+}
+
+/* Диапазон дат */
+.ant-picker-cell-in-range::before {
+  background-color: rgba(0, 188, 212, 0.2) !important;
+}

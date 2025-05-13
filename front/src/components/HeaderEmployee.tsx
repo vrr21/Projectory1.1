@@ -6,9 +6,6 @@ import {
   Dropdown,
   Modal,
   Tooltip,
-  AutoComplete,
-  Input,
-  Spin,
   Drawer,
   List,
   MenuProps,
@@ -17,7 +14,6 @@ import {
   BellOutlined,
   UserOutlined,
   BulbOutlined,
-  SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/useAuth';
@@ -25,25 +21,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import '../styles/components/Header.css';
-
 import logoDark from '../assets/лого.png';
 import logoLight from '../assets/лого2.png';
 
-
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
-
-interface SearchResult {
-  id: number;
-  name: string;
-  type: 'task' | 'order' | 'team';
-}
-
-interface OptionType {
-  label: string;
-  value: string;
-  type: 'task' | 'order' | 'team';
-}
 
 interface NotificationItem {
   id: number;
@@ -58,8 +40,6 @@ const HeaderEmployee: React.FC = () => {
   const navigate = useNavigate();
 
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [searchOptions, setSearchOptions] = useState<OptionType[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
@@ -81,43 +61,6 @@ const HeaderEmployee: React.FC = () => {
         label: <span onClick={() => setIsModalVisible(true)}>Выйти</span>,
       },
     ],
-  };
-
-  const handleSearch = async (value: string) => {
-    if (!value.trim()) {
-      setSearchOptions([]);
-      return;
-    }
-
-    setSearchLoading(true);
-
-    try {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const res = await fetch(
-        `${API_URL}/api/employee/fullsearch?q=${encodeURIComponent(value)}&employeeEmail=${currentUser.email}`
-      );
-      if (!res.ok) throw new Error('Ошибка поиска');
-      const data: SearchResult[] = await res.json();
-
-      const options = data.map((item) => ({
-        label: `${item.name} (${item.type === 'task' ? 'Задача' : item.type === 'order' ? 'Проект' : 'Команда'})`,
-        value: item.name,
-        type: item.type,
-      }));
-
-      setSearchOptions(options);
-    } catch (error) {
-      console.error('Ошибка при поиске:', error);
-    } finally {
-      setSearchLoading(false);
-    }
-  };
-
-  const handleSelect = (value: string, option: OptionType) => {
-    const { type } = option;
-    if (type === 'task') navigate('/mytasks');
-    else if (type === 'order') navigate('/employee');
-    else if (type === 'team') navigate('/teams');
   };
 
   const fetchNotifications = async () => {
@@ -164,31 +107,15 @@ const HeaderEmployee: React.FC = () => {
             cursor: 'pointer',
           }}
         >
-<img
-  src={theme === 'dark' ? logoDark : logoLight}
-  alt="Logo"
-  style={{ height: '1.6em', objectFit: 'contain' }}
-/>
-
+          <img
+            src={theme === 'dark' ? logoDark : logoLight}
+            alt="Logo"
+            style={{ height: '1.6em', objectFit: 'contain' }}
+          />
           Projectory
         </div>
 
         <div className="right-section">
-          <AutoComplete
-            options={searchOptions}
-            onSearch={handleSearch}
-            onSelect={handleSelect}
-            style={{ width: 250, marginRight: '16px' }}
-            notFoundContent={searchLoading ? <Spin size="small" /> : 'Ничего не найдено'}
-          >
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="Поиск..."
-              allowClear
-              className="search-input"
-            />
-          </AutoComplete>
-
           <Badge count={notifications.length} className="icon">
             <BellOutlined
               style={{ fontSize: '20px', color: 'var(--text-color)', cursor: 'pointer' }}

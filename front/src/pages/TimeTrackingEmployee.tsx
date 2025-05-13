@@ -56,7 +56,8 @@ interface RawTimeEntry {
   End_Date: string;
   Hours_Spent: number;
   Description?: string;
-  Attachments?: string[]; 
+  Attachments?: string[];
+  ID_User: string; // Добавьте это поле
 }
 
 interface CommentType {
@@ -84,6 +85,7 @@ const TimeTrackingEmployee: React.FC = () => {
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [editingFileList, setEditingFileList] = useState<UploadFile[]>([]);
 
+
   const weekDaysRu = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
   const fetchProjects = useCallback(async () => {
@@ -102,20 +104,28 @@ const TimeTrackingEmployee: React.FC = () => {
     setTasks(await res.json());
   }, []);
 
+  
   const fetchTimeEntries = useCallback(async () => {
     const token = localStorage.getItem('token');
+    const userResponse = await fetch(`${API_URL}/api/auth/current-user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const userData = await userResponse.json();
     const res = await fetch(`${API_URL}/api/time-tracking`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    setTimeEntries(await res.json());
+    const allEntries: RawTimeEntry[] = await res.json();
+    const userEntries = allEntries.filter(entry => entry.ID_User === userData.ID_User);
+    setTimeEntries(userEntries);
   }, []);
+  
 
   useEffect(() => {
     fetchProjects();
     fetchTasks();
     fetchTimeEntries();
   }, [fetchProjects, fetchTasks, fetchTimeEntries]);
-
+  
   const handleEdit = (entry: RawTimeEntry) => {
     const project = projects.find(p => p.Order_Name === entry.Order_Name)?.ID_Order;
   
@@ -307,7 +317,9 @@ const TimeTrackingEmployee: React.FC = () => {
     timeEntries.filter(entry => dayjs(entry.Start_Date).isSame(day, 'day'));
 
   const normFile = (e: { fileList: UploadFile[] }) => Array.isArray(e) ? e : e.fileList;
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
+  
   return (
     <App>
       {contextHolder}
@@ -340,17 +352,17 @@ const TimeTrackingEmployee: React.FC = () => {
                     current && (current.year() < 2000 || current.year() > 2100)
                   }
                 />
-                <Button
-                  type="primary"
-                  onClick={() => {
-                    form.resetFields();
-                    setEditingEntry(null);
-                    setIsModalVisible(true);
-                  }}
-                  style={{ marginLeft: 'auto' }}
-                >
-                  Добавить потраченное время
-                </Button>
+<Button
+  className="add-time-button"
+  onClick={() => {
+    form.resetFields();
+    setEditingEntry(null);
+    setIsModalVisible(true);
+  }}
+>
+  Добавить потраченное время
+</Button>
+
               </div>
 
               <div className="horizontal-columns">
@@ -359,28 +371,36 @@ const TimeTrackingEmployee: React.FC = () => {
                     <div className="day-header">{weekDaysRu[day.isoWeekday() - 1]}</div>
                     <div className="day-date">{day.format('DD.MM')}</div>
                     <div className="card-stack">
-                      {getEntriesByDay(day).map(entry => (
-                        <div key={entry.ID_Execution} className="entry-card">
-                          <b>{entry.Task_Name}</b>
-                          <div>Проект: {entry.Order_Name}</div>
-                          <div>{entry.Hours_Spent} ч</div>
-                          <div style={{ marginTop: 8 }}>
-                            <Tooltip title="Просмотр">
-                              <Button icon={<EyeOutlined />} onClick={() => handleViewEntry(entry)}  />
-                            </Tooltip>
-                            <Tooltip title="Редактировать">
-                              <Button icon={<EditOutlined />} onClick={() => handleEdit(entry)} />
-                            </Tooltip>
-                            <Tooltip title="Удалить">
-                              <Button icon={<DeleteOutlined />} danger onClick={() => handleDelete(entry.ID_Execution)} />
-                            </Tooltip>
-                            <Tooltip title="Комментарии">
-                              <Button icon={<MessageOutlined />} onClick={() => openCommentsModal(entry)} />
-                            </Tooltip>
+                    {getEntriesByDay(day)
+  .filter(entry => entry.ID_User === user?.id)
+  .map(entry => (
+    <div key={entry.ID_Execution} className="entry-card">
+      <div>
+        <b>{entry.Task_Name}</b>
+        <div>Проект: {entry.Order_Name}</div>
+        <div>{entry.Hours_Spent} ч</div>
+      </div>
 
-                          </div>
-                        </div>
-                      ))}
+      <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <Tooltip title="Просмотр">
+          <Button icon={<EyeOutlined />} onClick={() => handleViewEntry(entry)} />
+        </Tooltip>
+        <Tooltip title="Редактировать">
+          <Button icon={<EditOutlined />} onClick={() => handleEdit(entry)} />
+        </Tooltip>
+        <Tooltip title="Удалить">
+          <Button icon={<DeleteOutlined />} danger onClick={() => handleDelete(entry.ID_Execution)} />
+        </Tooltip>
+        <Tooltip title="Комментарии">
+          <Button icon={<MessageOutlined />} onClick={() => openCommentsModal(entry)} />
+        </Tooltip>
+      </div>
+    </div>
+  ))}
+
+
+
+
                     </div>
                   </div>
                 ))}

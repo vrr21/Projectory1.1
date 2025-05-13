@@ -64,10 +64,15 @@
   margin-bottom: 0rem !important;
 }
 
-/* Уменьшаем отступ под заголовком "Список команд" */
+/* Точное выравнивание заголовка "Список команд" */
 .team-management-page h2 {
-  margin-bottom: 0rem !important;
+  margin-top:-10px !important;
+  margin-bottom: -20px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.2 !important;
 }
+
 
 /* Снижаем отступ перед поисковой строкой */
 .team-management-page .ant-input-search {
@@ -77,4 +82,24 @@
 /* Уменьшаем отступ справа между кнопками */
 .team-management-page .button-wrapper > div {
   gap: 4px !important;
+}
+
+/* Стиль для кнопки "Создать команду", как у всех остальных */
+.create-team-button,
+.team-management-page .ant-btn-primary {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: none !important;
+}
+
+/* Ховер и активное состояние */
+.create-team-button:hover,
+.create-team-button:active,
+.team-management-page .ant-btn-primary:hover,
+.team-management-page .ant-btn-primary:active {
+  background-color: transparent !important;
+  color: #00bcd4 !important;
+  border: 1px solid #00bcd4 !important;
+  box-shadow: none !important;
 }

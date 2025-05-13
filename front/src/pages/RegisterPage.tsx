@@ -13,7 +13,7 @@ import "react-phone-input-2/lib/style.css";
 import { registerUser } from "../api/auth";
 import "../styles/pages/AuthPages.css";
 import backgroundImage from "../assets/reg_auth.png";
-import logo from "../assets/лого.png"; // ← логотип
+import logo from "../assets/лого.png";
 
 const { Title } = Typography;
 
@@ -40,6 +40,8 @@ const RegisterPage: React.FC = () => {
     }
   }, [location]);
 
+  document.documentElement.setAttribute('data-theme', 'dark');
+
   const onFinish = async (values: RegisterForm) => {
     try {
       if (values.password !== values.confirmPassword) {
@@ -65,7 +67,6 @@ const RegisterPage: React.FC = () => {
   return (
     <div className={`auth-container ${isTransitioning ? "transition" : ""}`}>
       <div className="auth-wrapper register">
-        {/* Левая колонка с изображением и текстом */}
         <div className="auth-left">
           <div className="auth-text">
             <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -85,22 +86,13 @@ const RegisterPage: React.FC = () => {
           <img src={backgroundImage} alt="Auth Illustration" className="auth-image" />
         </div>
 
-        {/* Правая колонка — форма регистрации */}
         <div className="auth-form">
           <Title level={2}>Регистрация</Title>
           <Form<RegisterForm> form={form} layout="vertical" onFinish={onFinish}>
-            <Form.Item
-              label="Имя"
-              name="firstName"
-              rules={[{ required: true, message: "Введите имя!" }]}
-            >
+            <Form.Item label="Имя" name="firstName" rules={[{ required: true, message: "Введите имя!" }]}>
               <Input />
             </Form.Item>
-            <Form.Item
-              label="Фамилия"
-              name="lastName"
-              rules={[{ required: true, message: "Введите фамилию!" }]}
-            >
+            <Form.Item label="Фамилия" name="lastName" rules={[{ required: true, message: "Введите фамилию!" }]}>
               <Input />
             </Form.Item>
             <Form.Item
@@ -118,10 +110,11 @@ const RegisterPage: React.FC = () => {
             >
               <PhoneInput
                 country={"by"}
+                enableSearch
+                onlyCountries={["ru", "by", "kz", "ua", "kg", "md", "tj", "tm", "uz", "az", "am"]}
                 inputClass="custom-phone-input"
                 buttonClass="custom-phone-button"
                 containerClass="custom-phone-container"
-                enableSearch
                 inputProps={{
                   name: "phone",
                   required: true,
@@ -139,18 +132,10 @@ const RegisterPage: React.FC = () => {
             >
               <Input />
             </Form.Item>
-            <Form.Item
-              label="Пароль"
-              name="password"
-              rules={[{ required: true, message: "Введите пароль!" }]}
-            >
+            <Form.Item label="Пароль" name="password" rules={[{ required: true, message: "Введите пароль!" }]}>
               <Input.Password />
             </Form.Item>
-            <Form.Item
-              label="Повторите пароль"
-              name="confirmPassword"
-              rules={[{ required: true, message: "Повторите пароль!" }]}
-            >
+            <Form.Item label="Повторите пароль" name="confirmPassword" rules={[{ required: true, message: "Повторите пароль!" }]}>
               <Input.Password />
             </Form.Item>
             <Form.Item name="isManager" valuePropName="checked">

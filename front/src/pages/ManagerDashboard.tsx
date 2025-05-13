@@ -19,7 +19,8 @@ import '@ant-design/v5-patch-for-react-19';
 import type { UploadFile } from 'antd/es/upload';
 import { Dropdown} from 'antd';  
 import { DownloadOutlined } from '@ant-design/icons';
-
+import type { ColumnsType } from 'antd/es/table';
+import type { Key } from 'react';
 const { Option } = Select;
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -98,7 +99,7 @@ const ManagerDashboard: React.FC = () => {
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
-
+  const [expandedStatuses, setExpandedStatuses] = useState<string[]>([]);
   const [pendingDragTask, setPendingDragTask] = useState<{
     taskId: number;
     targetStatusId: number;
@@ -187,6 +188,7 @@ const ManagerDashboard: React.FC = () => {
   
   const submitComment = async () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const token = localStorage.getItem('token');
     const userId = user?.id ?? null;
   
     if (!newComment.trim()) {
@@ -204,20 +206,31 @@ const ManagerDashboard: React.FC = () => {
       return;
     }
   
+    if (!token) {
+      messageApi.error('Токен авторизации отсутствует. Пожалуйста, войдите заново.');
+      return;
+    }
+  
     const payload = {
       taskId: currentTaskId,
       userId,
-      commentText: newComment.trim()
+      commentText: newComment.trim(),
     };
   
     try {
       const res = await fetch(`${API_URL}/api/comments`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
       });
   
-      if (!res.ok) throw new Error(`Ошибка: ${res.status} — ${await res.text()}`);
+      if (!res.ok) {
+        const errorMessage = await res.text();
+        throw new Error(`Ошибка: ${res.status} — ${errorMessage}`);
+      }
   
       setNewComment('');
       openCommentsModal(currentTaskId);
@@ -227,6 +240,7 @@ const ManagerDashboard: React.FC = () => {
       console.error('submitComment error:', err);
     }
   };
+  
   
   const clearFilters = () => {
     setFilterTeam(null);
@@ -333,79 +347,105 @@ const ManagerDashboard: React.FC = () => {
     }
   };
   
-  const tableColumns = [
-    { title: 'Проект', dataIndex: 'Order_Name', key: 'Order_Name' },
-    { title: 'Название задачи', dataIndex: 'Task_Name', key: 'Task_Name' },
-    { title: 'Описание', dataIndex: 'Description', key: 'Description' },
-    { title: 'Норма времени (часы)', dataIndex: 'Time_Norm', key: 'Time_Norm' },
-    {
-      title: 'Дедлайн',
-      dataIndex: 'Deadline',
-      key: 'Deadline',
-      render: (date: string) => {
-        return date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '—';
-      }
-    },
-    {
-      title: 'Сотрудники',
-      key: 'Employees',
-      render: (_: unknown, task: Task) => (
-        <div className="kanban-avatars">
-          {task.Employees?.length
-            ? task.Employees.map(emp => (
-                <Tooltip key={emp.id} title={emp.fullName}>
-                 <Avatar
-  src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-  style={{ backgroundColor: emp.avatar ? 'transparent' : '#777' }}
->
-  {!emp.avatar && getInitials(emp.fullName)}
-</Avatar>
 
-                </Tooltip>
-              ))
-            : 'Не назначен'}
-        </div>
-      ),
-    },
-    { title: 'Статус', dataIndex: 'Status_Name', key: 'Status_Name' },
-    {
-      title: 'Действия',
-      key: 'actions',
-      render: (_: unknown, task: Task) => (
-        <div className="task-actions">
-          <Tooltip title="Редактировать">
-            <Button
-              icon={<EditOutlined />}
-              onClick={() => showModal(task)}
-              size="small"
-              style={{
-                marginRight: 8,
-                backgroundColor: 'transparent', // Убирает фон
-                border: 'none', // Убирает обводку
-                color: 'inherit', // Устанавливает цвет текста по умолчанию
-                padding: 0 // Убирает лишние отступы
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="Удалить">
-            <Button
-              icon={<DeleteOutlined />}
-              onClick={() => handleDelete(task.ID_Task)}
-              size="small"
-              danger
-              style={{
-                backgroundColor: 'transparent', // Убирает фон
-                border: 'none', // Убирает обводку
-                color: 'inherit', // Устанавливает цвет текста по умолчанию
-                padding: 0 // Убирает лишние отступы
-              }}
-            />
-          </Tooltip>
-        </div>
-      ),
-    }
-    
-  ];
+  
+const tableColumns: ColumnsType<Task> = [
+  {
+    title: 'Проект',
+    dataIndex: 'Order_Name',
+    key: 'Order_Name',
+    align: 'center',
+    filters: Array.from(new Set(tasks.map(task => task.Order_Name))).map(name => ({ text: name, value: name })),
+    onFilter: (value: boolean | Key, record: Task) =>
+      typeof value === 'string' && record.Order_Name === value,
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+  },
+  {
+    title: 'Название задачи',
+    dataIndex: 'Task_Name',
+    key: 'Task_Name',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+  },
+  {
+    title: 'Описание',
+    dataIndex: 'Description',
+    key: 'Description',
+    align: 'center',
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+  },
+  {
+    title: 'Норма времени (часы)',
+    dataIndex: 'Time_Norm',
+    key: 'Time_Norm',
+    align: 'center',
+    render: (text: number) => <div style={{ textAlign: 'left' }}>{text}</div>,
+  },
+  {
+    title: 'Дедлайн',
+    dataIndex: 'Deadline',
+    key: 'Deadline',
+    align: 'center',
+    render: (date: string) => <div style={{ textAlign: 'left' }}>{date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '—'}</div>,
+  },
+  {
+    title: 'Сотрудники',
+    key: 'Employees',
+    align: 'center',
+    render: (_: unknown, task: Task) => (
+      <div className="kanban-avatars" style={{ textAlign: 'left' }}>
+        {task.Employees?.length
+          ? task.Employees.map(emp => (
+              <Tooltip key={emp.id} title={emp.fullName}>
+                <Avatar
+                  src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+                  style={{ backgroundColor: emp.avatar ? 'transparent' : '#777' }}
+                >
+                  {!emp.avatar && getInitials(emp.fullName)}
+                </Avatar>
+              </Tooltip>
+            ))
+          : 'Не назначен'}
+      </div>
+    ),
+  },
+  {
+    title: 'Статус',
+    dataIndex: 'Status_Name',
+    key: 'Status_Name',
+    align: 'center',
+    filters: Array.from(new Set(tasks.map(task => task.Status_Name))).map(status => ({ text: status, value: status })),
+    onFilter: (value: boolean | Key, record: Task) =>
+      typeof value === 'string' && record.Status_Name === value,
+    render: (text: string) => <div style={{ textAlign: 'left' }}>{text}</div>,
+  },
+  {
+    title: 'Действия',
+    key: 'actions',
+    align: 'center',
+    render: (_: unknown, task: Task) => (
+      <div className="task-actions" style={{ textAlign: 'left' }}>
+        <Tooltip title="Редактировать">
+          <Button
+            icon={<EditOutlined />}
+            onClick={() => showModal(task)}
+            size="small"
+            style={{ marginRight: 8, backgroundColor: 'transparent', border: 'none', color: 'inherit', padding: 0 }}
+          />
+        </Tooltip>
+        <Tooltip title="Удалить">
+          <Button
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(task.ID_Task)}
+            size="small"
+            danger
+            style={{ backgroundColor: 'transparent', border: 'none', color: 'inherit', padding: 0 }}
+          />
+        </Tooltip>
+      </div>
+    ),
+  },
+];
 
   const fetchAll = useCallback(async () => {
     try {
@@ -657,13 +697,16 @@ const ManagerDashboard: React.FC = () => {
       if (file.originFileObj) {
         const formData = new FormData();
         formData.append('file', file.originFileObj);
-  
+        if (editingTask?.ID_Task) {
+          formData.append('taskId', editingTask.ID_Task.toString());
+        }
+    
         try {
           const res = await fetch(`${API_URL}/api/upload-task`, {
             method: 'POST',
             body: formData,
           });
-  
+    
           if (res.ok) {
             const data = await res.json();
             uploadedFilenames.push(data.filename);
@@ -677,7 +720,7 @@ const ManagerDashboard: React.FC = () => {
         uploadedFilenames.push(file.name);
       }
     }
-  
+    
     const newStatus = statusesData.find(s => s.Status_Name === 'Новая');
     if (!newStatus) {
       messageApi.error('Не найден статус "Новая"');
@@ -729,21 +772,36 @@ const ManagerDashboard: React.FC = () => {
     setIsViewModalVisible(true);
   };
   const handleEditComment = async (commentId: number) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      messageApi.error('Токен авторизации отсутствует. Пожалуйста, войдите заново.');
+      return;
+    }
+  
     try {
       const res = await fetch(`${API_URL}/api/comments/${commentId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ commentText: editedCommentText }),
       });
   
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Ошибка: ${res.status} — ${errorText}`);
+      }
+  
       setEditingCommentId(null);
       openCommentsModal(currentTaskId!);
       messageApi.success('Комментарий обновлён');
-    } catch {
+    } catch (error) {
+      console.error('Ошибка при обновлении комментария:', error);
       messageApi.error('Ошибка при обновлении комментария');
     }
   };
+  
   
   const handleDeleteComment = async (commentId: number) => {
     try {
@@ -764,7 +822,10 @@ const ManagerDashboard: React.FC = () => {
           <div className="dashboard-body">
             <SidebarManager />
             <main className="main-content">
-              <h2 className="dashboard-title">Задачи</h2>
+            <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: '24px' }}>
+  Доски задач
+</h1>
+
               <Tabs
                 activeKey={activeTab}
                 onChange={setActiveTab}
@@ -774,162 +835,233 @@ const ManagerDashboard: React.FC = () => {
                     label: 'Kanban-доска',
                     key: 'kanban',
                     children: (
-                      <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
-                          <Button className="add-task-button" onClick={() => showModal()}>
-                            ➕ Добавить задачу
-                          </Button>
-  
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
-                            <Input
-                              placeholder="Поиск по задачам..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              style={{ minWidth: 250 }}
-                            />
-                            <Dropdown
-                              menu={{ items: [] }}
-                              open={isDropdownOpen}
-                              onOpenChange={setIsDropdownOpen}
-                              dropdownRender={() => filterMenu}
-                            >
-                              <Button className="filters-button" icon={<FilterOutlined />}>
-                                Фильтры
-                              </Button>
-                            </Dropdown>
-                            <Dropdown
-                              menu={{
-                                onClick: ({ key }) => handleExport(key),
-                                items: [
-                                  { key: 'word', label: 'Экспорт в Word' },
-                                  { key: 'excel', label: 'Экспорт в Excel' },
-                                  { key: 'pdf', label: 'Экспорт в PDF' },
-                                ],
-                              }}
-                              placement="bottomRight"
-                              arrow
-                            >
-                              <Button icon={<DownloadOutlined />}>Экспорт</Button>
-                            </Dropdown>
-                          </div>
-                        </div>
-  
-
-<DragDropContext onDragEnd={handleDragEnd}>
-  <div className="kanban-wrapper">
-    <div className="kanban-columns">
-      {statuses.map((status) => (
-        <Droppable key={status} droppableId={status}>
-          {(provided) => (
-            <div
-              className="kanban-status-block"
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              <div className="kanban-status-header">{status}</div>
-              {(filteredGroupedMap[status] || []).map((task, index) => (
-                <Draggable
-                  key={`task-${task.ID_Task}`}
-                  draggableId={`task-${task.ID_Task}`}
-                  index={index}
-                >
-                  {(providedDraggable) => (
-                    <div
-                      className="kanban-task"
-                      ref={providedDraggable.innerRef}
-                      {...providedDraggable.draggableProps}
-                      {...providedDraggable.dragHandleProps}
-                    >
-                      <div className="kanban-task-content">
-                        <strong>{task.Task_Name}</strong>
-                        <p>{task.Description}</p>
-                        <p><i>Проект:</i> {task.Order_Name}</p>
-
-                        <div className="kanban-avatars">
-                          {task.Employees.map((emp, idx) => (
-                            <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
-                              <Avatar
-                                src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-                                style={{
-                                  backgroundColor: emp.avatar ? 'transparent' : '#777',
-                                  marginRight: 4,
-                                  marginBottom: 4,
-                                }}
-                              >
-                                {!emp.avatar && getInitials(emp.fullName)}
-                              </Avatar>
-                            </Tooltip>
-                          ))}
-                        </div>
-
-                        <div className="task-footer">
-                          <Button
-                            type="text"
-                            icon={<EyeOutlined className="kanban-icon" />}
-                            onClick={() => openViewModal(task)}
-                            style={{ padding: 0, height: 'auto', marginRight: 8 }}
-                          />
-                          <Button
-                            type="text"
-                            icon={<MessageOutlined className="kanban-icon" />}
-                            onClick={() => openCommentsModal(task.ID_Task)}
-                            style={{ padding: 0, height: 'auto' }}
-                          />
-                    {task.Status_Name === 'Завершена' && task.AutoCompleted ? (
-  <div className="deadline-box expired">
-    <ClockCircleOutlined style={{ marginRight: 6 }} />
-    Срок истёк
-  </div>
-) : task.Status_Name === 'Завершена' ? (
-  <div className="deadline-box completed">
-    <ClockCircleOutlined style={{ marginRight: 6 }} />
-    Завершена
-  </div>
-) : task.Status_Name === 'Выполнена' ? (
-  <div className="deadline-box completed">
-    <ClockCircleOutlined style={{ marginRight: 6 }} />
-    Выполнено
-  </div>
-) : task.Deadline ? (
+<>
   <div
-    className={`deadline-box ${
-      dayjs(task.Deadline).isBefore(dayjs())
-        ? 'expired'
-        : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
-        ? 'warning'
-        : 'safe'
-    }`}
+    className="sticky-toolbar"
+    style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+      padding: '8px 0',
+      backgroundColor: 'transparent', 
+      borderBottom: 'none',      
+      boxShadow: 'none',           
+    }}
   >
-    <ClockCircleOutlined style={{ marginRight: 6 }} />
-    {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
-      ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
-      : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
-      ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
-      : 'Срок истёк'}
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 8
+      }}
+    >
+      <Button className="add-task-button" onClick={() => showModal()}>
+        ➕ Добавить задачу
+      </Button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Input
+          placeholder="Поиск по карточкам задач..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ minWidth: 250 }}
+        />
+        <Dropdown
+          menu={{ items: [] }}
+          open={isDropdownOpen}
+          onOpenChange={setIsDropdownOpen}
+          dropdownRender={() => filterMenu}
+        >
+          <Button className="filters-button" icon={<FilterOutlined />}>
+            Фильтры
+          </Button>
+        </Dropdown>
+        <Dropdown
+          menu={{
+            onClick: ({ key }) => handleExport(key),
+            items: [
+              { key: 'word', label: 'Экспорт в Word' },
+              { key: 'excel', label: 'Экспорт в Excel' },
+              { key: 'pdf', label: 'Экспорт в PDF' },
+            ],
+          }}
+          placement="bottomRight"
+          arrow
+        >
+          <Button icon={<DownloadOutlined />}>Экспорт</Button>
+        </Dropdown>
+      </div>
+    </div>
   </div>
-) : (
-  <div className="deadline-box undefined">
-    <ClockCircleOutlined style={{ marginRight: 6 }} />
-    Без срока
+
+
+  <div style={{ maxHeight: 'calc(100vh - 250px)', overflowY: 'auto', overflowX: 'auto' }}>
+  <DragDropContext onDragEnd={handleDragEnd}>
+  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`, gap: '16px' }}>
+    
+  {statuses.map((status) => (
+  <div
+    key={`header-${status}`}
+    className="kanban-status-header"
+    style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 10,
+      // ✅ Удалено: border: '1px solid #444',
+    }}
+  >
+    {status}
   </div>
+))}
+
+
+{/* Колонки с задачами */}
+{statuses.map((status) => {
+  const tasksForStatus = filteredGroupedMap[status] || [];
+  const isExpanded = expandedStatuses.includes(status);
+  const visibleTasks = isExpanded ? tasksForStatus : tasksForStatus.slice(0, 5);
+
+  return (
+    <Droppable key={status} droppableId={status}>
+      {(provided) => (
+        <div
+  ref={provided.innerRef}
+  {...provided.droppableProps}
+  style={{
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+    minWidth: '300px',
+    backgroundColor: '#1a1a1a',
+    borderRadius: '10px',
+    padding: '1rem',
+    boxShadow: '0 4px 12px rgba(59, 59, 59, 0.2)',
+  }}
+>
+
+          {visibleTasks.map((task, index) => (
+            <Draggable
+              key={`task-${task.ID_Task}`}
+              draggableId={`task-${task.ID_Task}`}
+              index={index}
+            >
+              {(providedDraggable) => (
+                <div
+                  className="kanban-task"
+                  ref={providedDraggable.innerRef}
+                  {...providedDraggable.draggableProps}
+                  {...providedDraggable.dragHandleProps}
+                >
+                  <div className="kanban-task-content">
+                    <strong>{task.Task_Name}</strong>
+                    <p>{task.Description}</p>
+                    <p><i>Проект:</i> {task.Order_Name}</p>
+
+                    <div className="kanban-avatars">
+                      {task.Employees.map((emp, idx) => (
+                        <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
+                          <Avatar
+                            src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+                            style={{
+                              backgroundColor: emp.avatar ? 'transparent' : '#777',
+                              marginRight: 4,
+                              marginBottom: 4,
+                            }}
+                          >
+                            {!emp.avatar && getInitials(emp.fullName)}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
+                    </div>
+
+                    <div className="task-footer">
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => openViewModal(task)}
+                        style={{ padding: 0, height: 'auto', marginRight: 8 }}
+                      />
+                      <Button
+                        type="text"
+                        icon={<MessageOutlined />}
+                        onClick={() => openCommentsModal(task.ID_Task)}
+                        style={{ padding: 0, height: 'auto' }}
+                      />
+                      {task.Status_Name === 'Завершена' && task.AutoCompleted ? (
+                        <div className="deadline-box expired">
+                          <ClockCircleOutlined style={{ marginRight: 6 }} />
+                          Срок истёк
+                        </div>
+                      ) : task.Status_Name === 'Завершена' ? (
+                        <div className="deadline-box completed">
+                          <ClockCircleOutlined style={{ marginRight: 6 }} />
+                          Завершена
+                        </div>
+                      ) : task.Status_Name === 'Выполнена' ? (
+                        <div className="deadline-box completed">
+                          <ClockCircleOutlined style={{ marginRight: 6 }} />
+                          Выполнено
+                        </div>
+                      ) : task.Deadline ? (
+                        <div
+                          className={`deadline-box ${
+                            dayjs(task.Deadline).isBefore(dayjs())
+                              ? 'expired'
+                              : dayjs(task.Deadline).diff(dayjs(), 'hour') <= 24
+                              ? 'warning'
+                              : 'safe'
+                          }`}
+                        >
+                          <ClockCircleOutlined style={{ marginRight: 6 }} />
+                          {dayjs(task.Deadline).diff(dayjs(), 'day') > 0
+                            ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'day')} дн`
+                            : dayjs(task.Deadline).diff(dayjs(), 'hour') > 0
+                            ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), 'hour')} ч`
+                            : 'Срок истёк'}
+                        </div>
+                      ) : (
+                        <div className="deadline-box undefined">
+                          <ClockCircleOutlined style={{ marginRight: 6 }} />
+                          Без срока
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Draggable>
+          ))}
+
+          {/* Кнопка "Смотреть далее" */}
+          {tasksForStatus.length > 5 && !isExpanded && (
+  <Button
+    type="link"
+    onClick={() => setExpandedStatuses([...expandedStatuses, status])}
+    style={{ 
+      alignSelf: 'center', 
+      marginTop: 8, 
+      color: '#00bcd4'  // ✅ установлен цвет текста
+    }}
+  >
+    Смотреть далее ({tasksForStatus.length - 5} ещё)
+  </Button>
 )}
 
 
+          {provided.placeholder}
+        </div>
+      )}
+    </Droppable>
+  );
+})}
 
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      ))}
     </div>
-  </div>
-</DragDropContext>
+  </DragDropContext>
+</div>
+
+
 
                       </>
                     ),
@@ -939,55 +1071,74 @@ const ManagerDashboard: React.FC = () => {
                     key: 'table',
                     children: (
                       <>
-                        <div style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          marginBottom: 16,
-                          flexWrap: 'wrap',
-                          gap: 8
-                        }}>
-                          {/* Левая сторона — кнопка добавления */}
-                          <Button className="add-task-button" onClick={() => showModal()}>
-                            ➕ Добавить задачу
-                          </Button>
-                  
-                          {/* Правая сторона — строка поиска, фильтры и экспорт */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Input
-                              placeholder="Поиск по задачам, проектам, описаниям и исполнителям..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              style={{ minWidth: 250 }}
-                            />
-                            <Dropdown
-                              menu={{ items: [] }}
-                              open={isDropdownOpen}
-                              onOpenChange={setIsDropdownOpen}
-                              dropdownRender={() => filterMenu}
-                            >
-                              <Button className="filters-button" icon={<FilterOutlined />}>
-                                Фильтры
-                              </Button>
-                            </Dropdown>
-                            <Dropdown
-                              menu={{
-                                onClick: ({ key }) => handleExport(key),
-                                items: [
-                                  { key: 'word', label: 'Экспорт в Word' },
-                                  { key: 'excel', label: 'Экспорт в Excel' },
-                                  { key: 'pdf', label: 'Экспорт в PDF' },
-                                ],
-                              }}
-                              placement="bottomRight"
-                              arrow
-                            >
-                              <Button icon={<DownloadOutlined />}>Экспорт</Button>
-                            </Dropdown>
-                          </div>
-                        </div>
-                  
-                        <Table dataSource={tasks} columns={tableColumns} rowKey="ID_Task" />
+              <div style={{ maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+              <div className="sticky-toolbar">
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 8,
+    }}
+  >
+      <Button className="add-task-button" onClick={() => showModal()}>
+        ➕ Добавить задачу
+      </Button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Input
+          placeholder="Поиск по таблице задач..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{ minWidth: 250 }}
+        />
+        <Dropdown
+          menu={{ items: [] }}
+          open={isDropdownOpen}
+          onOpenChange={setIsDropdownOpen}
+          dropdownRender={() => filterMenu}
+        >
+          <Button className="filters-button" icon={<FilterOutlined />}>
+            Фильтры
+          </Button>
+        </Dropdown>
+        <Dropdown
+          menu={{
+            onClick: ({ key }) => handleExport(key),
+            items: [
+              { key: 'word', label: 'Экспорт в Word' },
+              { key: 'excel', label: 'Экспорт в Excel' },
+              { key: 'pdf', label: 'Экспорт в PDF' },
+            ],
+          }}
+          placement="bottomRight"
+          arrow
+        >
+          <Button icon={<DownloadOutlined />}>Экспорт</Button>
+        </Dropdown>
+      </div>
+    </div>
+  </div>
+
+
+  <Table
+    dataSource={tasks.filter((task) => {
+      const query = searchQuery.toLowerCase();
+      return (
+        task.Task_Name.toLowerCase().includes(query) ||
+        task.Description.toLowerCase().includes(query) ||
+        task.Order_Name.toLowerCase().includes(query) ||
+        task.Status_Name.toLowerCase().includes(query) ||
+        task.Employees.some((emp) => emp.fullName.toLowerCase().includes(query))
+      );
+    })}
+    columns={tableColumns}
+    rowKey="ID_Task"
+    pagination={{ pageSize: 10 }} // ✅ Пагинация на 10 строк
+  />
+</div>
+
                       </>
                     ),
                   }
