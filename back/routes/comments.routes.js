@@ -15,4 +15,7 @@ router.put('/:id', verifyToken, controller.updateComment);
 // Удаление комментария
 router.delete('/:id', verifyToken, controller.deleteComment);
 
+// Удаление всех комментариев по задаче
+router.delete('/task/:taskId', controller.deleteCommentsByTask);
+
 module.exports = router;

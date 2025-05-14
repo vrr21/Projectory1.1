@@ -18,6 +18,9 @@ router.delete('/:id', taskController.deleteTask);
 // 🔹 Получить задачи конкретного сотрудника
 router.get('/employee/:id', taskController.getTasksByEmployee);
 
+// 🔹 Закрыть задачу (установить статус "Завершена")
+router.patch('/:id/close', taskController.closeTask);
+
 // 🔹 Поиск задач по имени или описанию
 router.get('/search', async (req, res) => {
   const { q } = req.query;
@@ -33,7 +36,7 @@ router.get('/search', async (req, res) => {
     res.json(result.recordset);
   } catch (error) {
     console.error('Ошибка поиска задач:', error);
-    res.status(500).json({ message: 'Ошибка поиска задач' });
+    res.status(500).json({ message: 'Ошибка поиска задач', error: error.message });
   }
 });
 

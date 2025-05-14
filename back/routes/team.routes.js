@@ -9,31 +9,24 @@ const {
   removeTeamMember,
   deleteTeam,
   archiveTeam,
-  restoreTeam
+  restoreTeam,
+  updateTeamName, // Новый обработчик
 } = require('../controllers/team.controller');
 
-// Получение всех команд
 router.get('/', getAllTeams);
-
-// Создание новой команды
 router.post('/', createTeam);
-
-// Добавление участника в команду
 router.post('/add', addTeamMember);
-
-// Удаление участника из команды
 router.delete('/:teamId/remove/:memberId', removeTeamMember);
-
-// Полное удаление команды
 router.delete('/:teamId', deleteTeam);
 
-// ✅ Архивация команды (обновление статуса на "Архив")
-router.patch('/:teamId/archive', archiveTeam);
+// Новый роут для редактирования названия
+router.patch('/:teamId', updateTeamName);
 
-// ✅ Восстановление команды (обновление статуса на "В процессе")
+// Роуты для архивации и восстановления
+router.patch('/:teamId/archive', archiveTeam);
 router.patch('/:teamId/restore', restoreTeam);
 
-// Поиск команд по названию
+// Поиск команд
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {

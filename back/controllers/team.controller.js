@@ -20,7 +20,7 @@ const getAllTeams = async (req, res) => {
         teamMap[row.id] = {
           ID_Team: row.id,
           Team_Name: row.name,
-          Status: row.Status,   // <- добавляем статус сюда
+          Status: row.Status,
           members: [],
         };
       }
@@ -41,6 +41,18 @@ const getAllTeams = async (req, res) => {
   }
 };
 
+// Вспомогательная проверка существования команды с таким названием
+const teamExistsByName = async (teamName, excludeId = null) => {
+  const request = pool.request().input('Team_Name', sql.NVarChar, teamName.trim());
+  if (excludeId) {
+    request.input('ID_Team', excludeId);
+  }
+  const query = excludeId
+    ? 'SELECT 1 FROM Teams WHERE Team_Name = @Team_Name AND ID_Team != @ID_Team'
+    : 'SELECT 1 FROM Teams WHERE Team_Name = @Team_Name';
+  const result = await request.query(query);
+  return result.recordset.length > 0;
+};
 
 // Создание команды
 const createTeam = async (req, res) => {
@@ -52,21 +64,51 @@ const createTeam = async (req, res) => {
       return res.status(400).json({ error: 'Название команды обязательно' });
     }
 
+    if (await teamExistsByName(Team_Name)) {
+      return res.status(400).json({ error: 'Команда с таким названием уже существует' });
+    }
+
     const result = await pool
       .request()
-      .input('Team_Name', sql.NVarChar, Team_Name)
-      .query('INSERT INTO Teams (Team_Name) OUTPUT INSERTED.ID_Team VALUES (@Team_Name)');
+      .input('Team_Name', sql.NVarChar, Team_Name.trim())
+      .query('INSERT INTO Teams (Team_Name, Status) OUTPUT INSERTED.ID_Team VALUES (@Team_Name, \'В процессе\')');
 
-    const newTeam = {
+    res.status(201).json({
       ID_Team: result.recordset[0].ID_Team,
       Team_Name,
       members: [],
-    };
-
-    res.status(201).json(newTeam);
+    });
   } catch (error) {
     console.error('Ошибка при создании команды:', error);
     res.status(500).json({ error: 'Не удалось создать команду' });
+  }
+};
+
+// Обновление названия команды
+const updateTeamName = async (req, res) => {
+  try {
+    await poolConnect;
+    const { teamId } = req.params;
+    const { Team_Name } = req.body;
+
+    if (!Team_Name) {
+      return res.status(400).json({ message: 'Новое название обязательно' });
+    }
+
+    if (await teamExistsByName(Team_Name, teamId)) {
+      return res.status(400).json({ message: 'Команда с таким названием уже существует' });
+    }
+
+    await pool
+      .request()
+      .input('ID_Team', teamId)
+      .input('Team_Name', sql.NVarChar, Team_Name.trim())
+      .query('UPDATE Teams SET Team_Name = @Team_Name WHERE ID_Team = @ID_Team');
+
+    res.status(200).json({ message: 'Название команды обновлено' });
+  } catch (error) {
+    console.error('Ошибка при обновлении названия команды:', error);
+    res.status(500).json({ message: 'Ошибка при обновлении названия команды' });
   }
 };
 
@@ -134,7 +176,7 @@ const removeTeamMember = async (req, res) => {
   }
 };
 
-// Удаление команды
+// Полное удаление команды
 const deleteTeam = async (req, res) => {
   try {
     await poolConnect;
@@ -152,8 +194,7 @@ const deleteTeam = async (req, res) => {
   }
 };
 
-
-// Архивация команды (обновление статуса на 'Архив')
+// Архивация команды
 const archiveTeam = async (req, res) => {
   try {
     await poolConnect;
@@ -172,7 +213,7 @@ const archiveTeam = async (req, res) => {
   }
 };
 
-// Восстановление команды (обновление статуса на 'В процессе')
+// Восстановление команды
 const restoreTeam = async (req, res) => {
   try {
     await poolConnect;
@@ -190,10 +231,45 @@ const restoreTeam = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при восстановлении команды' });
   }
 };
+// Архивация команды с закрытием проектов и завершением задач
+const archiveTeamWithProjectsAndTasks = async (req, res) => {
+  try {
+    await poolConnect;
+    const { teamId } = req.params;
+
+    // Закрыть все проекты команды
+    await pool.request()
+      .input('ID_Team', teamId)
+      .input('ProjectStatus', sql.NVarChar, 'Закрыт')
+      .query('UPDATE Projects SET Status = @ProjectStatus WHERE ID_Team = @ID_Team');
+
+    // Завершить все задачи проектов этой команды
+    await pool.request()
+      .input('ID_Team', teamId)
+      .input('TaskStatus', sql.NVarChar, 'Завершена')
+      .query(`
+        UPDATE Tasks
+        SET Status = @TaskStatus
+        WHERE ID_Project IN (SELECT ID_Project FROM Projects WHERE ID_Team = @ID_Team)
+      `);
+
+    // Перевести команду в статус "Архив"
+    await pool.request()
+      .input('ID_Team', teamId)
+      .input('Status', sql.NVarChar, 'Архив')
+      .query('UPDATE Teams SET Status = @Status WHERE ID_Team = @ID_Team');
+
+    res.status(200).json({ message: 'Команда, проекты и задачи успешно архивированы' });
+  } catch (error) {
+    console.error('Ошибка при архивации команды и связанных элементов:', error);
+    res.status(500).json({ message: 'Ошибка при архивации команды и связанных элементов' });
+  }
+};
 
 module.exports = {
   getAllTeams,
   createTeam,
+  updateTeamName,
   addTeamMember,
   removeTeamMember,
   deleteTeam,

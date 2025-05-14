@@ -96,3 +96,21 @@ exports.deleteComment = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при удалении комментария' });
   }
 };
+
+
+// Удаление всех комментариев по задаче
+exports.deleteCommentsByTask = async (req, res) => {
+  const { taskId } = req.params;
+
+  try {
+    const poolConn = await pool.connect();
+    await poolConn.request()
+      .input('taskId', sql.Int, taskId)
+      .query('DELETE FROM TaskComments WHERE ID_Task = @taskId');
+
+    res.status(200).json({ message: 'Все комментарии к задаче удалены' });
+  } catch (err) {
+    console.error('Ошибка удаления комментариев по задаче:', err);
+    res.status(500).json({ error: 'Ошибка при удалении комментариев по задаче' });
+  }
+};

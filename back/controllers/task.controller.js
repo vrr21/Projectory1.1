@@ -302,3 +302,33 @@ exports.getTasksWithDetails = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении задач с деталями', error: error.message });
   }
 };
+// 🔹 Закрытие задачи
+exports.closeTask = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await poolConnect;
+
+    // Получить ID статуса "Завершена"
+    const statusResult = await pool.request()
+      .input('Status_Name', sql.NVarChar, 'Завершена')
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+
+    if (!statusResult.recordset.length) {
+      return res.status(400).json({ message: 'Статус "Завершена" не найден' });
+    }
+
+    const completedStatusId = statusResult.recordset[0].ID_Status;
+
+    // Обновить задачу, установив статус "Завершена"
+    await pool.request()
+      .input('ID_Task', sql.Int, id)
+      .input('ID_Status', sql.Int, completedStatusId)
+      .query('UPDATE Tasks SET ID_Status = @ID_Status WHERE ID_Task = @ID_Task');
+
+    res.status(200).json({ message: 'Задача успешно закрыта' });
+  } catch (error) {
+    console.error('🔥 Ошибка при закрытии задачи:', error);
+    res.status(500).json({ message: 'Ошибка при закрытии задачи', error: error.message });
+  }
+};

@@ -26,7 +26,7 @@ const exportTeamsRoutes = require('./routes/exportTeams.routes');
 const exportTasksRoutes = require('./routes/exportTasks.routes');
 const exportReportsRoutes = require('./routes/exportReports.routes');
 const roleRoutes = require('./routes/roles');
-
+const executionsRoutes = require('./routes/executions.routes');
 const app = express();
 const PORT = process.env.PORT || 3002;
 
@@ -55,7 +55,7 @@ app.use('/api', timeTrackingRoutes);
 app.use('/api', notificationsRouter);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/reportspage', reportspageRoutes);
-
+app.use('/api/executions', executionsRoutes);
 // ✅ Все экспортные функции через единый префикс /api/export
 app.use('/api/export', exportRoutes);         // Стандартные экспорты
 app.use('/api/export', exportTeamsRoutes);    // Экспорт команд
