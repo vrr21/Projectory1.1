@@ -253,6 +253,7 @@ const EmployeeDashboard = () => {
   const fetchTasks = useCallback(async () => {
     try {
       const url = `${API_URL}/api/tasks?employee=${user?.id}`;
+
       const response = await fetch(url);
       const data: Task[] = await response.json();
 
@@ -274,7 +275,35 @@ const EmployeeDashboard = () => {
     const { destination, source } = result;
     if (!destination || source.droppableId === destination.droppableId) return;
 
-    if (["Завершена", "Выполнена"].includes(destination.droppableId)) {
+    const fromStatus = source.droppableId;
+    const toStatus = destination.droppableId;
+
+    // Restrict invalid transitions
+    if (
+      fromStatus === "Завершена" &&
+      toStatus !== "Завершена" &&
+      toStatus !== "Выполнена"
+    ) {
+      messageApi.warning(
+        'Нельзя переместить задачу из статуса "Завершена" в выбранный статус'
+      );
+      return;
+    }
+
+    if (
+      fromStatus === "Выполнена" &&
+      (toStatus === "Новая" ||
+        toStatus === "В работе" ||
+        toStatus === "Завершена")
+    ) {
+      messageApi.warning(
+        'Нельзя переместить задачу из "Выполнена" в "Новая", "В работе" или "Завершена"'
+      );
+      return;
+    }
+
+    // Trigger confirmation only when moving to Завершена or Выполнена
+    if (["Завершена", "Выполнена"].includes(toStatus)) {
       setPendingDrag(result);
       setIsConfirmModalVisible(true);
     } else {
@@ -288,11 +317,18 @@ const EmployeeDashboard = () => {
     const updatedStatus = destination?.droppableId;
 
     try {
-      await fetch(`${API_URL}/api/tasks/${taskId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Status_Name: updatedStatus }),
-      });
+      await fetch(
+        `${API_URL}/api/tasks/${taskId}/status?employeeId=${user?.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            taskId,
+            employeeId: user?.id,
+            statusName: updatedStatus,
+          }),
+        }
+      );
       fetchTasks();
     } catch {
       messageApi.error("Ошибка при изменении статуса задачи");
@@ -611,6 +647,16 @@ const EmployeeDashboard = () => {
                                                   <strong>
                                                     {task.Task_Name}
                                                   </strong>
+                                                  <p
+                                                    style={{
+                                                      fontSize: "12px",
+                                                      fontStyle: "italic",
+                                                      color: "#aaa",
+                                                    }}
+                                                  >
+                                                    Выполнил: {user?.firstName}{" "}
+                                                    {user?.lastName}
+                                                  </p>
                                                   <p>{task.Description}</p>
                                                   <p>
                                                     <i>Проект:</i>{" "}
@@ -778,6 +824,18 @@ const EmployeeDashboard = () => {
                         </Tooltip>
                       ))}
                     </div>
+                    <p
+                      style={{
+                        marginTop: 8,
+                        fontStyle: "italic",
+                        color: "#aaa",
+                      }}
+                    >
+                      Модуль данной задачи выполнил:{" "}
+                      <strong>
+                        {user?.firstName} {user?.lastName}
+                      </strong>
+                    </p>
 
                     {viewingTask.attachments &&
                       viewingTask.attachments.length > 0 && (
@@ -1024,6 +1082,9 @@ const EmployeeDashboard = () => {
                 <p>
                   Вы уверены, что хотите переместить задачу в статус "
                   {pendingDrag?.destination?.droppableId}"?
+                  <br />
+                  После перетаскивания карточки в данный статус, действие нельзя
+                  будет отменить!
                 </p>
               </Modal>
             </main>

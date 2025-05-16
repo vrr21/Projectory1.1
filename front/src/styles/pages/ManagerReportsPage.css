@@ -1,0 +1,137 @@
+/* ManagerReportsPage Styles */
+
+.reports-page {
+  padding: 24px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.reports-page h1,
+.reports-page h2,
+.reports-page h3 {
+  color: var(--text-color);
+  margin-bottom: 16px;
+}
+
+.reports-divider {
+  margin: 24px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.reports-section {
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+  transition: background-color var(--transition-time), border-color var(--transition-time);
+}
+
+.reports-chart {
+  margin-top: 16px;
+}
+
+.reports-table {
+  margin-top: 16px;
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* Антд таблица */
+.reports-table .ant-table {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.reports-table .ant-table-thead > tr > th {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  text-align: center;
+}
+
+.reports-table .ant-table-tbody > tr > td {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  text-align: center;
+}
+
+/* Ховеры */
+.reports-table .ant-table-tbody > tr:hover > td {
+  background-color: var(--hover-bg-color) !important;
+}
+
+/* Диаграммы */
+.reports-chart .g2-tooltip {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+/* Заголовки секций */
+.reports-section h2 {
+  margin-bottom: 12px;
+}
+
+/* Спиннер загрузки */
+.reports-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50vh;
+}
+
+/* Светлая тема: полная адаптация */
+[data-theme="light"] .reports-page {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="light"] .reports-section {
+  background-color: var(--card-bg-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .reports-section h2,
+[data-theme="light"] .reports-section h3 {
+  color: var(--text-color) !important;
+}
+
+[data-theme="light"] .reports-divider {
+  border-top: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .reports-table {
+  background-color: var(--card-bg-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .reports-table .ant-table {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+[data-theme="light"] .reports-table .ant-table-thead > tr > th,
+[data-theme="light"] .reports-table .ant-table-tbody > tr > td {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .reports-table .ant-table-tbody > tr:hover > td {
+  background-color: var(--hover-bg-color) !important;
+}
+
+[data-theme="light"] .reports-chart .g2-tooltip {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+[data-theme="light"] .reports-spinner {
+  color: var(--text-color) !important;
+}

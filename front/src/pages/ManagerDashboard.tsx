@@ -30,7 +30,7 @@ import {
 
 import { MessageOutlined } from "@ant-design/icons";
 import { InboxOutlined } from "@ant-design/icons";
-
+import { CheckOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import HeaderManager from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
@@ -76,6 +76,10 @@ interface Task {
   attachments?: string[];
   comments?: Comment[];
   AutoCompleted?: boolean;
+  Status_Updated_At?: string;
+  EmployeeId?: number; // Добавлено
+  EmployeeName?: string; // Добавлено
+  EmployeeAvatar?: string | null; // Добавлено
 }
 
 interface Team {
@@ -715,8 +719,16 @@ const ManagerDashboard: React.FC = () => {
       }
       console.log("Fetched tasks from API:", tasksData);
       console.log("Updated tasks after auto-complete check:", updatedTasks);
+      const expandedTasks = updatedTasks.flatMap((task) =>
+        task.Employees.map((emp) => ({
+          ...task,
+          EmployeeId: emp.id,
+          EmployeeName: emp.fullName,
+          EmployeeAvatar: emp.avatar,
+        }))
+      );
 
-      setTasks(updatedTasks);
+      setTasks(expandedTasks);
 
       const activeTeams = teamsData.filter((team: Team) => !team.IsArchived);
       setTeams(activeTeams);
@@ -770,14 +782,25 @@ const ManagerDashboard: React.FC = () => {
 
     autoUpdateOverdueTasks();
   }, [tasks, statusesData, fetchAll]);
-
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
-      const isArchivedTask = task.Status_Name === "Завершена";
-      if (showArchive && !isArchivedTask) return false;
-      if (!showArchive && isArchivedTask) return false;
+      const isArchivedStatus = ["Завершена", "Выполнена"].includes(
+        task.Status_Name
+      );
+      const statusUpdatedAt = task.Status_Updated_At
+        ? dayjs(task.Status_Updated_At)
+        : null;
+      const oneWeekAgo = dayjs().subtract(7, "day");
 
-      // остальная фильтрация
+      const shouldBeArchived =
+        isArchivedStatus &&
+        statusUpdatedAt &&
+        statusUpdatedAt.isBefore(oneWeekAgo);
+      const isInArchiveView = showArchive;
+      const isVisible = isInArchiveView ? shouldBeArchived : !shouldBeArchived;
+
+      if (!isVisible) return false;
+
       const matchesTeam =
         !filterTeam ||
         teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team ===
@@ -829,17 +852,33 @@ const ManagerDashboard: React.FC = () => {
 
     const fromStatus = source.droppableId;
     const toStatus = destination.droppableId;
-    const isGoingToFinalStatus =
-      toStatus === "Выполнена" || toStatus === "Завершена";
-    const isFromInitialStatus =
-      fromStatus === "Новая" || fromStatus === "В работе";
-    const isDeadlineValid =
-      !task.Deadline || dayjs(task.Deadline).isAfter(dayjs());
+
+    // ❌ Запрет: Из "Выполнена" нельзя двигать никуда
+    if (fromStatus === "Выполнена") {
+      messageApi.warning('Перемещение из "Выполнена" запрещено');
+      return;
+    }
+
+    // ❌ Запрет: Из "Завершена" можно только в "Выполнена"
+    if (fromStatus === "Завершена" && toStatus !== "Выполнена") {
+      messageApi.warning(
+        'Из "Завершена" можно перемещать только в "Выполнено"'
+      );
+      return;
+    }
 
     const statusObj = statusesData.find((s) => s.Status_Name === toStatus);
     if (!statusObj) return;
 
-    if (isFromInitialStatus && isGoingToFinalStatus && isDeadlineValid) {
+    const isGoingToFinalStatus =
+      toStatus === "Завершена" || toStatus === "Выполнена";
+    const isFromInitialStatus =
+      fromStatus === "Новая" || fromStatus === "В работе";
+
+    if (
+      isGoingToFinalStatus &&
+      (isFromInitialStatus || fromStatus === "Завершена")
+    ) {
       setPendingDragTask({
         taskId: task.ID_Task,
         targetStatusId: statusObj.ID_Status,
@@ -852,24 +891,39 @@ const ManagerDashboard: React.FC = () => {
   };
 
   const updateTaskStatus = async (taskId: number, statusId: number) => {
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.ID_Task === taskId
-          ? {
-              ...t,
-              Status_Name:
-                statusesData.find((s) => s.ID_Status === statusId)
-                  ?.Status_Name || t.Status_Name,
-            }
-          : t
-      )
-    );
+    const updatedAt = new Date().toISOString();
+
+    const task = tasks.find((t) => t.ID_Task === taskId); // Добавлено получение задачи
+    if (!task) {
+      console.error("Задача не найдена для обновления статуса");
+      return;
+    }
+
     try {
-      await fetch(`${API_URL}/api/tasks/${taskId}`, {
+      await fetch(`${API_URL}/api/tasks/${taskId}/update-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ID_Status: statusId }),
+        body: JSON.stringify({
+          employeeId: task.EmployeeId, // Теперь task определён
+          statusName: statusesData.find((s) => s.ID_Status === statusId)
+            ?.Status_Name,
+        }),
       });
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.ID_Task === taskId
+            ? {
+                ...t,
+                Status_Name:
+                  statusesData.find((s) => s.ID_Status === statusId)
+                    ?.Status_Name || t.Status_Name,
+                Status_Updated_At: updatedAt,
+              }
+            : t
+        )
+      );
+
       fetchAll();
     } catch {
       messageApi.error("Ошибка при изменении статуса");
@@ -1262,8 +1316,8 @@ const ManagerDashboard: React.FC = () => {
                                       >
                                         {visibleTasks.map((task, index) => (
                                           <Draggable
-                                            key={`task-${task.ID_Task}`}
-                                            draggableId={`task-${task.ID_Task}`}
+                                            key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                            draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
                                             index={index}
                                           >
                                             {(providedDraggable) => (
@@ -1278,6 +1332,29 @@ const ManagerDashboard: React.FC = () => {
                                                     {task.Task_Name}
                                                   </strong>
                                                   <p>{task.Description}</p>
+                                                  <p
+                                                    style={{
+                                                      fontWeight: "bold",
+                                                      fontStyle: "italic",
+                                                      fontSize: "14px",
+                                                      textDecoration:
+                                                        "underline",
+                                                      textDecorationColor:
+                                                        "#00bcd4",
+                                                      display: "inline-flex",
+                                                      alignItems: "center",
+                                                    }}
+                                                  >
+                                                    <CheckOutlined
+                                                      style={{
+                                                        color: "#00bcd4",
+                                                        marginRight: "6px",
+                                                      }}
+                                                    />
+                                                    Модуль данной задачи
+                                                    выполнил:{" "}
+                                                    {task.EmployeeName}
+                                                  </p>
                                                   <p>
                                                     <i>Проект:</i>{" "}
                                                     {task.Order_Name}
@@ -2078,6 +2155,15 @@ const ManagerDashboard: React.FC = () => {
                   Вы уверены, что хотите переместить задачу в статус «
                   {pendingDragTask?.targetStatusName}»?
                 </p>
+                {pendingDragTask?.targetStatusName === "Выполнена" &&
+                  pendingDragTask &&
+                  tasks.find((t) => t.ID_Task === pendingDragTask.taskId)
+                    ?.Status_Name === "Завершена" && (
+                    <p style={{ color: "#f5222d", marginTop: "8px" }}>
+                      После перетаскивания карточки в данный статус, действие
+                      нельзя будет отменить!
+                    </p>
+                  )}
               </Modal>
 
               <Modal

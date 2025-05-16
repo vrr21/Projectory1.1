@@ -50,9 +50,9 @@ router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
 
 // ✅ Регистрация
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, email, password, role } = req.body;
+  const { firstName, lastName, phone, email, password } = req.body;
 
-  if (!firstName || !lastName || !phone || !email || !password || !role) {
+  if (!firstName || !lastName || !phone || !email || !password) {
     return res.status(400).json({ message: 'Все поля обязательны для заполнения' });
   }
 
@@ -68,11 +68,11 @@ router.post('/register', async (req, res) => {
     }
 
     const roleResult = await pool.request()
-      .input('roleName', sql.NVarChar, role)
+      .input('roleName', sql.NVarChar, 'Сотрудник')
       .query('SELECT ID_Role FROM Roles WHERE Role_Name = @roleName');
 
     if (roleResult.recordset.length === 0) {
-      return res.status(400).json({ message: 'Роль не найдена' });
+      return res.status(400).json({ message: 'Роль "Сотрудник" не найдена' });
     }
 
     const roleId = roleResult.recordset[0].ID_Role;
@@ -85,10 +85,8 @@ router.post('/register', async (req, res) => {
       .input('email', sql.NVarChar, email)
       .input('password', sql.NVarChar, hashedPassword)
       .input('roleId', sql.Int, roleId)
-      .query(
-        `INSERT INTO Users (First_Name, Last_Name, Phone, Email, Password, ID_Role)
-         VALUES (@firstName, @lastName, @phone, @email, @password, @roleId)`
-      );
+      .query(`INSERT INTO Users (First_Name, Last_Name, Phone, Email, Password, ID_Role)
+              VALUES (@firstName, @lastName, @phone, @email, @password, @roleId)`);
 
     res.status(201).json({ message: 'Пользователь успешно зарегистрирован' });
   } catch (error) {
@@ -96,6 +94,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Внутренняя ошибка сервера' });
   }
 });
+
 
 // 🔐 Авторизация
 router.post('/login', async (req, res) => {

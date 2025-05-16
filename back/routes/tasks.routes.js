@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/task.controller');
 const { poolConnect, pool, sql } = require('../config/db');
+const employeeTasksController = require('../controllers/task.controller');
 
 // 🔹 Получить все задачи (с фильтрами: ?employee=2&team=1)
 router.get('/', taskController.getAllTasks);
@@ -20,6 +21,10 @@ router.get('/employee/:id', taskController.getTasksByEmployee);
 
 // 🔹 Закрыть задачу (установить статус "Завершена")
 router.patch('/:id/close', taskController.closeTask);
+// 🔹 Обновить статус задачи для конкретного сотрудника
+router.put('/:taskId/status', taskController.updateEmployeeTaskStatus);
+// 🔹 Обновить статус задачи для конкретного сотрудника
+router.put('/:taskId/update-status', taskController.updateEmployeeTaskStatus);
 
 // 🔹 Поиск задач по имени или описанию
 router.get('/search', async (req, res) => {

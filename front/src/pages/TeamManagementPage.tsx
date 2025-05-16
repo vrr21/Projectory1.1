@@ -49,6 +49,10 @@ interface Team {
   Status: string; // добавить это поле
   members: TeamMember[];
 }
+interface MemberWithRole {
+  userId: number;
+  role: string;
+}
 
 const TeamManagementPage: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
@@ -499,35 +503,6 @@ const TeamManagementPage: React.FC = () => {
     }
   };
 
-  const handleCreateTeam = async (values: { name: string }) => {
-    const teamName = values.name.trim();
-    if (!teamName)
-      return messageApi.error("Название команды не может быть пустым");
-
-    const duplicate = teams.some(
-      (team) => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase()
-    );
-    if (duplicate)
-      return messageApi.error("Команда с таким названием уже существует");
-
-    try {
-      const res = await fetch(`${API_URL}/api/teams`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ Team_Name: teamName, Status: "В процессе" }), // статус активной команды
-      });
-
-      if (!res.ok) throw new Error(await res.text());
-      await fetchTeams();
-      teamForm.resetFields();
-      setIsTeamModalVisible(false);
-      messageApi.success("Команда успешно создана");
-    } catch (err) {
-      console.error(err);
-      messageApi.error("Ошибка при создании команды");
-    }
-  };
-
   const filteredTeams = (showArchive ? archivedTeams : teams).filter((team) => {
     const combinedFields = `${team.Team_Name} ${team.members
       .map((m) => `${m.fullName} ${m.role} ${m.email}`)
@@ -620,30 +595,178 @@ const TeamManagementPage: React.FC = () => {
                 style={{ marginTop: 20 }}
                 pagination={{ pageSize: 5 }}
               />
-              <Modal
-                title="Создание команды"
-                open={isTeamModalVisible}
-                onCancel={() => setIsTeamModalVisible(false)}
-                onOk={() => teamForm.submit()}
-                okText="Создать"
-                cancelText="Отмена"
+            <Modal
+  title="Создание команды"
+  open={isTeamModalVisible}
+  onCancel={() => setIsTeamModalVisible(false)}
+  onOk={() => teamForm.submit()}
+  okText="Создать"
+  cancelText="Отмена"
+>
+  <Form
+    form={teamForm}
+    layout="vertical"
+    onFinish={async (values) => {
+      const members = values.membersWithRoles || [];
+      if (members.length < 3) {
+        Modal.error({
+          title: "Ошибка создания команды",
+          content: "Минимум 3 участника должны быть выбраны с ролями.",
+        });
+        
+        return;
+      }
+
+      const duplicateUsers = members.map((m: MemberWithRole) => m.userId);
+
+      const uniqueUsers = [...new Set(duplicateUsers)];
+      if (uniqueUsers.length !== duplicateUsers.length) {
+        messageApi.error("Один и тот же участник не может быть выбран дважды");
+        return;
+      }
+
+      const roleCounts: Record<string, number> = {};
+      for (const m of members) {
+        roleCounts[m.role] = (roleCounts[m.role] || 0) + 1;
+        const limit = roleLimits[m.role] || Infinity;
+        if (roleCounts[m.role] > limit) {
+          messageApi.error(
+            `Максимум ${limit} чел. на роль "${m.role}" уже выбраны`
+          );
+          return;
+        }
+      }
+
+      const teamName = values.name.trim();
+      if (!teamName) {
+        messageApi.error("Название команды не может быть пустым");
+        return;
+      }
+
+      const duplicate = teams.some(
+        (team) => team.Team_Name.trim().toLowerCase() === teamName.toLowerCase()
+      );
+      if (duplicate) {
+        messageApi.error("Команда с таким названием уже существует");
+        return;
+      }
+
+      const payload = {
+        Team_Name: teamName,
+        Status: "В процессе",
+        Members: members.map((m: MemberWithRole) => ({
+          userId: m.userId,
+          role: m.role,
+        })),        
+      };
+
+      try {
+        const res = await fetch(`${API_URL}/api/teams/with-members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        await fetchTeams();
+        teamForm.resetFields();
+        setIsTeamModalVisible(false);
+        messageApi.success("Команда успешно создана");
+      } catch (err) {
+        console.error(err);
+        messageApi.error("Ошибка при создании команды");
+      }
+    }}
+  >
+    <Form.Item
+      name="name"
+      label="Название команды"
+      rules={[{ required: true, message: "Введите название команды" }]}
+    >
+      <Input />
+    </Form.Item>
+
+    <Form.List
+      name="membersWithRoles"
+      rules={[
+        {
+          validator: async (_, members) => {
+            if (!members || members.length < 3) {
+              return Promise.reject(new Error("Минимум 3 участника"));
+            }
+          },
+        },
+      ]}
+    >
+      {(fields, { add, remove }) => (
+        <>
+          {fields.map(({ key, name, ...restField }) => (
+            <div key={key} style={{ marginBottom: "16px" }}>
+              <Form.Item
+                {...restField}
+                name={[name, "userId"]}
+                rules={[{ required: true, message: "Выберите участника" }]}
               >
-                <Form
-                  form={teamForm}
-                  layout="vertical"
-                  onFinish={handleCreateTeam}
+                <Select
+                  placeholder="Участник"
+                  showSearch
+                  optionFilterProp="children"
                 >
-                  <Form.Item
-                    name="name"
-                    label="Название команды"
-                    rules={[
-                      { required: true, message: "Введите название команды" },
-                    ]}
-                  >
-                    <Input />
-                  </Form.Item>
-                </Form>
-              </Modal>
+                  {users.map((user) => (
+                    <Select.Option key={user.id} value={user.id}>
+                      {user.fullName} — {user.email}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                {...restField}
+                name={[name, "role"]}
+                label={
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Роль</span>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<InfoCircleOutlined />}
+                      onClick={() => setIsRoleRulesModalVisible(true)}
+                      style={{
+                        padding: 0,
+                        color: "inherit",
+                        background: "transparent",
+                        border: "none",
+                        boxShadow: "none",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </div>
+                }
+                rules={[{ required: true, message: "Выберите роль" }]}
+              >
+                <Select
+                  placeholder="Роль"
+                  showSearch
+                  optionFilterProp="label"
+                  options={roles}
+                />
+              </Form.Item>
+              <Button danger onClick={() => remove(name)} style={{ marginBottom: "8px" }}>
+                Удалить
+              </Button>
+            </div>
+          ))}
+          <Form.Item>
+            <Button type="dashed" onClick={() => add()} block>
+              Добавить участника
+            </Button>
+          </Form.Item>
+        </>
+      )}
+    </Form.List>
+  </Form>
+</Modal>
+
 
               <Modal
                 title="Добавление участника"
@@ -767,13 +890,15 @@ const TeamManagementPage: React.FC = () => {
                     Понятно
                   </Button>,
                 ]}
-                bodyStyle={{
-                  backgroundColor: token.colorBgElevated,
-                  color: token.colorText,
-                  borderRadius: "8px",
-                  padding: "16px",
-                  maxHeight: "400px",
-                  overflowY: "auto",
+                styles={{
+                  body: {
+                    backgroundColor: token.colorBgElevated,
+                    color: token.colorText,
+                    borderRadius: "8px",
+                    padding: "16px",
+                    maxHeight: "400px",
+                    overflowY: "auto",
+                  },
                 }}
                 style={{
                   backgroundColor: token.colorBgElevated,

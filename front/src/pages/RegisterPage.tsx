@@ -1,12 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  Button,
-  Checkbox,
-  Form,
-  Input,
-  Typography,
-  message,
-} from "antd";
+import { Button, Form, Input, Typography, message } from "antd";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
@@ -24,7 +17,6 @@ type RegisterForm = {
   email: string;
   password: string;
   confirmPassword: string;
-  isManager: boolean;
 };
 
 const RegisterPage: React.FC = () => {
@@ -32,6 +24,7 @@ const RegisterPage: React.FC = () => {
   const location = useLocation();
   const [form] = Form.useForm<RegisterForm>();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     if (location.state?.fromLogin) {
@@ -40,48 +33,53 @@ const RegisterPage: React.FC = () => {
     }
   }, [location]);
 
-  document.documentElement.setAttribute('data-theme', 'dark');
+  document.documentElement.setAttribute("data-theme", "dark");
 
   const onFinish = async (values: RegisterForm) => {
     try {
       if (values.password !== values.confirmPassword) {
-        return message.warning("Пароли не совпадают!");
+        return messageApi.warning("Пароли не совпадают!");
       }
-
+  
       if (!values.phone || values.phone.length < 10) {
-        return message.error("Введите корректный номер телефона!");
+        return messageApi.error("Введите корректный номер телефона!");
       }
-
       await registerUser({
-        ...values,
+        firstName: values.firstName,
+        lastName: values.lastName,
         phone: values.phone.startsWith("+") ? values.phone : `+${values.phone}`,
+        email: values.email,
+        password: values.password,
+        isManager: false,
       });
-
-      message.success("Регистрация успешна! Вход...");
+      
+  
+      messageApi.success("Регистрация успешна! Вход...");
       setTimeout(() => navigate("/login", { state: { fromRegister: true } }), 1000);
-    } catch {
-      message.error("Ошибка при регистрации");
+    } catch (error: unknown) {
+      if (typeof error === "object" && error !== null && "response" in error) {
+        const err = error as { response?: { data?: { message?: string } } };
+        console.error("Ошибка регистрации:", err.response?.data);
+        messageApi.error(err.response?.data?.message || "Ошибка при регистрации");
+      } else {
+        console.error("Неизвестная ошибка:", error);
+        messageApi.error("Неизвестная ошибка при регистрации");
+      }
     }
   };
+  
 
   return (
     <div className={`auth-container ${isTransitioning ? "transition" : ""}`}>
+      {contextHolder}
       <div className="auth-wrapper register">
         <div className="auth-left">
           <div className="auth-text">
             <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <img
-                src={logo}
-                alt="Logo"
-                style={{ height: "1.5em", verticalAlign: "middle" }}
-              />
+              <img src={logo} alt="Logo" style={{ height: "1.5em", verticalAlign: "middle" }} />
               Projectory
             </h1>
-            <p>
-              Присоединяйся к нам
-              <br />
-              Работай над проектами с нами!
-            </p>
+            <p>Присоединяйся к нам<br />Работай над проектами с нами!</p>
           </div>
           <img src={backgroundImage} alt="Auth Illustration" className="auth-image" />
         </div>
@@ -112,14 +110,15 @@ const RegisterPage: React.FC = () => {
                 country={"by"}
                 enableSearch
                 onlyCountries={["ru", "by", "kz", "ua", "kg", "md", "tj", "tm", "uz", "az", "am"]}
-                inputClass="custom-phone-input"
-                buttonClass="custom-phone-button"
-                containerClass="custom-phone-container"
                 inputProps={{
                   name: "phone",
                   required: true,
                   autoComplete: "off",
+                  style: { width: "100%", paddingLeft: "48px" },
                 }}
+                dropdownStyle={{ backgroundColor: "#f5f5f5", color: "#000", border: "1px solid #ccc", boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)" }}
+                searchStyle={{ backgroundColor: "#f5f5f5", color: "#000", border: "1px solid #ccc" }}
+                buttonStyle={{ backgroundColor: "rgba(255, 255, 255, 0.15)", borderRight: "1px solid #444" }}
               />
             </Form.Item>
             <Form.Item
@@ -128,6 +127,16 @@ const RegisterPage: React.FC = () => {
               rules={[
                 { required: true, message: "Введите email!" },
                 { type: "email", message: "Некорректный email!" },
+                {
+                  validator: (_, value) => {
+                    const allowedDomains = ["gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com", "me.com", "mail.ru", "yandex.ru", "yandex.com", "protonmail.com", "zoho.com", "gmx.com"];
+                    if (!value) return Promise.resolve();
+                    const emailDomain = value.split("@")[1];
+                    return allowedDomains.includes(emailDomain)
+                      ? Promise.resolve()
+                      : Promise.reject(new Error("Разрешены только адреса: " + allowedDomains.join(", ")));
+                  },
+                },
               ]}
             >
               <Input />
@@ -138,19 +147,13 @@ const RegisterPage: React.FC = () => {
             <Form.Item label="Повторите пароль" name="confirmPassword" rules={[{ required: true, message: "Повторите пароль!" }]}>
               <Input.Password />
             </Form.Item>
-            <Form.Item name="isManager" valuePropName="checked">
-              <Checkbox>Я менеджер</Checkbox>
-            </Form.Item>
             <Form.Item>
               <Button type="primary" htmlType="submit" block>
                 Зарегистрироваться
               </Button>
             </Form.Item>
             <Form.Item style={{ textAlign: "center" }}>
-              Уже есть аккаунт?{" "}
-              <Link to="/login" state={{ fromRegister: true }}>
-                Войти
-              </Link>
+              Уже есть аккаунт? <Link to="/login" state={{ fromRegister: true }}>Войти</Link>
             </Form.Item>
           </Form>
         </div>

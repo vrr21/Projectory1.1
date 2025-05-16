@@ -176,21 +176,61 @@ const removeTeamMember = async (req, res) => {
   }
 };
 
-// Полное удаление команды
 const deleteTeam = async (req, res) => {
   try {
     await poolConnect;
     const { teamId } = req.params;
 
-    await pool
-      .request()
-      .input('ID_Team', teamId)
-      .query('DELETE FROM TeamMembers WHERE ID_Team = @ID_Team; DELETE FROM Teams WHERE ID_Team = @ID_Team');
+    // Удаление назначений Assignment
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query(`
+        DELETE FROM Assignment 
+        WHERE ID_Task IN (
+          SELECT ID_Task FROM Tasks 
+          WHERE ID_Order IN (SELECT ID_Order FROM Orders WHERE ID_Team = @ID_Team)
+        );
+      `);
 
-    res.status(200).json({ message: 'Команда удалена' });
+    // Удаление исполнений Execution
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query(`
+        DELETE FROM Execution 
+        WHERE ID_Task IN (
+          SELECT ID_Task FROM Tasks 
+          WHERE ID_Order IN (SELECT ID_Order FROM Orders WHERE ID_Team = @ID_Team)
+        );
+      `);
+
+    // Удаление задач Tasks
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query(`
+        DELETE FROM Tasks 
+        WHERE ID_Order IN (SELECT ID_Order FROM Orders WHERE ID_Team = @ID_Team);
+      `);
+
+    // Удаление заказов Orders
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query('DELETE FROM Orders WHERE ID_Team = @ID_Team;');
+
+    // Удаление участников TeamMembers
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query('DELETE FROM TeamMembers WHERE ID_Team = @ID_Team;');
+
+    // Удаление самой команды Teams
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query('DELETE FROM Teams WHERE ID_Team = @ID_Team;');
+
+    res.status(200).json({ message: 'Команда и все связанные данные успешно удалены' });
+
   } catch (error) {
-    console.error('Ошибка при удалении команды:', error);
-    res.status(500).json({ message: 'Ошибка при удалении команды' });
+    console.error('Ошибка при полном удалении команды и связанных данных:', error);
+    res.status(500).json({ message: 'Ошибка при полном удалении команды и связанных данных' });
   }
 };
 
@@ -231,48 +271,158 @@ const restoreTeam = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при восстановлении команды' });
   }
 };
-// Архивация команды с закрытием проектов и завершением задач
+// Создание команды с участниками
+const createTeamWithMembers = async (req, res) => {
+  try {
+    await poolConnect;
+    const { Team_Name, Members } = req.body;
+
+    if (!Team_Name) {
+      return res.status(400).json({ error: 'Название команды обязательно' });
+    }
+
+    if (!Members || Members.length < 3) {
+      return res.status(400).json({ error: 'Минимум 3 участника обязательно' });
+    }
+
+    if (await teamExistsByName(Team_Name)) {
+      return res.status(400).json({ error: 'Команда с таким названием уже существует' });
+    }
+
+    const result = await pool
+      .request()
+      .input('Team_Name', sql.NVarChar, Team_Name.trim())
+      .query('INSERT INTO Teams (Team_Name, Status) OUTPUT INSERTED.ID_Team VALUES (@Team_Name, \'В процессе\')');
+
+    const teamId = result.recordset[0].ID_Team;
+
+    for (const member of Members) {
+      const userResult = await pool
+        .request()
+        .input('ID_User', sql.Int, member.userId)
+        .query('SELECT ID_User FROM Users WHERE ID_User = @ID_User');
+
+      if (userResult.recordset.length === 0) {
+        return res.status(400).json({ error: `Пользователь с ID ${member.userId} не найден` });
+      }
+
+      await pool
+        .request()
+        .input('ID_User', sql.Int, member.userId)
+        .input('ID_Team', sql.Int, teamId)
+        .input('Role', sql.NVarChar, member.role)
+        .query('INSERT INTO TeamMembers (ID_User, ID_Team, Role) VALUES (@ID_User, @ID_Team, @Role)');
+    }
+
+    res.status(201).json({ message: 'Команда и участники успешно созданы', teamId });
+  } catch (error) {
+    console.error('Ошибка при создании команды с участниками:', error);
+    res.status(500).json({ error: 'Ошибка при создании команды с участниками' });
+  }
+};
 const archiveTeamWithProjectsAndTasks = async (req, res) => {
+  await poolConnect;
+  const transaction = new sql.Transaction(pool);
+  try {
+    await transaction.begin();
+
+    const { teamId } = req.params;
+
+    // Новый запрос для закрытия заказов
+    const request1 = new sql.Request(transaction);
+    await request1
+      .input('ID_Team', sql.Int, teamId)
+      .input('OrderStatus', sql.NVarChar, 'Закрыт')
+      .query('UPDATE Orders SET Status = @OrderStatus WHERE ID_Team = @ID_Team');
+
+    // Новый запрос для завершения задач
+    const request2 = new sql.Request(transaction);
+    await request2
+      .input('ID_Team', sql.Int, teamId)
+      .input('TaskStatus', sql.NVarChar, 'Завершена')
+      .query(`
+        UPDATE Tasks
+        SET ID_Status = (SELECT TOP 1 ID_Status FROM Statuses WHERE Status_Name = @TaskStatus)
+        WHERE ID_Order IN (SELECT ID_Order FROM Orders WHERE ID_Team = @ID_Team)
+      `);
+
+    // Новый запрос для архивации команды
+    const request3 = new sql.Request(transaction);
+    await request3
+      .input('ID_Team', sql.Int, teamId)
+      .input('Status', sql.NVarChar, 'Архив')
+      .query('UPDATE Teams SET Status = @Status WHERE ID_Team = @ID_Team');
+
+    await transaction.commit();
+
+    res.status(200).json({ message: 'Команда, заказы и задачи успешно архивированы' });
+
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Ошибка при архивировании команды и связанных данных:', err);
+    res.status(500).json({
+      message: 'Ошибка при архивировании команды и связанных данных.',
+      error: err.message,
+      stack: err.stack,
+    });
+  }
+};
+
+
+// Полное удаление команды вместе с проектами и задачами
+const deleteTeamWithProjectsAndTasks = async (req, res) => {
   try {
     await poolConnect;
     const { teamId } = req.params;
 
-    // Закрыть все проекты команды
+    // Завершить задачи
     await pool.request()
-      .input('ID_Team', teamId)
-      .input('ProjectStatus', sql.NVarChar, 'Закрыт')
-      .query('UPDATE Projects SET Status = @ProjectStatus WHERE ID_Team = @ID_Team');
-
-    // Завершить все задачи проектов этой команды
-    await pool.request()
-      .input('ID_Team', teamId)
+      .input('ID_Team', sql.Int, teamId)
       .input('TaskStatus', sql.NVarChar, 'Завершена')
       .query(`
         UPDATE Tasks
-        SET Status = @TaskStatus
-        WHERE ID_Project IN (SELECT ID_Project FROM Projects WHERE ID_Team = @ID_Team)
+        SET ID_Status = (SELECT TOP 1 ID_Status FROM Statuses WHERE Status_Name = @TaskStatus)
+        WHERE ID_Order IN (SELECT ID_Order FROM Orders WHERE ID_Team = @ID_Team)
       `);
 
-    // Перевести команду в статус "Архив"
+    // Закрыть заказы (Orders)
     await pool.request()
-      .input('ID_Team', teamId)
-      .input('Status', sql.NVarChar, 'Архив')
-      .query('UPDATE Teams SET Status = @Status WHERE ID_Team = @ID_Team');
+      .input('ID_Team', sql.Int, teamId)
+      .input('OrderStatus', sql.NVarChar, 'Закрыт')
+      .query(`
+        UPDATE Orders
+        SET Status = @OrderStatus
+        WHERE ID_Team = @ID_Team
+      `);
 
-    res.status(200).json({ message: 'Команда, проекты и задачи успешно архивированы' });
+    // Удалить участников
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query('DELETE FROM TeamMembers WHERE ID_Team = @ID_Team');
+
+    // Удалить команду
+    await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .query('DELETE FROM Teams WHERE ID_Team = @ID_Team');
+
+    res.status(200).json({ message: 'Команда, её заказы и задачи успешно удалены' });
   } catch (error) {
-    console.error('Ошибка при архивации команды и связанных элементов:', error);
-    res.status(500).json({ message: 'Ошибка при архивации команды и связанных элементов' });
+    console.error('Ошибка при полном удалении команды и связанных данных:', error);
+    res.status(500).json({ message: 'Ошибка при полном удалении команды и связанных данных' });
   }
 };
+
 
 module.exports = {
   getAllTeams,
   createTeam,
+  createTeamWithMembers,
   updateTeamName,
   addTeamMember,
   removeTeamMember,
-  deleteTeam,
+  deleteTeam, // Простое удаление
+  deleteTeamWithProjectsAndTasks, // Полное удаление с проектами и задачами
   archiveTeam,
   restoreTeam,
+  archiveTeamWithProjectsAndTasks,
 };

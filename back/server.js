@@ -20,7 +20,7 @@ const uploadTaskFileRouter = require('./routes/uploadTaskFile.routes');
 const timeTrackingRoutes = require('./routes/timeTracking');
 const notificationsRouter = require('./routes/notifications');
 const commentsRoutes = require('./routes/comments.routes');
-const reportspageRoutes = require('./routes/reportspage.routes');
+const reportsRoutes = require('./routes/reports.routes');
 const exportRoutes = require('./routes/export.routes');
 const exportTeamsRoutes = require('./routes/exportTeams.routes');
 const exportTasksRoutes = require('./routes/exportTasks.routes');
@@ -54,7 +54,7 @@ app.use('/api', uploadTaskFileRouter);
 app.use('/api', timeTrackingRoutes);
 app.use('/api', notificationsRouter);
 app.use('/api/comments', commentsRoutes);
-app.use('/api/reportspage', reportspageRoutes);
+app.use('/api/reports', reportsRoutes);
 app.use('/api/executions', executionsRoutes);
 // ✅ Все экспортные функции через единый префикс /api/export
 app.use('/api/export', exportRoutes);         // Стандартные экспорты

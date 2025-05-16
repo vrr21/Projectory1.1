@@ -64,7 +64,9 @@ const ProjectManagementPage: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
     null
   );
-
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [projectIdToDelete, setProjectIdToDelete] = useState<number | null>(null);
+  
   const fetchTeams = useCallback(async (): Promise<void> => {
     try {
       const response = await fetch(`${API_URL}/api/teams`);
@@ -159,20 +161,30 @@ const ProjectManagementPage: React.FC = () => {
 
   const handleFinish = async (values: FormValues): Promise<void> => {
     try {
+      const duplicateProject = projects.find(
+        (p) =>
+          p.Order_Name.toLowerCase() === values.Order_Name.toLowerCase() &&
+          (!editingProject || p.ID_Order !== editingProject.ID_Order)
+      );
+  
+      if (duplicateProject) {
+        messageApi.error("Проект с таким названием уже существует.");
+        return;
+      }
+  
       const teamId = await getOrCreateTeam(values.Team_Name);
-
-      // ✅ Проверка количества проектов у этой команды
+  
       const projectsForTeam = projects.filter(
         (p) => p.ID_Team === teamId && p.Status !== "Завершён"
       );
-
+  
       if (!editingProject && projectsForTeam.length >= 2) {
         messageApi.error(
           "На одну команду нельзя назначить более 2 активных проектов."
         );
         return;
       }
-
+  
       const payload = {
         Order_Name: values.Order_Name,
         Type_Name: values.Type_Name,
@@ -182,18 +194,18 @@ const ProjectManagementPage: React.FC = () => {
         Status: isRestoring ? "В процессе" : "Новый",
         ID_Team: teamId,
       };
-
+  
       const url = editingProject
         ? `${API_URL}/api/projects/${editingProject.ID_Order}`
         : `${API_URL}/api/projects`;
       const method = editingProject ? "PUT" : "POST";
-
+  
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
+  
       if (!response.ok) throw new Error("Ошибка при сохранении проекта");
       messageApi.success(editingProject ? "Проект обновлён" : "Проект создан");
       fetchProjects();
@@ -202,7 +214,30 @@ const ProjectManagementPage: React.FC = () => {
       if (error instanceof Error) messageApi.error(error.message);
     }
   };
-
+  
+  const handleConfirmDelete = (id: number): void => {
+    setProjectIdToDelete(id);
+    setConfirmDeleteVisible(true);
+  };
+  const handleDeleteConfirmed = async (): Promise<void> => {
+    if (!projectIdToDelete) return;
+  
+    try {
+      const response = await fetch(`${API_URL}/api/projects/${projectIdToDelete}`, {
+        method: "DELETE",
+      });
+  
+      if (!response.ok) throw new Error("Ошибка при удалении проекта");
+      messageApi.success("Проект удалён окончательно");
+      fetchProjects();
+    } catch (error: unknown) {
+      if (error instanceof Error) messageApi.error(error.message);
+    } finally {
+      setConfirmDeleteVisible(false);
+      setProjectIdToDelete(null);
+    }
+  };
+  
   const handleConfirmClose = (id: number): void => {
     setSelectedProjectId(id);
     setConfirmCloseVisible(true);
@@ -283,6 +318,7 @@ const ProjectManagementPage: React.FC = () => {
     return matchesSearch && matchesArchiveFilter;
   });
 
+  
   const columns: ColumnsType<Project> = [
     {
       title: <div style={{ textAlign: "center" }}>Название проекта</div>,
@@ -348,17 +384,27 @@ const ProjectManagementPage: React.FC = () => {
       render: (_text, record) => {
         if (record.Status === "Завершён") {
           return (
-            <Button
-              type="link"
-              onClick={() =>
-                showModal({ ...record, Status: "В процессе" }, true)
-              }
-              icon={<EditOutlined />}
-            >
-              Восстановить
-            </Button>
+            <div className="table-action-buttons">
+              <Button
+                type="link"
+                onClick={() => showModal({ ...record, Status: "В процессе" }, true)}
+                icon={<EditOutlined />}
+              >
+                Восстановить
+              </Button>
+              <Button
+  type="link"
+  danger
+  onClick={() => handleConfirmDelete(record.ID_Order)}
+  icon={<InboxOutlined />}
+>
+  Удалить
+</Button>
+
+            </div>
           );
         }
+        
 
         return (
           <div className="table-action-buttons">
@@ -589,6 +635,17 @@ const ProjectManagementPage: React.FC = () => {
       >
         <p>Вы уверены, что хотите закрыть этот проект?</p>
       </Modal>
+      <Modal
+  title="Подтверждение удаления"
+  open={confirmDeleteVisible}
+  onOk={handleDeleteConfirmed}
+  onCancel={() => setConfirmDeleteVisible(false)}
+  okText="Да, удалить"
+  cancelText="Отмена"
+>
+  <p>Вы уверены, что хотите окончательно удалить этот проект? Это действие необратимо.</p>
+</Modal>
+
     </ConfigProvider>
   );
 };

@@ -332,3 +332,55 @@ exports.closeTask = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при закрытии задачи', error: error.message });
   }
 };
+// 🔹 Обновление статуса задачи для конкретного сотрудника
+exports.updateEmployeeTaskStatus = async (req, res) => {
+  const { taskId } = req.params;
+  const { employeeId, statusName } = req.body;
+
+  if (!employeeId || !statusName) {
+    return res.status(400).json({ message: 'employeeId и statusName обязательны' });
+  }
+
+  try {
+    await poolConnect;
+
+    // Найти ID статуса по имени
+    const statusResult = await pool.request()
+      .input('Status_Name', sql.NVarChar, statusName)
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+
+    if (!statusResult.recordset.length) {
+      return res.status(400).json({ message: 'Недопустимый статус' });
+    }
+
+    const statusId = statusResult.recordset[0].ID_Status;
+
+    // Обновить статус в таблице Assignment для конкретного сотрудника и задачи
+// Обновить статус в таблице Assignment для конкретного сотрудника и задачи
+await pool.request()
+  .input('ID_Task', sql.Int, taskId)
+  .input('ID_Employee', sql.Int, employeeId)
+  .input('ID_Status', sql.Int, statusId)
+  .query(`
+    UPDATE Assignment
+    SET ID_Status = @ID_Status
+    WHERE ID_Task = @ID_Task AND ID_Employee = @ID_Employee
+  `);
+
+// ✅ Также обновить общий статус в таблице Tasks
+await pool.request()
+  .input('ID_Task', sql.Int, taskId)
+  .input('ID_Status', sql.Int, statusId)
+  .query(`
+    UPDATE Tasks
+    SET ID_Status = @ID_Status
+    WHERE ID_Task = @ID_Task
+  `);
+
+
+    res.status(200).json({ message: 'Статус задачи для сотрудника обновлен' });
+  } catch (error) {
+    console.error('🔥 Ошибка при обновлении статуса задачи сотрудника:', error);
+    res.status(500).json({ message: 'Ошибка при обновлении статуса задачи сотрудника', error: error.message });
+  }
+};
