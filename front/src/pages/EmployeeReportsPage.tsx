@@ -1,3 +1,4 @@
+// front/src/pages/EmployeeReportsPage.tsx
 import React, { useEffect, useState } from "react";
 import {
   ConfigProvider,
@@ -26,9 +27,10 @@ import {
   LineElement,
   ChartDataset,
 } from "chart.js";
-import Header from "../components/HeaderManager";
-import SidebarManager from "../components/SidebarManager";
+import Header from "../components/HeaderEmployee";
+import SidebarEmployee from "../components/Sidebar";
 import { useTheme } from "../contexts/ThemeContext";
+import { useAuth } from "../contexts/useAuth";
 
 ChartJS.register(
   ArcElement,
@@ -52,14 +54,8 @@ const { darkAlgorithm, defaultAlgorithm } = theme;
 const { RangePicker } = DatePicker;
 const API_URL = import.meta.env.VITE_API_URL;
 
-interface TaskByProjectType {
-  Project_Type: string;
-  Task_Count: number;
-  Task_Date: string;
-}
-
-interface TaskByEmployee {
-  Employee_Name: string;
+interface TaskByType {
+  Task_Type: string;
   Task_Count: number;
   Task_Date: string;
 }
@@ -81,15 +77,15 @@ interface KanbanTask {
 }
 
 interface TimeTrackingEntry {
-  Employee_Name: string;
   Task_Name: string;
   Hours_Spent: number;
   Start_Date: string;
   End_Date: string;
 }
 
-const ManagerReportsPage: React.FC = () => {
+const EmployeeReportsPage: React.FC = () => {
   const { theme: appTheme } = useTheme();
+  const { user } = useAuth();
   const currentAlgorithm =
     appTheme === "dark" ? darkAlgorithm : defaultAlgorithm;
   const textColor = appTheme === "dark" ? "#ffffff" : "#000000";
@@ -97,10 +93,7 @@ const ManagerReportsPage: React.FC = () => {
     appTheme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)";
 
   const [loading, setLoading] = useState(true);
-  const [tasksByProjectType, setTasksByProjectType] = useState<
-    TaskByProjectType[]
-  >([]);
-  const [tasksByEmployee, setTasksByEmployee] = useState<TaskByEmployee[]>([]);
+  const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
   const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
   const [kanbanData, setKanbanData] = useState<KanbanTask[]>([]);
   const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>(
@@ -113,37 +106,37 @@ const ManagerReportsPage: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!user?.email) return;
+
       try {
+        const params = `?email=${encodeURIComponent(user.email)}`;
         const responses = await Promise.all([
-          fetch(`${API_URL}/api/reports/tasks-by-project-type`).then((res) =>
-            res.json()
+          fetch(`${API_URL}/api/reports/employee/tasks-by-type${params}`).then(
+            (res) => res.json()
           ),
-          fetch(`${API_URL}/api/reports/tasks-by-employee`).then((res) =>
-            res.json()
-          ),
-          fetch(`${API_URL}/api/reports/tasks-by-project`).then((res) =>
-            res.json()
-          ),
-          fetch(`${API_URL}/api/reports/kanban-overview`).then((res) =>
-            res.json()
-          ),
-          fetch(`${API_URL}/api/reports/employee-time-tracking`).then((res) =>
-            res.json()
+          fetch(
+            `${API_URL}/api/reports/employee/tasks-by-project${params}`
+          ).then((res) => res.json()),
+          fetch(
+            `${API_URL}/api/reports/employee/kanban-overview${params}`
+          ).then((res) => res.json()),
+          fetch(`${API_URL}/api/reports/employee/time-tracking${params}`).then(
+            (res) => res.json()
           ),
         ]);
-        setTasksByProjectType(responses[0]);
-        setTasksByEmployee(responses[1]);
-        setTasksByProject(responses[2]);
-        setKanbanData(responses[3]);
-        setTimeTrackingData(responses[4]);
+        setTasksByType(responses[0]);
+        setTasksByProject(responses[1]);
+        setKanbanData(responses[2]);
+        setTimeTrackingData(responses[3]);
       } catch (error) {
         console.error("Ошибка при загрузке данных отчётов:", error);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
-  }, []);
+  }, [user]);
 
   const applyDateFilter = <T extends DateRecord>(data: T[]) => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
@@ -162,15 +155,22 @@ const ManagerReportsPage: React.FC = () => {
   const buildFilterMenu = (
     setRange: (range: [Dayjs, Dayjs] | null) => void
   ) => (
-    <div style={{ padding: 8 }}>
+    <div
+      style={{
+        padding: 8,
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+        alignItems: "stretch",
+        minWidth: "160px",
+      }}
+    >
       <Button
-        block
         onClick={() => setRange([dayjs().startOf("day"), dayjs().endOf("day")])}
       >
         Сегодня
       </Button>
       <Button
-        block
         onClick={() =>
           setRange([dayjs().startOf("week"), dayjs().endOf("week")])
         }
@@ -178,7 +178,6 @@ const ManagerReportsPage: React.FC = () => {
         Неделя
       </Button>
       <Button
-        block
         onClick={() =>
           setRange([dayjs().startOf("month"), dayjs().endOf("month")])
         }
@@ -186,7 +185,6 @@ const ManagerReportsPage: React.FC = () => {
         Месяц
       </Button>
       <Button
-        block
         onClick={() =>
           setRange([dayjs().startOf("year"), dayjs().endOf("year")])
         }
@@ -194,17 +192,12 @@ const ManagerReportsPage: React.FC = () => {
         Год
       </Button>
       <RangePicker
-        style={{ marginTop: 8, width: "100%" }}
+        style={{ width: "100%" }}
         onChange={(dates) =>
           dates && setRange([dates[0] as Dayjs, dates[1] as Dayjs])
         }
       />
-      <Button
-        block
-        danger
-        style={{ marginTop: 8 }}
-        onClick={() => setRange(null)}
-      >
+      <Button danger onClick={() => setRange(null)}>
         Сбросить фильтр
       </Button>
     </div>
@@ -252,12 +245,6 @@ const ManagerReportsPage: React.FC = () => {
 
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
-      title: "Сотрудник",
-      dataIndex: "Employee_Name",
-      key: "Employee_Name",
-      align: "center",
-    },
-    {
       title: "Задача",
       dataIndex: "Task_Name",
       key: "Task_Name",
@@ -296,14 +283,10 @@ const ManagerReportsPage: React.FC = () => {
   };
 
   const pieData = {
-    labels: applyDateFilter(tasksByProjectType).map(
-      (item) => item.Project_Type
-    ),
+    labels: applyDateFilter(tasksByType).map((item) => item.Task_Type),
     datasets: [
       {
-        data: applyDateFilter(tasksByProjectType).map(
-          (item) => item.Task_Count
-        ),
+        data: applyDateFilter(tasksByType).map((item) => item.Task_Count),
         backgroundColor: [
           "#1976D2",
           "#26A69A",
@@ -319,11 +302,11 @@ const ManagerReportsPage: React.FC = () => {
   };
 
   const barData = {
-    labels: applyDateFilter(tasksByEmployee).map((item) => item.Employee_Name),
+    labels: applyDateFilter(tasksByProject).map((item) => item.Project_Name),
     datasets: [
       {
         label: "Количество задач",
-        data: applyDateFilter(tasksByEmployee).map((item) => item.Task_Count),
+        data: applyDateFilter(tasksByProject).map((item) => item.Task_Count),
         backgroundColor: "#1976D2",
       },
     ],
@@ -367,7 +350,7 @@ const ManagerReportsPage: React.FC = () => {
   const tabItems = [
     {
       key: "kanban",
-      label: "Журнал задач на проекты",
+      label: "Мои задачи",
       children: (
         <Table
           columns={kanbanColumns}
@@ -379,7 +362,7 @@ const ManagerReportsPage: React.FC = () => {
     },
     {
       key: "time-tracking",
-      label: "Отчёт по отработанным часам",
+      label: "Мои отработанные часы",
       children: (
         <Table
           columns={timeTrackingColumns}
@@ -398,49 +381,60 @@ const ManagerReportsPage: React.FC = () => {
       <div className="dashboard">
         <Header />
         <div className="dashboard-body">
-          <SidebarManager />
+          <SidebarEmployee role="employee" />
           <main className="main-content">
-          <h1>Отчёты по сотрудникам</h1>
-<Input
-  placeholder="Поиск по всем данным..."
-  prefix={<SearchOutlined />}
-  value={searchText}
-  onChange={(e) => setSearchText(e.target.value)}
-  style={{ marginBottom: "16px", width: "300px" }}
-/>
-
-<Tabs defaultActiveKey="kanban" items={tabItems} />
-
-<Divider>
-  <span>Распределение задач по типу проекта</span>
-  <Dropdown overlay={buildFilterMenu(setDateRange)} trigger={["click"]}>
-    <Button icon={<FilterOutlined />} style={{ marginLeft: 8 }} />
-  </Dropdown>
-</Divider>
-
-<div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "8px 0",
-  }}
->
-  <div style={{ width: "500px", height: "500px" }}>
-    <Pie data={pieData} options={{ ...commonOptions, maintainAspectRatio: true }} />
-  </div>
-</div>
-
-
-            <Divider>
-              <span>Количество задач по сотрудникам</span>
-              <Dropdown
-                overlay={buildFilterMenu(setDateRange)}
-                trigger={["click"]}
+            <h1>Мои отчёты</h1>
+            <Input
+              placeholder="Поиск по всем данным..."
+              prefix={<SearchOutlined />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ marginBottom: "16px", width: "300px" }}
+            />
+            <Tabs defaultActiveKey="kanban" items={tabItems} />
+            <Divider orientation="left">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
-                <Button icon={<FilterOutlined />} style={{ marginLeft: 8 }} />
-              </Dropdown>
+                <strong>Распределение моих задач по типам</strong>
+                <Dropdown
+                  overlay={buildFilterMenu(setDateRange)}
+                  trigger={["click"]}
+                >
+                  <Button icon={<FilterOutlined />} />
+                </Dropdown>
+              </div>
             </Divider>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "20px 0",
+              }}
+            >
+              <div style={{ width: "500px", height: "500px" }}>
+                <Pie
+                  data={pieData}
+                  options={{ ...commonOptions, maintainAspectRatio: true }}
+                />
+              </div>
+            </div>
+            <Divider orientation="left">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <strong>Количество моих задач по проектам</strong>
+                <Dropdown
+                  overlay={buildFilterMenu(setDateRange)}
+                  trigger={["click"]}
+                >
+                  <Button icon={<FilterOutlined />} />
+                </Dropdown>
+              </div>
+            </Divider>
+
             <div
               style={{
                 width: "1000px",
@@ -455,15 +449,20 @@ const ManagerReportsPage: React.FC = () => {
               />
             </div>
 
-            <Divider>
-              <span>Количество задач по проектам по датам</span>
-              <Dropdown
-                overlay={buildFilterMenu(setDateRange)}
-                trigger={["click"]}
+            <Divider orientation="left">
+              <div
+                style={{ display: "flex", alignItems: "center", gap: "8px" }}
               >
-                <Button icon={<FilterOutlined />} style={{ marginLeft: 8 }} />
-              </Dropdown>
+                <strong>Мои задачи по датам</strong>
+                <Dropdown
+                  overlay={buildFilterMenu(setDateRange)}
+                  trigger={["click"]}
+                >
+                  <Button icon={<FilterOutlined />} />
+                </Dropdown>
+              </div>
             </Divider>
+
             <div
               style={{
                 width: "1000px",
@@ -484,4 +483,4 @@ const ManagerReportsPage: React.FC = () => {
   );
 };
 
-export default ManagerReportsPage;
+export default EmployeeReportsPage;

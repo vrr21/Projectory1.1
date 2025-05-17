@@ -62,6 +62,7 @@ app.use('/api/export', exportTeamsRoutes);    // Экспорт команд
 app.use('/api/export', exportTasksRoutes);    // Экспорт задач
 app.use('/api/export', exportReportsRoutes);  // Экспорт отчётов
 app.use('/api/roles', roleRoutes);
+app.use('/api/reports/employee', require('./routes/employeeReports.routes'));
 
 
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));

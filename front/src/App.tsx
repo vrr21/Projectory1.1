@@ -22,6 +22,8 @@ import MyCommandsManager from './pages/MyCommandsManager';
 import TimeTrackingEmployee from './pages/TimeTrackingEmployee';
 import TimeTrackingManager from './pages/TimeTrackingManager';
 import ManagerReportsPage from './pages/ManagerReportsPage';
+import EmployeeReportsPage from './pages/EmployeeReportsPage'; // ✅ Добавлено
+
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
 
@@ -68,7 +70,9 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/teams" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
         <Route path="/teams/:id" element={<PageWrapper><MyCommandsEmployee /></PageWrapper>} />
         <Route path="/myteams" element={<PageWrapper><MyCommandsManager /></PageWrapper>} />
+
         <Route path="/manager-reports" element={<ManagerReportsPage />} />
+        <Route path="/employee-reports" element={<PageWrapper><EmployeeReportsPage /></PageWrapper>} /> {/* ✅ Добавлено */}
       </Routes>
     </AnimatePresence>
   );

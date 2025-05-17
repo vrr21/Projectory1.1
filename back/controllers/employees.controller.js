@@ -3,6 +3,9 @@
 const { pool, poolConnect, sql } = require('../config/db');
 
 // Получить всех сотрудников (кроме менеджеров)
+const { pool, poolConnect, sql } = require('../config/db');
+
+// Получить всех сотрудников (кроме менеджеров)
 exports.getAllEmployees = async (req, res) => {
   try {
     await poolConnect;
@@ -25,30 +28,37 @@ exports.fullSearchEmployeeData = async (req, res) => {
 
   try {
     await poolConnect;
+
     const result = await pool.request()
-      .input('query', sql.NVarChar(255), `%${q}%`)  // ✅ добавляем ограничение 255
-      .input('email', sql.NVarChar(255), employeeEmail)  // ✅ добавляем ограничение 255
+      .input('query', sql.NVarChar(255), `%${q}%`)
+      .input('email', sql.NVarChar(255), employeeEmail)
       .query(`
+        -- Поиск задач
         SELECT
           T.ID_Task AS id,
           T.Task_Name AS name,
           'task' AS type
         FROM Tasks T
-        JOIN Users U ON T.ID_User = U.ID_User
+        JOIN Assignment A ON T.ID_Task = A.ID_Task
+        JOIN Users U ON A.ID_Employee = U.ID_User
         WHERE U.Email = @email AND T.Task_Name LIKE @query
 
         UNION ALL
 
+        -- Поиск проектов через команды, в которых состоит сотрудник
         SELECT
-          P.ID_Project AS id,
-          P.Project_Name AS name,
+          O.ID_Order AS id,
+          O.Order_Name AS name,
           'order' AS type
-        FROM Projects P
-        JOIN Users U ON P.ID_User = U.ID_User
-        WHERE U.Email = @email AND P.Project_Name LIKE @query
+        FROM Orders O
+        JOIN Teams TM ON O.ID_Team = TM.ID_Team
+        JOIN TeamMembers TMM ON TM.ID_Team = TMM.ID_Team
+        JOIN Users U ON TMM.ID_User = U.ID_User
+        WHERE U.Email = @email AND O.Order_Name LIKE @query
 
         UNION ALL
 
+        -- Поиск команд
         SELECT
           TM.ID_Team AS id,
           TM.Team_Name AS name,

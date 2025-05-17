@@ -33,6 +33,9 @@ import localeData from "dayjs/plugin/localeData";
 import "dayjs/locale/ru";
 import { MessageOutlined, UserOutlined } from "@ant-design/icons";
 import { List, Avatar } from "antd";
+import { Dropdown } from "antd";
+import { FilterOutlined } from "@ant-design/icons";
+
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekday);
@@ -98,6 +101,21 @@ const TimeTrackingEmployee: React.FC = () => {
   const [newComment, setNewComment] = useState("");
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [editingFileList, setEditingFileList] = useState<UploadFile[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
+  const getFilteredEntriesByDay = (day: dayjs.Dayjs) =>
+    filteredEntries.filter((entry) => dayjs(entry.Start_Date).isSame(day, "day"));
+  
+  const filteredEntries = selectedProjectId
+    ? timeEntries.filter((entry) =>
+        projects.some(
+          (p) =>
+            p.ID_Order === selectedProjectId &&
+            p.Order_Name === entry.Order_Name
+        )
+      )
+    : timeEntries;
 
   const weekDaysRu = [
     "Понедельник",
@@ -339,9 +357,6 @@ const TimeTrackingEmployee: React.FC = () => {
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, "day"));
 
-  const getEntriesByDay = (day: dayjs.Dayjs) =>
-    timeEntries.filter((entry) => dayjs(entry.Start_Date).isSame(day, "day"));
-
   const normFile = (e: { fileList: UploadFile[] }) =>
     Array.isArray(e) ? e : e.fileList;
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -355,16 +370,8 @@ const TimeTrackingEmployee: React.FC = () => {
           <HeaderEmployee />
           <Content className="content">
             <div className="page-content">
-              <div
-                className="time-tracking-header"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  marginBottom: 24,
-                  flexWrap: "wrap",
-                  gap: "1rem",
-                }}
-              >
+         
+
                 <h1
                   style={{
                     fontSize: "28px",
@@ -375,6 +382,47 @@ const TimeTrackingEmployee: React.FC = () => {
                 >
                   Учёт времени
                 </h1>
+                <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "1rem",
+    width: "100%",
+    marginBottom: 16,
+  }}
+>
+<Dropdown
+  menu={{
+    items: [
+      ...projects.map((p) => ({
+        key: p.ID_Order,
+        label: p.Order_Name,
+        onClick: () => setSelectedProjectId(p.ID_Order),
+      })),
+      {
+        type: 'divider',
+      },
+      {
+        key: 'reset',
+        label: 'Сбросить фильтр',
+        onClick: () => setSelectedProjectId(null),
+      },
+    ],
+  }}
+  placement="bottomRight"
+  arrow
+>
+  <Button icon={<FilterOutlined />}>
+    {selectedProjectId
+      ? projects.find((p) => p.ID_Order === selectedProjectId)?.Order_Name
+      : "Фильтр по проекту"}
+  </Button>
+</Dropdown>
+
+
+
                 <Button
                   icon={<LeftOutlined />}
                   onClick={() => setWeekStart(weekStart.subtract(1, "week"))}
@@ -383,6 +431,7 @@ const TimeTrackingEmployee: React.FC = () => {
                   {weekStart.format("D MMMM")} –{" "}
                   {weekStart.add(6, "day").format("D MMMM YYYY")}
                 </h2>
+
                 <Button
                   icon={<RightOutlined />}
                   onClick={() => setWeekStart(weekStart.add(1, "week"))}
@@ -423,7 +472,8 @@ const TimeTrackingEmployee: React.FC = () => {
                     </div>
                     <div className="day-date">{day.format("DD.MM")}</div>
                     <div className="card-stack">
-                      {getEntriesByDay(day)
+                      {getFilteredEntriesByDay(day)
+
                         .filter((entry) => entry.ID_User === user?.id)
                         .map((entry) => (
                           <div key={entry.ID_Execution} className="entry-card">

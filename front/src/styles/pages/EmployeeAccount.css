@@ -1,4 +1,4 @@
-/* Основной фон и цвет текста */
+/* Структура всей страницы */
 .dashboard {
   background-color: var(--bg-color);
   color: var(--text-color);
@@ -7,7 +7,7 @@
   flex-direction: column;
 }
 
-/* Структура страницы аккаунта */
+/* Центрирование содержимого */
 .dashboard-body.account-page-centered {
   display: flex;
   justify-content: center;
@@ -15,7 +15,7 @@
   padding: 0 1rem;
 }
 
-/* Контентная часть */
+/* Контентная часть страницы */
 .main-content.account-content {
   width: 100%;
   max-width: 100%;
@@ -23,50 +23,106 @@
   box-sizing: border-box;
 }
 
-/* Контейнер аккаунта */
+/* Контейнер контента аккаунта */
 .account-container {
   margin-top: 2rem;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0;
   gap: 1.5rem;
   width: 100%;
 }
 
-/* Карточка пользователя */
+/* Карточка профиля пользователя - общая основа */
 .account-card {
   max-width: 500px;
   width: 100%;
   text-align: center;
-  background-color: var(--card-bg-color);
   padding: 24px;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  color: var(--text-color);
   align-self: center;
   transition: background-color var(--transition-time), color var(--transition-time);
 }
 
-/* Аватар */
+/* Карточка профиля - тёмная тема */
+[data-theme="dark"] .account-card {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+}
+
+/* Карточка профиля - светлая тема */
+[data-theme="light"] .account-card {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Сводная карточка - общая основа */
+.account-summary-card {
+  margin-top: 24px;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 100%;
+  width: 100%;
+  text-align: left;
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+/* Сводная карточка - тёмная тема */
+[data-theme="dark"] .account-summary-card {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+}
+
+/* Сводная карточка - светлая тема */
+[data-theme="light"] .account-summary-card {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ddd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+/* Разделители */
+.accent-divider {
+  border-color: var(--accent-color);
+}
+
+/* Адаптация разделителей для светлой темы */
+[data-theme="light"] .ant-divider,
+[data-theme="light"] .accent-divider {
+  border-color: #ddd !important;
+}
+
+/* Блок аватара */
 .avatar-wrapper {
   margin-bottom: 16px;
 }
 
 /* Кнопка загрузки аватара */
+/* Кнопка загрузки аватара */
 .upload-label {
   display: inline-block;
   margin-top: 10px;
   cursor: pointer;
-  color: var(--accent-color);
   font-weight: bold;
-  transition: color 0.3s;
-}
-.upload-label:hover {
-  color: #00bcd4;
+  transition: color 0.3s, background-color 0.3s;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent-color);
+  color: var(--text-color);
+  background-color: transparent;
 }
 
-/* Основные текстовые элементы */
+.upload-label:hover {
+  background-color: var(--accent-color);
+  color: var(--bg-color);
+}
+
+
+/* Общий стиль текста */
 .text-color,
 .role-text,
 .info-text,
@@ -77,18 +133,13 @@
   color: var(--text-color) !important;
 }
 
-/* Роль */
+/* Роль пользователя */
 .role-text {
   display: block;
   margin-bottom: 16px;
 }
 
-/* Разделительная линия */
-.accent-divider {
-  border-color: var(--accent-color);
-}
-
-/* Элементы информации */
+/* Блоки информации */
 .info-item {
   display: flex;
   align-items: center;
@@ -103,7 +154,7 @@
   font-size: 18px;
 }
 
-/* Вкладки на странице аккаунта (не в .table-block) */
+/* Вкладки */
 .ant-tabs-tab {
   background-color: transparent !important;
   color: var(--text-color) !important;
@@ -122,12 +173,11 @@
   border-radius: 6px 6px 0 0;
 }
 
-/* Общий стиль вкладок */
 .ant-tabs .ant-tabs-tab {
   background-color: transparent !important;
   color: var(--text-color) !important;
-  transition: background-color var(--transition-time), color var(--transition-time);
   border: none !important;
+  transition: background-color var(--transition-time), color var(--transition-time);
 }
 
 .ant-tabs .ant-tabs-tab:hover {

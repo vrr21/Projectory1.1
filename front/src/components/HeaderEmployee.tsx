@@ -52,14 +52,8 @@ const HeaderEmployee: React.FC = () => {
 
   const profileMenu: MenuProps = {
     items: [
-      {
-        key: '1',
-        label: <span onClick={() => navigate('/profile')}>Профиль</span>,
-      },
-      {
-        key: '2',
-        label: <span onClick={() => setIsModalVisible(true)}>Выйти</span>,
-      },
+      { key: '1', label: <span onClick={() => navigate('/profile')}>Профиль</span> },
+      { key: '2', label: <span onClick={() => setIsModalVisible(true)}>Выйти</span> },
     ],
   };
 
@@ -71,9 +65,7 @@ const HeaderEmployee: React.FC = () => {
       const res = await fetch(
         `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -98,13 +90,13 @@ const HeaderEmployee: React.FC = () => {
           className="logo"
           onClick={() => navigate('/employee')}
           style={{
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             fontSize: '20px',
             fontWeight: 600,
             color: 'var(--text-color)',
-            cursor: 'pointer',
           }}
         >
           <img

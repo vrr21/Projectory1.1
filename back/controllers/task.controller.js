@@ -211,13 +211,21 @@ exports.deleteTask = async (req, res) => {
 };
 
 // 🔹 Получение задач по сотруднику
+// Получение задач по сотруднику с проверкой ID
 exports.getTasksByEmployee = async (req, res) => {
   const { id } = req.params;
+
+  const employeeId = parseInt(id, 10);
+
+  if (!employeeId || isNaN(employeeId)) {
+    console.error('Некорректный ID сотрудника:', id);
+    return res.status(400).json({ message: 'Некорректный ID сотрудника' });
+  }
 
   try {
     await poolConnect;
     const result = await pool.request()
-      .input('ID_User', sql.Int, id)
+      .input('ID_User', sql.Int, employeeId)
       .query(`
         SELECT 
           t.ID_Task,
@@ -242,6 +250,7 @@ exports.getTasksByEmployee = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении задач сотрудника', error: error.message });
   }
 };
+
 
 // 🔹 Получение всех задач с деталями
 exports.getTasksWithDetails = async (req, res) => {

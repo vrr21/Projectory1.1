@@ -1298,246 +1298,147 @@ const ManagerDashboard: React.FC = () => {
 
                                 return (
                                   <Droppable key={status} droppableId={status}>
-                                    {(provided) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.droppableProps}
-                                        style={{
-                                          display: "flex",
-                                          flexDirection: "column",
-                                          gap: "16px",
-                                          minWidth: "300px",
-                                          backgroundColor: "#1a1a1a",
-                                          borderRadius: "10px",
-                                          padding: "1rem",
-                                          boxShadow:
-                                            "0 4px 12px rgba(59, 59, 59, 0.2)",
-                                        }}
-                                      >
-                                        {visibleTasks.map((task, index) => (
-                                          <Draggable
-                                            key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
-                                            draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
-                                            index={index}
-                                          >
-                                            {(providedDraggable) => (
-                                              <div
-                                                className="kanban-task"
-                                                ref={providedDraggable.innerRef}
-                                                {...providedDraggable.draggableProps}
-                                                {...providedDraggable.dragHandleProps}
-                                              >
-                                                <div className="kanban-task-content">
-                                                  <strong>
-                                                    {task.Task_Name}
-                                                  </strong>
-                                                  <p>{task.Description}</p>
-                                                  <p
-                                                    style={{
-                                                      fontWeight: "bold",
-                                                      fontStyle: "italic",
-                                                      fontSize: "14px",
-                                                      textDecoration:
-                                                        "underline",
-                                                      textDecorationColor:
-                                                        "#00bcd4",
-                                                      display: "inline-flex",
-                                                      alignItems: "center",
-                                                    }}
-                                                  >
-                                                    <CheckOutlined
-                                                      style={{
-                                                        color: "#00bcd4",
-                                                        marginRight: "6px",
-                                                      }}
-                                                    />
-                                                    Модуль данной задачи
-                                                    выполнил:{" "}
-                                                    {task.EmployeeName}
-                                                  </p>
-                                                  <p>
-                                                    <i>Проект:</i>{" "}
-                                                    {task.Order_Name}
-                                                  </p>
-
-                                                  <div className="kanban-avatars">
-                                                    {task.Employees.map(
-                                                      (emp, idx) => (
-                                                        <Tooltip
-                                                          key={`emp-${task.ID_Task}-${idx}`}
-                                                          title={emp.fullName}
-                                                        >
-                                                          <Avatar
-                                                            src={
-                                                              emp.avatar
-                                                                ? `${API_URL}/uploads/${emp.avatar}`
-                                                                : undefined
-                                                            }
-                                                            style={{
-                                                              backgroundColor:
-                                                                emp.avatar
-                                                                  ? "transparent"
-                                                                  : "#777",
-                                                              marginRight: 4,
-                                                              marginBottom: 4,
-                                                            }}
-                                                          >
-                                                            {!emp.avatar &&
-                                                              getInitials(
-                                                                emp.fullName
-                                                              )}
-                                                          </Avatar>
-                                                        </Tooltip>
-                                                      )
-                                                    )}
-                                                  </div>
-
-                                                  <div className="task-footer">
-                                                    <Button
-                                                      type="text"
-                                                      icon={<EyeOutlined />}
-                                                      onClick={() =>
-                                                        openViewModal(task)
-                                                      }
-                                                      style={{
-                                                        padding: 0,
-                                                        height: "auto",
-                                                        marginRight: 8,
-                                                      }}
-                                                    />
-                                                    <Button
-                                                      type="text"
-                                                      icon={<MessageOutlined />}
-                                                      onClick={() =>
-                                                        openCommentsModal(
-                                                          task.ID_Task
-                                                        )
-                                                      }
-                                                      style={{
-                                                        padding: 0,
-                                                        height: "auto",
-                                                      }}
-                                                    />
-                                                    {task.Status_Name ===
-                                                      "Завершена" &&
-                                                    task.AutoCompleted ? (
-                                                      <div className="deadline-box expired">
-                                                        <ClockCircleOutlined
-                                                          style={{
-                                                            marginRight: 6,
-                                                          }}
-                                                        />
-                                                        Срок истёк
-                                                      </div>
-                                                    ) : task.Status_Name ===
-                                                      "Завершена" ? (
-                                                      <div className="deadline-box completed">
-                                                        <ClockCircleOutlined
-                                                          style={{
-                                                            marginRight: 6,
-                                                          }}
-                                                        />
-                                                        Завершена
-                                                      </div>
-                                                    ) : task.Status_Name ===
-                                                      "Выполнена" ? (
-                                                      <div className="deadline-box completed">
-                                                        <ClockCircleOutlined
-                                                          style={{
-                                                            marginRight: 6,
-                                                          }}
-                                                        />
-                                                        Выполнено
-                                                      </div>
-                                                    ) : task.Deadline ? (
-                                                      <div
-                                                        className={`deadline-box ${
-                                                          dayjs(
-                                                            task.Deadline
-                                                          ).isBefore(dayjs())
-                                                            ? "expired"
-                                                            : dayjs(
-                                                                task.Deadline
-                                                              ).diff(
-                                                                dayjs(),
-                                                                "hour"
-                                                              ) <= 24
-                                                            ? "warning"
-                                                            : "safe"
-                                                        }`}
+                                  {(provided) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.droppableProps}
+                                      style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "16px",
+                                        minWidth: "300px",
+                                        backgroundColor: "var(--card-bg-color)", // ✅ поддержка тем
+                                        borderRadius: "10px",
+                                        padding: "1rem",
+                                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", // Оставляем универсальной
+                                      }}
+                                    >
+                                      {visibleTasks.map((task, index) => (
+                                        <Draggable
+                                          key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                          draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                          index={index}
+                                        >
+                                          {(providedDraggable) => (
+                                            <div
+                                              className="kanban-task"
+                                              ref={providedDraggable.innerRef}
+                                              {...providedDraggable.draggableProps}
+                                              {...providedDraggable.dragHandleProps}
+                                            >
+                                              <div className="kanban-task-content">
+                                                <strong>{task.Task_Name}</strong>
+                                                <p>{task.Description}</p>
+                                                <p
+                                                  style={{
+                                                    fontWeight: "bold",
+                                                    fontStyle: "italic",
+                                                    fontSize: "14px",
+                                                    textDecoration: "underline",
+                                                    textDecorationColor: "#00bcd4",
+                                                    display: "inline-flex",
+                                                    alignItems: "center",
+                                                  }}
+                                                >
+                                                  <CheckOutlined style={{ color: "#00bcd4", marginRight: "6px" }} />
+                                                  Модуль данной задачи выполнил: {task.EmployeeName}
+                                                </p>
+                                                <p><i>Проект:</i> {task.Order_Name}</p>
+                                
+                                                <div className="kanban-avatars">
+                                                  {task.Employees.map((emp, idx) => (
+                                                    <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
+                                                      <Avatar
+                                                        src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+                                                        style={{
+                                                          backgroundColor: emp.avatar ? "transparent" : "#777",
+                                                          marginRight: 4,
+                                                          marginBottom: 4,
+                                                        }}
                                                       >
-                                                        <ClockCircleOutlined
-                                                          style={{
-                                                            marginRight: 6,
-                                                          }}
-                                                        />
-                                                        {dayjs(
-                                                          task.Deadline
-                                                        ).diff(dayjs(), "day") >
-                                                        0
-                                                          ? `Осталось ${dayjs(
-                                                              task.Deadline
-                                                            ).diff(
-                                                              dayjs(),
-                                                              "day"
-                                                            )} дн`
-                                                          : dayjs(
-                                                              task.Deadline
-                                                            ).diff(
-                                                              dayjs(),
-                                                              "hour"
-                                                            ) > 0
-                                                          ? `Осталось ${dayjs(
-                                                              task.Deadline
-                                                            ).diff(
-                                                              dayjs(),
-                                                              "hour"
-                                                            )} ч`
-                                                          : "Срок истёк"}
-                                                      </div>
-                                                    ) : (
-                                                      <div className="deadline-box undefined">
-                                                        <ClockCircleOutlined
-                                                          style={{
-                                                            marginRight: 6,
-                                                          }}
-                                                        />
-                                                        Без срока
-                                                      </div>
-                                                    )}
-                                                  </div>
+                                                        {!emp.avatar && getInitials(emp.fullName)}
+                                                      </Avatar>
+                                                    </Tooltip>
+                                                  ))}
+                                                </div>
+                                
+                                                <div className="task-footer">
+                                                  <Button
+                                                    type="text"
+                                                    icon={<EyeOutlined />}
+                                                    onClick={() => openViewModal(task)}
+                                                    style={{ padding: 0, height: "auto", marginRight: 8 }}
+                                                  />
+                                                  <Button
+                                                    type="text"
+                                                    icon={<MessageOutlined />}
+                                                    onClick={() => openCommentsModal(task.ID_Task)}
+                                                    style={{ padding: 0, height: "auto" }}
+                                                  />
+                                                  {task.Status_Name === "Завершена" && task.AutoCompleted ? (
+                                                    <div className="deadline-box expired">
+                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
+                                                      Срок истёк
+                                                    </div>
+                                                  ) : task.Status_Name === "Завершена" ? (
+                                                    <div className="deadline-box completed">
+                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
+                                                      Завершена
+                                                    </div>
+                                                  ) : task.Status_Name === "Выполнена" ? (
+                                                    <div className="deadline-box completed">
+                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
+                                                      Выполнено
+                                                    </div>
+                                                  ) : task.Deadline ? (
+                                                    <div
+                                                      className={`deadline-box ${
+                                                        dayjs(task.Deadline).isBefore(dayjs())
+                                                          ? "expired"
+                                                          : dayjs(task.Deadline).diff(dayjs(), "hour") <= 24
+                                                          ? "warning"
+                                                          : "safe"
+                                                      }`}
+                                                    >
+                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
+                                                      {dayjs(task.Deadline).diff(dayjs(), "day") > 0
+                                                        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), "day")} дн`
+                                                        : dayjs(task.Deadline).diff(dayjs(), "hour") > 0
+                                                        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), "hour")} ч`
+                                                        : "Срок истёк"}
+                                                    </div>
+                                                  ) : (
+                                                    <div className="deadline-box undefined">
+                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
+                                                      Без срока
+                                                    </div>
+                                                  )}
                                                 </div>
                                               </div>
-                                            )}
-                                          </Draggable>
-                                        ))}
-
-                                        {/* Кнопка "Смотреть далее" */}
-                                        {tasksForStatus.length > 5 &&
-                                          !isExpanded && (
-                                            <Button
-                                              type="link"
-                                              onClick={() =>
-                                                setExpandedStatuses([
-                                                  ...expandedStatuses,
-                                                  status,
-                                                ])
-                                              }
-                                              style={{
-                                                alignSelf: "center",
-                                                marginTop: 8,
-                                                color: "#00bcd4", // ✅ установлен цвет текста
-                                              }}
-                                            >
-                                              Смотреть далее (
-                                              {tasksForStatus.length - 5} ещё)
-                                            </Button>
+                                            </div>
                                           )}
-
-                                        {provided.placeholder}
-                                      </div>
-                                    )}
-                                  </Droppable>
+                                        </Draggable>
+                                      ))}
+                                
+                                      {tasksForStatus.length > 5 && !isExpanded && (
+                                        <Button
+                                          type="link"
+                                          onClick={() => setExpandedStatuses([...expandedStatuses, status])}
+                                          style={{
+                                            alignSelf: "center",
+                                            marginTop: 8,
+                                            color: "#00bcd4",
+                                          }}
+                                        >
+                                          Смотреть далее ({tasksForStatus.length - 5} ещё)
+                                        </Button>
+                                      )}
+                                
+                                      {provided.placeholder}
+                                    </div>
+                                  )}
+                                </Droppable>
+                                
                                 );
                               })}
                             </div>

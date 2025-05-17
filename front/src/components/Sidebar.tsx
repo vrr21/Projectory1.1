@@ -6,7 +6,8 @@ import {
   TableOutlined,
   ProjectOutlined,
   TeamOutlined,
-  ClockCircleOutlined // ✅ Добавили иконку часов
+  ClockCircleOutlined,
+  BarChartOutlined // ✅ Добавили иконку для отчётов
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -30,6 +31,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     { key: '/employee', icon: <TableOutlined />, label: <Link to="/employee">Доски задач</Link> },
     { key: '/teams', icon: <TeamOutlined />, label: <Link to="/teams">Команды и проекты</Link> },
     { key: '/time-tracking', icon: <ClockCircleOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> },
+    { key: '/employee-reports', icon: <BarChartOutlined />, label: <Link to="/employee-reports">Отчёты</Link> }, // ✅ добавлено
   ];
 
   // Элементы меню для менеджера
@@ -39,6 +41,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
     { key: '/myteams', icon: <TeamOutlined />, label: <Link to="/myteams">Мои команды</Link> },
     { key: '/team-management', icon: <TeamOutlined />, label: <Link to="/team-management">Команды</Link> },
     { key: '/time-tracking', icon: <ProjectOutlined />, label: <Link to="/time-tracking">Учёт времени</Link> },
+    { key: '/manager-reports', icon: <BarChartOutlined />, label: <Link to="/manager-reports">Мои отчёты</Link> },
   ];
 
   const menuItems = role === 'manager' ? managerMenuItems : employeeMenuItems;
@@ -53,7 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role }) => {
       }
     }
   }, [collapsed]);
-  
+
   return (
     <Sider
       trigger={null}

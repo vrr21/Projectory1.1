@@ -597,22 +597,21 @@ const EmployeeDashboard = () => {
                             >
                               {statuses.map((status) => (
                                 <Droppable key={status} droppableId={status}>
-                                  {(provided) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.droppableProps}
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "16px",
-                                        minWidth: "300px",
-                                        backgroundColor: "#1a1a1a",
-                                        borderRadius: "10px",
-                                        padding: "1rem",
-                                        boxShadow:
-                                          "0 4px 12px rgba(59, 59, 59, 0.2)",
-                                      }}
-                                    >
+                                       {(provided) => (
+                             <div
+                               ref={provided.innerRef}
+                               {...provided.droppableProps}
+                               style={{
+                                 display: "flex",
+                                 flexDirection: "column",
+                                 gap: "16px",
+                                 minWidth: "300px",
+                                 backgroundColor: "var(--card-bg-color)", // ✅ тема из переменной
+                                 borderRadius: "10px",
+                                 padding: "1rem",
+                                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", // универсальная тень
+                               }}
+                             >
                                       <div
                                         key={`header-${status}`}
                                         className="kanban-status-header"

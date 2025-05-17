@@ -135,3 +135,22 @@
 [data-theme="light"] .reports-spinner {
   color: var(--text-color) !important;
 }
+
+
+/* Полное удаление всех внутренних и внешних отступов у Tabs */
+.ant-tabs,
+.ant-tabs-nav,
+.ant-tabs-nav-list,
+.ant-tabs-content,
+.ant-tabs-content-holder,
+.ant-tabs-tabpane,
+.ant-tabs-top {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Удаление зазора между вкладками и содержимым */
+.ant-tabs-nav + .ant-tabs-content-holder {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
