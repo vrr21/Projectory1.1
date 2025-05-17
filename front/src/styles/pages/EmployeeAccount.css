@@ -200,3 +200,30 @@
   background-color: var(--bg-color) !important;
   color: var(--text-color) !important;
 }
+
+
+/* Заголовок карточки с позиционированием */
+.account-card-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px; /* Минимальная высота для выравнивания */
+}
+
+/* Текст заголовка по центру */
+.account-card-title {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+/* Кнопки справа */
+.account-card-actions {
+  position: absolute;
+  top: 50%;
+  right: 16px; /* Отступ справа */
+  transform: translateY(-50%); /* Центровка по вертикали */
+  display: flex;
+  align-items: center;
+  height: 100%; /* Растягиваем на всю высоту заголовка */
+}

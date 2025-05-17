@@ -3,9 +3,6 @@
 const { pool, poolConnect, sql } = require('../config/db');
 
 // Получить всех сотрудников (кроме менеджеров)
-const { pool, poolConnect, sql } = require('../config/db');
-
-// Получить всех сотрудников (кроме менеджеров)
 exports.getAllEmployees = async (req, res) => {
   try {
     await poolConnect;
@@ -75,3 +72,81 @@ exports.fullSearchEmployeeData = async (req, res) => {
     res.status(500).json({ message: 'Ошибка поиска данных сотрудника' });
   }
 };
+
+// Обновить профиль сотрудника
+exports.updateEmployeeProfile = async (req, res) => {
+  const { id, firstName, lastName, phone } = req.body;
+
+  if (!id || !firstName || !lastName) {
+    return res.status(400).json({ message: 'Некорректные данные' });
+  }
+
+  try {
+    await poolConnect;
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('firstName', sql.NVarChar(255), firstName)
+      .input('lastName', sql.NVarChar(255), lastName)
+      .input('phone', sql.NVarChar(50), phone || null)
+      .query(`
+        UPDATE Users
+        SET First_Name = @firstName,
+            Last_Name = @lastName,
+            Phone = @phone
+        WHERE ID_User = @id
+      `);
+
+    res.json({ message: 'Профиль успешно обновлён' });
+  } catch (error) {
+    console.error('Ошибка при обновлении профиля:', error);
+    res.status(500).json({ message: 'Ошибка при обновлении профиля' });
+  }
+};
+
+
+const path = require('path');
+const multer = require('multer');
+
+// Настройка хранилища
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${file.fieldname}${ext}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
+
+// Контроллер для загрузки аватара
+exports.uploadAvatar = [
+  upload.single('avatar'),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Файл не загружен' });
+    }
+
+    const { userId } = req.body;
+    const filename = req.file.filename;
+
+    try {
+      await poolConnect;
+      await pool.request()
+        .input('userId', sql.Int, userId)
+        .input('avatar', sql.NVarChar(255), filename)
+        .query(`
+          UPDATE Users
+          SET Avatar = @avatar
+          WHERE ID_User = @userId
+        `);
+
+      res.json({ filename });
+    } catch (error) {
+      console.error('Ошибка при сохранении аватара:', error);
+      res.status(500).json({ message: 'Ошибка при сохранении аватара' });
+    }
+  },
+];

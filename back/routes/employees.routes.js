@@ -1,6 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const multer = require('multer');
 const { poolConnect, pool, sql } = require('../config/db');
+const { updateEmployeeProfile } = require('../controllers/employees.controller');
+
+// Настройка хранилища для multer
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../uploads'));
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const uniqueName = `${Date.now()}-${file.fieldname}${ext}`;
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
 
 // Получить всех сотрудников (кроме менеджеров)
 router.get('/', async (req, res) => {
@@ -41,6 +58,36 @@ router.get('/search', async (req, res) => {
   } catch (error) {
     console.error('Ошибка поиска сотрудников:', error);
     res.status(500).json({ message: 'Ошибка поиска сотрудников' });
+  }
+});
+
+// Обновление данных профиля сотрудника
+router.put('/update', updateEmployeeProfile);
+
+// Загрузка аватара сотрудника
+router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: 'Файл не загружен' });
+  }
+
+  const { userId } = req.body;
+  const filename = req.file.filename;
+
+  try {
+    await poolConnect;
+    await pool.request()
+      .input('userId', sql.Int, userId)
+      .input('avatar', sql.NVarChar(255), filename)
+      .query(`
+        UPDATE Users
+        SET Avatar = @avatar
+        WHERE ID_User = @userId
+      `);
+
+    res.json({ filename });
+  } catch (error) {
+    console.error('Ошибка при сохранении аватара:', error);
+    res.status(500).json({ message: 'Ошибка при сохранении аватара' });
   }
 });
 

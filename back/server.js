@@ -29,7 +29,7 @@ const roleRoutes = require('./routes/roles');
 const executionsRoutes = require('./routes/executions.routes');
 const app = express();
 const PORT = process.env.PORT || 3002;
-
+const uploadAvatarRoutes = require('./routes/uploadAvatar.routes');
 // ✅ CORS с раскрытием Content-Disposition
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -63,8 +63,8 @@ app.use('/api/export', exportTasksRoutes);    // Экспорт задач
 app.use('/api/export', exportReportsRoutes);  // Экспорт отчётов
 app.use('/api/roles', roleRoutes);
 app.use('/api/reports/employee', require('./routes/employeeReports.routes'));
-
-
+app.use('/api/employees', uploadAvatarRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 // ✅ Запуск сервера

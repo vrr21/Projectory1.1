@@ -152,7 +152,24 @@ const ManagerDashboard: React.FC = () => {
       selectedProject?.Deadline ? dayjs(selectedProject.Deadline) : null
     );
   };
-
+  const renderEmployees = (employees: { id: number; fullName: string; avatar?: string | null }[]) => {
+    if (!employees?.length) return "—";
+    return (
+      <Avatar.Group max={{ count: 3 }}>
+        {employees.map((emp) => (
+          <Tooltip key={emp.id} title={emp.fullName}>
+            <Avatar
+              src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+              style={{ backgroundColor: emp.avatar ? "transparent" : "#777" }}
+            >
+              {!emp.avatar && getInitials(emp.fullName)}
+            </Avatar>
+          </Tooltip>
+        ))}
+      </Avatar.Group>
+    );
+  };
+  
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
   const [filterProject, setFilterProject] = useState<number | null>(null);
@@ -555,28 +572,12 @@ const ManagerDashboard: React.FC = () => {
       key: "Employees",
       align: "center",
       render: (_: unknown, task: Task) => (
-        <div className="kanban-avatars" style={{ textAlign: "left" }}>
-          {task.Employees?.length
-            ? task.Employees.map((emp) => (
-                <Tooltip key={emp.id} title={emp.fullName}>
-                  <Avatar
-                    src={
-                      emp.avatar
-                        ? `${API_URL}/uploads/${emp.avatar}`
-                        : undefined
-                    }
-                    style={{
-                      backgroundColor: emp.avatar ? "transparent" : "#777",
-                    }}
-                  >
-                    {!emp.avatar && getInitials(emp.fullName)}
-                  </Avatar>
-                </Tooltip>
-              ))
-            : "Не назначен"}
+        <div style={{ textAlign: "left" }}>
+          {renderEmployees(task.Employees)}
         </div>
       ),
     },
+    
     {
       title: "Статус",
       dataIndex: "Status_Name",
@@ -1346,20 +1347,8 @@ const ManagerDashboard: React.FC = () => {
                                                 <p><i>Проект:</i> {task.Order_Name}</p>
                                 
                                                 <div className="kanban-avatars">
-                                                  {task.Employees.map((emp, idx) => (
-                                                    <Tooltip key={`emp-${task.ID_Task}-${idx}`} title={emp.fullName}>
-                                                      <Avatar
-                                                        src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-                                                        style={{
-                                                          backgroundColor: emp.avatar ? "transparent" : "#777",
-                                                          marginRight: 4,
-                                                          marginBottom: 4,
-                                                        }}
-                                                      >
-                                                        {!emp.avatar && getInitials(emp.fullName)}
-                                                      </Avatar>
-                                                    </Tooltip>
-                                                  ))}
+                                                {renderEmployees(task.Employees)}
+
                                                 </div>
                                 
                                                 <div className="task-footer">

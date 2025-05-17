@@ -15,7 +15,6 @@ import {
 import {
   EyeOutlined,
   ClockCircleOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
 import { useAuth } from "../contexts/useAuth";
 import HeaderEmployee from "../components/HeaderEmployee";
@@ -346,7 +345,6 @@ const EmployeeDashboard = () => {
             <Avatar
               src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
               style={{ backgroundColor: emp.Avatar ? "transparent" : "#777" }}
-              icon={!emp.Avatar ? <UserOutlined /> : undefined}
             >
               {!emp.Avatar && getInitials(emp.Full_Name || "")}
             </Avatar>
@@ -355,6 +353,7 @@ const EmployeeDashboard = () => {
       </Avatar.Group>
     );
   };
+  
 
   const getDeadlineClass = (deadline: string) => {
     const now = dayjs();
@@ -804,22 +803,19 @@ const EmployeeDashboard = () => {
                           key={`emp-view-${emp.ID_Employee}-${idx}`}
                           title={emp.Full_Name}
                         >
-                          <Avatar
-                            src={
-                              emp.Avatar
-                                ? `${API_URL}/uploads/${emp.Avatar}`
-                                : undefined
-                            }
-                            icon={!emp.Avatar ? <UserOutlined /> : undefined}
-                            style={{
-                              backgroundColor: emp.Avatar
-                                ? "transparent"
-                                : "#777",
-                              marginRight: 4,
-                            }}
-                          >
-                            {!emp.Avatar && getInitials(emp.Full_Name)}
-                          </Avatar>
+<Avatar
+  src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
+  style={{
+    backgroundColor: emp.Avatar ? "transparent" : "#777",
+    marginRight: 4,
+  }}
+>
+  {!emp.Avatar && getInitials(emp.Full_Name || "")}
+</Avatar>
+
+
+
+
                         </Tooltip>
                       ))}
                     </div>
@@ -931,20 +927,15 @@ const EmployeeDashboard = () => {
                           <List.Item.Meta
                             avatar={
                               <Avatar
-                                src={
-                                  item.Avatar
-                                    ? `${API_URL}/uploads/${item.Avatar}`
-                                    : undefined
-                                }
-                                icon={
-                                  !item.Avatar ? <UserOutlined /> : undefined
-                                }
-                                style={{
-                                  backgroundColor: item.Avatar
-                                    ? "transparent"
-                                    : "#777",
-                                }}
-                              />
+                              src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+                              style={{
+                                backgroundColor: item.Avatar ? "transparent" : "#777",
+                              }}
+                            >
+                              {!item.Avatar && getInitials(item.AuthorName || "")}
+                            </Avatar>
+                            
+
                             }
                             title={
                               <div
