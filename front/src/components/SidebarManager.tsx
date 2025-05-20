@@ -7,7 +7,8 @@ import {
   ProjectOutlined,
   TeamOutlined,
   ClockCircleOutlined,
-  BarChartOutlined // ✅ Добавили иконку для отчётов
+  BarChartOutlined,
+  UserAddOutlined // ✅ добавлено — это решит ошибку
 } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/components/Sidebar.css';
@@ -61,6 +62,13 @@ const SidebarManager: React.FC = () => {
         },
       ],
     },
+    
+    {
+      key: '/employee-management',
+      icon: <UserAddOutlined />,
+      label: <Link to="/employee-management">Список сотрудников</Link>,
+    },
+    
     {
       key: '/manager-reports',
       icon: <BarChartOutlined />, // ✅ новая иконка для отчётов

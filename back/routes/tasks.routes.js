@@ -33,7 +33,7 @@ router.get('/search', async (req, res) => {
 
 // Получить все задачи с деталями
 router.get('/details', taskController.getTasksWithDetails);
-
+router.delete("/without-employees", taskController.deleteTasksWithoutEmployees);
 // Создать задачу
 router.post('/', taskController.createTask);
 

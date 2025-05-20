@@ -1,8 +1,6 @@
+const db = require("../config/db");
 
-// back/controllers/project.controller.js
-const db = require('../config/db');
-
-// Получение всех проектов
+// Получение всех проектов с ID_Manager
 exports.getAllProjects = async (req, res) => {
   try {
     const result = await db.pool
@@ -13,63 +11,74 @@ exports.getAllProjects = async (req, res) => {
           o.Order_Name, 
           pt.Type_Name, 
           o.Creation_Date, 
-          o.End_Date
+          o.End_Date,
+          o.Status,
+          o.ID_Team,
+          t.Team_Name,
+          o.ID_Manager  -- ОБЯЗАТЕЛЬНО ДОЛЖЕН БЫТЬ ЗДЕСЬ
         FROM Orders o
         JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
+        JOIN Teams t ON o.ID_Team = t.ID_Team
       `);
-    res.json(result.recordset);
+
+    res.json(result.recordset); // Возвращает все поля
   } catch (err) {
     console.error('Ошибка при получении проектов:', err);
     res.status(500).json({ error: 'Ошибка при получении проектов' });
   }
 };
 
+
 // Создание проекта
 exports.createProject = async (req, res) => {
-  const { Order_Name, Type_Name, Creation_Date, End_Date } = req.body;
+  const { Order_Name, Type_Name, Creation_Date, End_Date, ID_Manager } = req.body;
 
   try {
     const typeResult = await db.pool
       .request()
-      .input('Type_Name', db.sql.NVarChar, Type_Name)
-      .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @Type_Name');
+      .input("Type_Name", db.sql.NVarChar, Type_Name)
+      .query("SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @Type_Name");
 
     if (typeResult.recordset.length === 0) {
-      return res.status(400).json({ error: 'Тип проекта не найден' });
+      return res.status(400).json({ error: "Тип проекта не найден" });
     }
 
     const typeId = typeResult.recordset[0].ID_ProjectType;
 
     await db.pool
       .request()
-      .input('Order_Name', db.sql.NVarChar, Order_Name)
-      .input('ID_ProjectType', db.sql.Int, typeId)
-      .input('Creation_Date', db.sql.Date, Creation_Date)
-      .input('End_Date', db.sql.Date, End_Date)
-      .input('Status', db.sql.NVarChar, 'Новая')
-      .input('ID_Manager', db.sql.Int, 1) // заменить ID_Manager на текущего менеджера
+      .input("Order_Name", db.sql.NVarChar, Order_Name)
+      .input("ID_ProjectType", db.sql.Int, typeId)
+      .input("Creation_Date", db.sql.Date, Creation_Date)
+      .input("End_Date", db.sql.Date, End_Date)
+      .input("Status", db.sql.NVarChar, "Новая")
+      .input("ID_Manager", db.sql.Int, ID_Manager || 1) // ✅ Принимает ID_Manager или 1 по умолчанию
       .query(`
         INSERT INTO Orders (Order_Name, ID_ProjectType, Creation_Date, End_Date, Status, ID_Manager)
         VALUES (@Order_Name, @ID_ProjectType, @Creation_Date, @End_Date, @Status, @ID_Manager)
       `);
 
-    res.status(201).json({ message: 'Проект успешно создан' });
+    res.status(201).json({ message: "Проект успешно создан" });
   } catch (err) {
-    console.error('Ошибка при создании проекта:', err);
-    res.status(500).json({ error: 'Ошибка при создании проекта' });
+    console.error("Ошибка при создании проекта:", err);
+    res.status(500).json({ error: "Ошибка при создании проекта" });
   }
 };
+
+// Закрытие проекта
 exports.closeProject = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
-    await poolConnect;
-    await pool.request()
-      .input('ID_Order', sql.Int, id)
+    await db.pool
+      .request()
+      .input("ID_Order", db.sql.Int, id)
       .query("UPDATE Orders SET Status = 'Завершён' WHERE ID_Order = @ID_Order");
-    res.status(200).json({ message: 'Проект закрыт' });
+
+    res.status(200).json({ message: "Проект закрыт" });
   } catch (error) {
-    console.error('Ошибка при закрытии проекта:', error);
-    res.status(500).json({ message: 'Ошибка при закрытии проекта' });
+    console.error("Ошибка при закрытии проекта:", error);
+    res.status(500).json({ message: "Ошибка при закрытии проекта" });
   }
 };
 
@@ -81,22 +90,22 @@ exports.updateProject = async (req, res) => {
   try {
     const typeResult = await db.pool
       .request()
-      .input('Type_Name', db.sql.NVarChar, Type_Name)
-      .query('SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @Type_Name');
+      .input("Type_Name", db.sql.NVarChar, Type_Name)
+      .query("SELECT ID_ProjectType FROM ProjectTypes WHERE Type_Name = @Type_Name");
 
     if (typeResult.recordset.length === 0) {
-      return res.status(400).json({ error: 'Тип проекта не найден' });
+      return res.status(400).json({ error: "Тип проекта не найден" });
     }
 
     const typeId = typeResult.recordset[0].ID_ProjectType;
 
     await db.pool
       .request()
-      .input('ID_Order', db.sql.Int, projectId)
-      .input('Order_Name', db.sql.NVarChar, Order_Name)
-      .input('ID_ProjectType', db.sql.Int, typeId)
-      .input('Creation_Date', db.sql.Date, Creation_Date)
-      .input('End_Date', db.sql.Date, End_Date)
+      .input("ID_Order", db.sql.Int, projectId)
+      .input("Order_Name", db.sql.NVarChar, Order_Name)
+      .input("ID_ProjectType", db.sql.Int, typeId)
+      .input("Creation_Date", db.sql.Date, Creation_Date)
+      .input("End_Date", db.sql.Date, End_Date)
       .query(`
         UPDATE Orders
         SET Order_Name = @Order_Name,
@@ -106,10 +115,10 @@ exports.updateProject = async (req, res) => {
         WHERE ID_Order = @ID_Order
       `);
 
-    res.json({ message: 'Проект обновлён' });
+    res.json({ message: "Проект обновлён" });
   } catch (err) {
-    console.error('Ошибка при обновлении проекта:', err);
-    res.status(500).json({ error: 'Ошибка при обновлении проекта' });
+    console.error("Ошибка при обновлении проекта:", err);
+    res.status(500).json({ error: "Ошибка при обновлении проекта" });
   }
 };
 
@@ -120,12 +129,12 @@ exports.deleteProject = async (req, res) => {
   try {
     await db.pool
       .request()
-      .input('ID_Order', db.sql.Int, projectId)
-      .query('DELETE FROM Orders WHERE ID_Order = @ID_Order');
+      .input("ID_Order", db.sql.Int, projectId)
+      .query("DELETE FROM Orders WHERE ID_Order = @ID_Order");
 
-    res.json({ message: 'Проект удалён' });
+    res.json({ message: "Проект удалён" });
   } catch (err) {
-    console.error('Ошибка при удалении проекта:', err);
-    res.status(500).json({ error: 'Ошибка при удалении проекта' });
+    console.error("Ошибка при удалении проекта:", err);
+    res.status(500).json({ error: "Ошибка при удалении проекта" });
   }
 };

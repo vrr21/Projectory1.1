@@ -154,3 +154,73 @@
   margin-top: 0 !important;
   padding-top: 0 !important;
 }
+
+/* Стили для блока вкладок - закругления только сверху */
+.employee-reports-page .ant-tabs-nav {
+  border-radius: 12px 12px 0 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-color);
+  border-bottom: none !important;
+}
+
+/* Стили для контента вкладок - острые углы */
+.employee-reports-page .ant-tabs-content-holder {
+  border-radius: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid var(--border-color);
+  border-top: none !important;
+}
+
+/* Стили для самих вкладок - убираем скругления */
+.employee-reports-page .ant-tabs-nav .ant-tabs-tab {
+  padding: 8px 16px !important;
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+/* Стили для таблиц - острые углы сверху и скругления снизу */
+.employee-reports-page .ant-table-wrapper,
+.employee-reports-page .ant-table-container,
+.employee-reports-page .ant-table {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+  border: 1px solid var(--border-color) !important;
+  border-top: none !important;
+  overflow: hidden !important;
+}
+
+
+.employee-reports-page .tabs-table-wrapper {
+  border: 1px solid var(--border-color);
+  border-radius: 12px 12px 12px 12px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+/* Скруглённый верх у вкладок */
+.employee-reports-page .tabs-table-wrapper .ant-tabs-nav {
+  border-radius: 12px 12px 0 0 !important;
+  border-bottom: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+/* Острый низ у вкладок */
+.employee-reports-page .tabs-table-wrapper .ant-tabs-content-holder {
+  border-radius: 0 !important;
+  border: none !important;
+  overflow: hidden;
+}
+
+/* Острый верх и скруглённый низ у таблиц */
+.employee-reports-page .tabs-table-wrapper .ant-table-wrapper,
+.employee-reports-page .tabs-table-wrapper .ant-table-container,
+.employee-reports-page .tabs-table-wrapper .ant-table {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+  border: none !important;
+  overflow: hidden !important;
+}

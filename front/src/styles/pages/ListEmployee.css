@@ -1,0 +1,18 @@
+/* styles/pages/ManagerDashboard.css */
+.layout {
+  min-height: 100vh;
+}
+
+.main-layout {
+  background: #141414;
+}
+
+.content {
+  margin: 24px 16px;
+}
+
+.page-content {
+  padding: 24px;
+  background: #1f1f1f;
+  border-radius: 8px;
+}

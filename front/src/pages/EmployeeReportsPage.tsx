@@ -31,7 +31,7 @@ import Header from "../components/HeaderEmployee";
 import SidebarEmployee from "../components/Sidebar";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/useAuth";
-
+import { DownloadOutlined } from "@ant-design/icons";
 ChartJS.register(
   ArcElement,
   ChartTooltip,
@@ -137,7 +137,13 @@ const EmployeeReportsPage: React.FC = () => {
 
     fetchData();
   }, [user]);
-
+  const getCellAlignment = (value: unknown): "left" | "center" => {
+    if (typeof value === "number") return "center";
+    if (typeof value === "string" && dayjs(value).isValid() && value.length >= 10) return "center";
+    return "left";
+  };
+  
+  
   const applyDateFilter = <T extends DateRecord>(data: T[]) => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
     const [start, end] = dateRange;
@@ -209,46 +215,64 @@ const EmployeeReportsPage: React.FC = () => {
       dataIndex: "Task_Name",
       key: "Task_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Task_Name) },
+      }),
     },
     {
       title: "Описание",
       dataIndex: "Description",
       key: "Description",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Description) },
+      }),
     },
     {
       title: "Статус",
       dataIndex: "Status_Name",
       key: "Status_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Status_Name) },
+      }),
     },
     {
       title: "Проект",
       dataIndex: "Order_Name",
       key: "Order_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Order_Name) },
+      }),
     },
     {
       title: "Команда",
       dataIndex: "Team_Name",
       key: "Team_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Team_Name) },
+      }),
     },
     {
       title: "Дедлайн",
       dataIndex: "Deadline",
       key: "Deadline",
-      align: "center",
       render: (date) => new Date(date).toLocaleDateString(),
+      align: "center",
     },
   ];
-
+  
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
       title: "Задача",
       dataIndex: "Task_Name",
       key: "Task_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Task_Name) },
+      }),
     },
     {
       title: "Часы",
@@ -260,17 +284,18 @@ const EmployeeReportsPage: React.FC = () => {
       title: "Начало",
       dataIndex: "Start_Date",
       key: "Start_Date",
-      align: "center",
       render: (date) => new Date(date).toLocaleString(),
+      align: "center",
     },
     {
       title: "Окончание",
       dataIndex: "End_Date",
       key: "End_Date",
-      align: "center",
       render: (date) => new Date(date).toLocaleString(),
+      align: "center",
     },
   ];
+  
 
   const commonOptions = {
     plugins: {
@@ -333,6 +358,57 @@ const EmployeeReportsPage: React.FC = () => {
     ),
   };
 
+  const handleExport = async (format: string) => {
+    try {
+      if (!user?.email) {
+        console.error("Email пользователя не найден");
+        return;
+      }
+
+      const token = localStorage.getItem("token"); // Или из useAuth, если он там есть
+
+      if (!token) {
+        console.error("Токен авторизации отсутствует");
+        return;
+      }
+
+      const params = new URLSearchParams({
+        format,
+        email: user.email,
+      });
+
+      const res = await fetch(
+        `${API_URL}/api/export/employee-reports?${params.toString()}`,
+        {
+          method: "GET",
+          credentials: "include", // оставляем, если у вас есть cookie
+          headers: {
+            Authorization: `Bearer ${token}`, // ✅ Добавляем токен
+          },
+        }
+      );
+
+      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `employee_reports.${
+          format === "word" ? "docx" : format === "excel" ? "xlsx" : format
+        }`
+      );
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Ошибка при экспорте:", error);
+    }
+  };
+
   const applySearchFilter = <T extends KanbanTask | TimeTrackingEntry>(
     data: T[]
   ) => {
@@ -356,7 +432,7 @@ const EmployeeReportsPage: React.FC = () => {
           columns={kanbanColumns}
           dataSource={applySearchFilter(applyDateFilter(kanbanData))}
           rowKey="ID_Task"
-          pagination={false}
+          pagination={{ pageSize: 10 }}
         />
       ),
     },
@@ -368,42 +444,98 @@ const EmployeeReportsPage: React.FC = () => {
           columns={timeTrackingColumns}
           dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
           rowKey={(record, index) => index?.toString() ?? ""}
-          pagination={false}
+          pagination={{ pageSize: 10 }}
         />
       ),
     },
   ];
+  
 
   if (loading) return <div>Загрузка данных...</div>;
 
   return (
     <ConfigProvider theme={{ algorithm: currentAlgorithm }}>
-      <div className="dashboard">
+      <div className="dashboard employee-reports-page">
         <Header />
         <div className="dashboard-body">
           <SidebarEmployee role="employee" />
           <main className="main-content">
-            <h1>Мои отчёты</h1>
-            <Input
-              placeholder="Поиск по всем данным..."
-              prefix={<SearchOutlined />}
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ marginBottom: "16px", width: "300px" }}
-            />
-            <Tabs defaultActiveKey="kanban" items={tabItems} />
-            <Divider orientation="left">
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+          <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: "24px",
+                }}
+              >Мои отчёты</h1>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+                marginBottom: "16px",
+              }}
+            >
+              <Input
+                placeholder="Поиск по всем данным..."
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: "300px" }}
+              />
+              <Dropdown
+                menu={{
+                  items: [
+                    { key: "word", label: "Экспорт в Word (.docx)" },
+                    { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                    { key: "pdf", label: "Экспорт в PDF (.pdf)" },
+                  ],
+                  onClick: ({ key }) => handleExport(key),
+                }}
+                placement="bottomRight"
+                arrow
               >
-                <strong>Распределение моих задач по типам</strong>
+                <Button icon={<DownloadOutlined />}>Экспорт</Button>
+              </Dropdown>
+            </div>
+
+            <div className="tabs-table-wrapper">
+              <Tabs
+                defaultActiveKey="kanban"
+                tabBarGutter={0}
+                items={tabItems.map((tab) => ({
+                  ...tab,
+                  label: <div style={{ padding: "8px 16px" }}>{tab.label}</div>,
+                }))}
+                tabBarStyle={{
+                  margin: 0,
+                  padding: 0,
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                  borderBottomLeftRadius: 0,
+                  borderBottomRightRadius: 0,
+                  border: "1px solid var(--border-color)",
+                  borderBottom: "none",
+                  overflow: "hidden",
+                }}
+              />
+            </div>
+
+            <Divider orientation="center">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
+              >
+                Распределение моих задач по типам
                 <Dropdown
                   overlay={buildFilterMenu(setDateRange)}
                   trigger={["click"]}
                 >
                   <Button icon={<FilterOutlined />} />
                 </Dropdown>
-              </div>
+              </span>
             </Divider>
 
             <div
@@ -421,18 +553,22 @@ const EmployeeReportsPage: React.FC = () => {
                 />
               </div>
             </div>
-            <Divider orientation="left">
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            <Divider orientation="center">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
               >
-                <strong>Количество моих задач по проектам</strong>
+                Количество моих задач по проектам
                 <Dropdown
                   overlay={buildFilterMenu(setDateRange)}
                   trigger={["click"]}
                 >
                   <Button icon={<FilterOutlined />} />
                 </Dropdown>
-              </div>
+              </span>
             </Divider>
 
             <div
@@ -449,18 +585,22 @@ const EmployeeReportsPage: React.FC = () => {
               />
             </div>
 
-            <Divider orientation="left">
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            <Divider orientation="center">
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                }}
               >
-                <strong>Мои задачи по датам</strong>
+                Мои задачи по датам
                 <Dropdown
                   overlay={buildFilterMenu(setDateRange)}
                   trigger={["click"]}
                 >
                   <Button icon={<FilterOutlined />} />
                 </Dropdown>
-              </div>
+              </span>
             </Divider>
 
             <div

@@ -3,7 +3,14 @@ const router = express.Router();
 const path = require('path');
 const multer = require('multer');
 const { poolConnect, pool, sql } = require('../config/db');
-const { updateEmployeeProfile } = require('../controllers/employees.controller');
+const {
+  updateEmployeeProfile,
+  uploadAvatar,
+  getExtendedEmployeeList,
+  getAllEmployeesFull,
+  getAllEmployeesExtended
+} = require('../controllers/employees.controller');
+const { getExtendedEmployees } = require('../controllers/employeesExtended.controller');
 
 // Настройка хранилища для multer
 const storage = multer.diskStorage({
@@ -30,7 +37,7 @@ router.get('/', async (req, res) => {
         Last_Name,
         Email
       FROM Users
-      WHERE ID_Role != 1  -- Исключить менеджеров
+      WHERE ID_Role != 1
     `);
     res.json(result.recordset);
   } catch (error) {
@@ -65,30 +72,18 @@ router.get('/search', async (req, res) => {
 router.put('/update', updateEmployeeProfile);
 
 // Загрузка аватара сотрудника
-router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'Файл не загружен' });
-  }
+router.post('/upload-avatar', upload.single('avatar'), uploadAvatar);
 
-  const { userId } = req.body;
-  const filename = req.file.filename;
+// Расширенные данные сотрудников с ролями по командам
+router.get('/extended', getAllEmployeesExtended);
 
-  try {
-    await poolConnect;
-    await pool.request()
-      .input('userId', sql.Int, userId)
-      .input('avatar', sql.NVarChar(255), filename)
-      .query(`
-        UPDATE Users
-        SET Avatar = @avatar
-        WHERE ID_User = @userId
-      `);
+// Полные данные сотрудников с ролями из таблицы Roles
+router.get('/full', getAllEmployeesFull);
 
-    res.json({ filename });
-  } catch (error) {
-    console.error('Ошибка при сохранении аватара:', error);
-    res.status(500).json({ message: 'Ошибка при сохранении аватара' });
-  }
-});
+// Старый маршрут расширенных сотрудников, если используется
+router.get('/legacy-extended', getExtendedEmployeeList);
+
+// Альтернативный расширенный маршрут (например, из другого контроллера)
+router.get('/alt-extended', getExtendedEmployees);
 
 module.exports = router;

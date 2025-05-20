@@ -485,9 +485,9 @@ const ProjectManagementPage: React.FC = () => {
                     menu={{
                       onClick: ({ key }) => handleExport(key),
                       items: [
-                        { key: "word", label: "Экспорт в Word" },
-                        { key: "excel", label: "Экспорт в Excel" },
-                        { key: "pdf", label: "Экспорт в PDF" },
+                        { key: "word", label: "Экспорт в Word (.docx)" },
+                        { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                        { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                       ],
                     }}
                     placement="bottomRight"

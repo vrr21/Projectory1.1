@@ -227,3 +227,37 @@
   align-items: center;
   height: 100%; /* Растягиваем на всю высоту заголовка */
 }
+
+
+/* Вкладки: оставить закругления сверху, убрать снизу */
+/* Вкладки: оставить закругления сверху, убрать снизу */
+.account-container .ant-tabs-nav {
+  border-radius: 12px 12px 0 0 !important;
+  overflow: hidden !important;
+  box-shadow: none !important;
+}
+
+/* Контент вкладок: убрать все закругления */
+.account-container .ant-tabs-content-holder {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Сводная карточка: убрать закругления сверху, оставить снизу */
+.account-container .account-summary-card {
+  border-radius: 0 0 12px 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Убираем отступы между вкладками Текущая информация и Архив */
+.account-container .ant-tabs-nav .ant-tabs-tab + .ant-tabs-tab {
+  margin-left: 0 !important;
+}
+
+/* Добавляем внутренние отступы у самих названий вкладок */
+.account-container .ant-tabs-nav .ant-tabs-tab {
+  padding: 8px 16px !important; /* ✅ регулируй как нужно */
+  border-radius: 12px 12px 0 0 !important;
+  margin: 0 !important;
+}
+

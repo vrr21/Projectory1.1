@@ -11,7 +11,7 @@ import {
   Input,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FilterOutlined, SearchOutlined } from "@ant-design/icons";
+import { FilterOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import { Pie, Bar, Line } from "react-chartjs-2";
 import {
@@ -29,6 +29,9 @@ import {
 import Header from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
 import { useTheme } from "../contexts/ThemeContext";
+import { SearchOutlined } from "@ant-design/icons";
+import { DownloadOutlined } from "@ant-design/icons";
+import { useAuth } from "../contexts/useAuth";
 
 ChartJS.register(
   ArcElement,
@@ -90,6 +93,8 @@ interface TimeTrackingEntry {
 
 const ManagerReportsPage: React.FC = () => {
   const { theme: appTheme } = useTheme();
+  const { user } = useAuth();
+  
   const currentAlgorithm =
     appTheme === "dark" ? darkAlgorithm : defaultAlgorithm;
   const textColor = appTheme === "dark" ? "#ffffff" : "#000000";
@@ -158,6 +163,12 @@ const ManagerReportsPage: React.FC = () => {
       );
     });
   };
+// Вставить после const API_URL = import.meta.env.VITE_API_URL;
+const getCellAlignment = (value: unknown): "left" | "center" => {
+  if (typeof value === "number") return "center";
+  if (typeof value === "string" && dayjs(value).isValid() && value.length >= 10) return "center";
+  return "left";
+};
 
   const buildFilterMenu = (
     setRange: (range: [Dayjs, Dayjs] | null) => void
@@ -216,30 +227,45 @@ const ManagerReportsPage: React.FC = () => {
       dataIndex: "Task_Name",
       key: "Task_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Task_Name) },
+      }),
     },
     {
       title: "Описание",
       dataIndex: "Description",
       key: "Description",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Description) },
+      }),
     },
     {
       title: "Статус",
       dataIndex: "Status_Name",
       key: "Status_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Status_Name) },
+      }),
     },
     {
       title: "Проект",
       dataIndex: "Order_Name",
       key: "Order_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Order_Name) },
+      }),
     },
     {
       title: "Команда",
       dataIndex: "Team_Name",
       key: "Team_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Team_Name) },
+      }),
     },
     {
       title: "Дедлайн",
@@ -249,19 +275,25 @@ const ManagerReportsPage: React.FC = () => {
       render: (date) => new Date(date).toLocaleDateString(),
     },
   ];
-
+  
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
       title: "Сотрудник",
       dataIndex: "Employee_Name",
       key: "Employee_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Employee_Name) },
+      }),
     },
     {
       title: "Задача",
       dataIndex: "Task_Name",
       key: "Task_Name",
       align: "center",
+      onCell: (record) => ({
+        style: { textAlign: getCellAlignment(record.Task_Name) },
+      }),
     },
     {
       title: "Часы",
@@ -284,7 +316,7 @@ const ManagerReportsPage: React.FC = () => {
       render: (date) => new Date(date).toLocaleString(),
     },
   ];
-
+  
   const commonOptions = {
     plugins: {
       legend: { labels: { color: textColor } },
@@ -293,7 +325,9 @@ const ManagerReportsPage: React.FC = () => {
       x: { ticks: { color: textColor }, grid: { color: gridColor } },
       y: { ticks: { color: textColor }, grid: { color: gridColor } },
     },
+    maintainAspectRatio: false
   };
+  
 
   const pieData = {
     labels: applyDateFilter(tasksByProjectType).map(
@@ -317,17 +351,25 @@ const ManagerReportsPage: React.FC = () => {
       },
     ],
   };
-
+  const groupedTasksByEmployee = applyDateFilter(tasksByEmployee).reduce((acc, curr) => {
+    if (!acc[curr.Employee_Name]) {
+      acc[curr.Employee_Name] = 0;
+    }
+    acc[curr.Employee_Name] += curr.Task_Count;
+    return acc;
+  }, {} as Record<string, number>);
+  
   const barData = {
-    labels: applyDateFilter(tasksByEmployee).map((item) => item.Employee_Name),
+    labels: Object.keys(groupedTasksByEmployee),
     datasets: [
       {
         label: "Количество задач",
-        data: applyDateFilter(tasksByEmployee).map((item) => item.Task_Count),
+        data: Object.values(groupedTasksByEmployee),
         backgroundColor: "#1976D2",
       },
     ],
   };
+  
 
   const lineData = {
     labels: applyDateFilter(tasksByProject).map((item) =>
@@ -370,11 +412,12 @@ const ManagerReportsPage: React.FC = () => {
       label: "Журнал задач на проекты",
       children: (
         <Table
-          columns={kanbanColumns}
-          dataSource={applySearchFilter(applyDateFilter(kanbanData))}
-          rowKey="ID_Task"
-          pagination={false}
-        />
+        columns={kanbanColumns}
+        dataSource={applySearchFilter(applyDateFilter(kanbanData))}
+        rowKey="ID_Task"
+        pagination={{ pageSize: 10 }}
+      />
+      
       ),
     },
     {
@@ -382,17 +425,61 @@ const ManagerReportsPage: React.FC = () => {
       label: "Отчёт по отработанным часам",
       children: (
         <Table
-          columns={timeTrackingColumns}
-          dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
-          rowKey={(record, index) => index?.toString() ?? ""}
-          pagination={false}
-        />
+        columns={timeTrackingColumns}
+        dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
+        rowKey={(record, index) => index?.toString() ?? ""}
+        pagination={{ pageSize: 10 }}
+      />
+      
       ),
     },
   ];
+  
 
+  const handleExport = async (format: string) => {
+    try {
+      if (!user?.email) {
+        console.error("Email пользователя не найден");
+        return;
+      }
+  
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error("Токен авторизации отсутствует");
+        return;
+      }
+  
+      const params = new URLSearchParams({
+        format,
+        email: user.email,  // ✅ Вставляем email менеджера в URL
+      });
+  
+      const res = await fetch(`${API_URL}/api/export/reports?${params.toString()}`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+  
+      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
+  
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `reports.${format === "word" ? "docx" : format === "excel" ? "xlsx" : format}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+    } catch (error) {
+      console.error("Ошибка при экспорте:", error);
+    }
+  };
+  
+  
   if (loading) return <div>Загрузка данных...</div>;
-
   return (
     <ConfigProvider theme={{ algorithm: currentAlgorithm }}>
       <div className="dashboard">
@@ -400,37 +487,93 @@ const ManagerReportsPage: React.FC = () => {
         <div className="dashboard-body">
           <SidebarManager />
           <main className="main-content">
-          <h1>Отчёты по сотрудникам</h1>
-<Input
-  placeholder="Поиск по всем данным..."
-  prefix={<SearchOutlined />}
-  value={searchText}
-  onChange={(e) => setSearchText(e.target.value)}
-  style={{ marginBottom: "16px", width: "300px" }}
-/>
+          <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: "24px",
+                }}
+              >Отчёты по сотрудникам</h1>
 
-<Tabs defaultActiveKey="kanban" items={tabItems} />
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "16px",
+              }}
+            >
+              <Input
+                placeholder="Поиск по всем данным..."
+                prefix={<SearchOutlined />}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: "300px" }}
+              />
+              <Dropdown
+                menu={{
+                  onClick: ({ key }) => handleExport(key),
+                  items: [
+                    { key: "word", label: "Экспорт в Word (.docx)" },
+                    { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                    { key: "pdf", label: "Экспорт в PDF (.pdf)" },
+                  ],
+                }}
+                placement="bottomRight"
+                arrow
+              >
+                <Button icon={<DownloadOutlined />}>Экспорт</Button>
+              </Dropdown>
+            </div>
 
-<Divider>
-  <span>Распределение задач по типу проекта</span>
-  <Dropdown overlay={buildFilterMenu(setDateRange)} trigger={["click"]}>
-    <Button icon={<FilterOutlined />} style={{ marginLeft: 8 }} />
-  </Dropdown>
-</Divider>
+            <div className="tabs-table-wrapper">
+              <Tabs
+                defaultActiveKey="kanban"
+                tabBarGutter={0}
+                items={tabItems.map((tab) => ({
+                  ...tab,
+                  label: <div style={{ padding: "8px 16px" }}>{tab.label}</div>,
+                }))}
+                tabBarStyle={{
+                  margin: 0,
+                  padding: 0,
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                  borderBottomLeftRadius: 0,
+                  borderBottomRightRadius: 0,
+                  border: "1px solid var(--border-color)",
+                  borderBottom: "none",
+                  overflow: "hidden",
+                }}
+              />
+            </div>
 
-<div
-  style={{
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "8px 0",
-  }}
->
-  <div style={{ width: "500px", height: "500px" }}>
-    <Pie data={pieData} options={{ ...commonOptions, maintainAspectRatio: true }} />
-  </div>
-</div>
+            <Divider>
+              <span>Распределение задач по типу проекта</span>
+              <Dropdown
+                dropdownRender={() => buildFilterMenu(setDateRange)}
+                trigger={["click"]}
+              >
+                <Button icon={<FilterOutlined />} style={{ marginLeft: 8 }} />
+              </Dropdown>
+            </Divider>
 
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "8px 0",
+              }}
+            >
+              <div style={{ width: "500px", height: "500px" }}>
+                <Pie
+                  data={pieData}
+                  options={{ ...commonOptions, maintainAspectRatio: true }}
+                />
+              </div>
+            </div>
 
             <Divider>
               <span>Количество задач по сотрудникам</span>

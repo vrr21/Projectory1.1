@@ -1,4 +1,5 @@
 const { pool, sql, poolConnect } = require('../config/db');
+const db = require("../config/db");
 
 // 🔹 Получение задач с фильтрацией
 exports.getAllTasks = async (req, res) => {
@@ -12,17 +13,19 @@ exports.getAllTasks = async (req, res) => {
 
     const result = await request.query(`
       SELECT 
-        t.ID_Task,
-        t.Task_Name,
-        t.Description,
-        t.Time_Norm,
-        t.Deadline,
-        s.Status_Name,
-        o.Order_Name,
-        tm.Team_Name,
-        u.ID_User,
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        u.Avatar
+  t.ID_Task,
+  t.Task_Name,
+  t.Description,
+  t.Time_Norm,
+  t.Deadline,
+  s.Status_Name,
+  o.Order_Name,
+  o.ID_Manager,  -- ✅ ДОБАВЛЕНО
+  tm.Team_Name,
+  u.ID_User,
+  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+  u.Avatar
+
       FROM Tasks t
       INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
       INNER JOIN Orders o ON t.ID_Order = o.ID_Order
@@ -66,67 +69,89 @@ exports.getAllTasks = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении задач', error: error.message });
   }
 };
-
 // 🔹 Создание задачи с уведомлением
 exports.createTask = async (req, res) => {
-  const { Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, Employee_Names = [] } = req.body;
-
   try {
-    await poolConnect;
+    const {
+      Task_Name,
+      Description,
+      ID_Order,
+      Time_Norm,
+      Deadline,
+      EmployeeIds,
+      attachments,
+      ID_Manager
+    } = req.body;
 
-    if (!ID_Status) return res.status(400).json({ message: 'ID_Status обязателен' });
+    // ✅ Проверка наличия ID_Manager
+    if (!ID_Manager) {
+      return res.status(400).json({ error: "ID_Manager не указан" });
+    }
 
-    const insertTaskResult = await pool.request()
-      .input('Task_Name', sql.NVarChar, Task_Name)
-      .input('Description', sql.NVarChar, Description)
-      .input('Time_Norm', sql.Int, Time_Norm)
-      .input('ID_Status', sql.Int, ID_Status)
-      .input('ID_Order', sql.Int, ID_Order)
-      .input('Deadline', sql.DateTime, Deadline || null)
+    // ✅ Получение ID статуса "Новая" из базы
+    const statusResult = await db.pool
+      .request()
+      .input("Status_Name", db.sql.NVarChar, "Новая")
+      .query("SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name");
+
+    if (!statusResult.recordset.length) {
+      return res.status(400).json({ error: "Статус 'Новая' не найден" });
+    }
+
+    const newStatusId = statusResult.recordset[0].ID_Status;
+
+    // ✅ Вставка задачи
+    const taskResult = await db.pool
+      .request()
+      .input("Task_Name", db.sql.NVarChar, Task_Name)
+      .input("Description", db.sql.NVarChar, Description)
+      .input("ID_Order", db.sql.Int, ID_Order)
+      .input("Time_Norm", db.sql.Int, Time_Norm)
+      .input("Deadline", db.sql.DateTime, Deadline ? new Date(Deadline) : null)
+      .input("ID_Status", db.sql.Int, newStatusId)
+      .input("ID_Manager", db.sql.Int, ID_Manager)
       .query(`
-        INSERT INTO Tasks (Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline)
+        INSERT INTO Tasks (Task_Name, Description, ID_Order, Time_Norm, Deadline, ID_Status, ID_Manager)
         OUTPUT INSERTED.ID_Task
-        VALUES (@Task_Name, @Description, @Time_Norm, @ID_Status, @ID_Order, @Deadline)
+        VALUES (@Task_Name, @Description, @ID_Order, @Time_Norm, @Deadline, @ID_Status, @ID_Manager)
       `);
 
-    const ID_Task = insertTaskResult.recordset[0].ID_Task;
+    const newTaskId = taskResult.recordset[0].ID_Task;
 
-    for (const name of Employee_Names) {
-      const [First_Name, Last_Name] = name.split(' ');
-      const userResult = await pool.request()
-        .input('First_Name', sql.NVarChar, First_Name)
-        .input('Last_Name', sql.NVarChar, Last_Name)
-        .query('SELECT ID_User, Email FROM Users WHERE First_Name = @First_Name AND Last_Name = @Last_Name');
-
-      if (userResult.recordset.length) {
-        const { ID_User, Email } = userResult.recordset[0];
-
-        await pool.request()
-          .input('ID_Task', sql.Int, ID_Task)
-          .input('ID_Employee', sql.Int, ID_User)
-          .input('Assignment_Date', sql.Date, new Date())
+    // ✅ Привязка сотрудников
+    if (EmployeeIds && Array.isArray(EmployeeIds)) {
+      for (const empId of EmployeeIds) {
+        await db.pool
+          .request()
+          .input("ID_Task", db.sql.Int, newTaskId)
+          .input("ID_Employee", db.sql.Int, empId)
+          .input("ID_Status", db.sql.Int, newStatusId)
           .query(`
-            INSERT INTO Assignment (ID_Task, ID_Employee, Assignment_Date)
-            VALUES (@ID_Task, @ID_Employee, @Assignment_Date)
-          `);
-
-        await pool.request()
-          .input('Title', sql.NVarChar, 'Назначена новая задача')
-          .input('Description', sql.NVarChar, `Вам назначена задача "${Task_Name}"`)
-          .input('UserEmail', sql.NVarChar, Email)
-          .query(`
-            INSERT INTO Notifications (Title, Description, UserEmail)
-            VALUES (@Title, @Description, @UserEmail)
+            INSERT INTO Assignment (ID_Task, ID_Employee, ID_Status)
+            VALUES (@ID_Task, @ID_Employee, @ID_Status)
           `);
       }
     }
 
-    res.status(201).json({ message: 'Задача и уведомления успешно созданы' });
+    // ✅ Ответ клиенту
+    res.status(201).json({
+      ID_Task: newTaskId,
+      Task_Name,
+      Description,
+      ID_Order,
+      ID_Status: newStatusId,
+      Deadline,
+      EmployeeIds,
+      attachments,
+      ID_Manager
+    });
+
   } catch (error) {
-    console.error('🔥 Ошибка при создании задачи:', error);
-    res.status(500).json({ message: 'Ошибка при создании задачи', error: error.message });
+    console.error("🔥 Ошибка при создании задачи:", error);
+    res.status(500).json({ error: "Ошибка при создании задачи" });
   }
 };
+
 
 // 🔹 Обновление задачи
 exports.updateTask = async (req, res) => {
@@ -257,20 +282,22 @@ exports.getTasksWithDetails = async (req, res) => {
   try {
     await poolConnect;
     const result = await pool.request().query(`
-      SELECT 
-        t.ID_Task,
-        t.Task_Name,
-        t.Description,
-        t.Time_Norm,
-        t.Deadline,
-        s.Status_Name,
-        o.Order_Name,
-        o.ID_Order,
-        tm.Team_Name,
-        u.ID_User,
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        u.Avatar
-      FROM Tasks t
+     SELECT 
+  t.ID_Task,
+  t.Task_Name,
+  t.Description,
+  t.Time_Norm,
+  t.Deadline,
+  t.Status_Updated_At, -- ✅ ДОБАВЬ ЭТО
+  s.Status_Name,
+  o.Order_Name,
+  o.ID_Order,
+  o.ID_Manager,
+  tm.Team_Name,
+  u.ID_User,
+  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+  u.Avatar
+FROM Tasks t
       LEFT JOIN Statuses s ON t.ID_Status = s.ID_Status
       LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
       LEFT JOIN Teams tm ON o.ID_Team = tm.ID_Team
@@ -290,9 +317,11 @@ exports.getTasksWithDetails = async (req, res) => {
             Status_Name: row.Status_Name,
             Order_Name: row.Order_Name,
             ID_Order: row.ID_Order,
+            ID_Manager: row.ID_Manager, // ✅ ДОБАВЛЕНО
             Team_Name: row.Team_Name,
             Employees: []
           };
+          
         }
         if (row.ID_User && row.Employee_Name) {
           acc[row.ID_Task].Employees.push({
@@ -391,5 +420,27 @@ await pool.request()
   } catch (error) {
     console.error('🔥 Ошибка при обновлении статуса задачи сотрудника:', error);
     res.status(500).json({ message: 'Ошибка при обновлении статуса задачи сотрудника', error: error.message });
+  }
+};
+
+// 🔹 Удаление задач без сотрудников
+exports.deleteTasksWithoutEmployees = async (req, res) => {
+  try {
+    await poolConnect;
+
+    const result = await pool.request().query(`
+      DELETE FROM Tasks
+      WHERE ID_Task IN (
+        SELECT t.ID_Task
+        FROM Tasks t
+        LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task
+        WHERE a.ID_Employee IS NULL
+      )
+    `);
+
+    res.status(200).json({ message: "Задачи без сотрудников удалены" });
+  } catch (error) {
+    console.error("🔥 Ошибка при удалении задач без сотрудников:", error);
+    res.status(500).json({ message: "Ошибка при удалении задач без сотрудников", error: error.message });
   }
 };

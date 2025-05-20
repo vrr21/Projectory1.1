@@ -525,7 +525,13 @@ const EmployeeDashboard = () => {
           <div className="dashboard-body">
             <Sidebar role="employee" />
             <main className="main-content kanban-board">
-              <h2 className="dashboard-title">Мои задачи</h2>
+            <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: "24px",
+                }}
+              >Мои задачи</h1>
               {contextHolder}
 
               <Tabs
@@ -567,9 +573,9 @@ const EmployeeDashboard = () => {
                             menu={{
                               onClick: ({ key }) => handleExport(key),
                               items: [
-                                { key: "word", label: "Экспорт в Word" },
-                                { key: "excel", label: "Экспорт в Excel" },
-                                { key: "pdf", label: "Экспорт в PDF" },
+                                { key: "word", label: "Экспорт в Word (.docx)" },
+                                { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                                { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                               ],
                             }}
                             placement="bottomRight"
@@ -734,9 +740,9 @@ const EmployeeDashboard = () => {
                             menu={{
                               onClick: ({ key }) => handleExport(key),
                               items: [
-                                { key: "word", label: "Экспорт в Word" },
-                                { key: "excel", label: "Экспорт в Excel" },
-                                { key: "pdf", label: "Экспорт в PDF" },
+                                { key: "word", label: "Экспорт в Word (.docx)" },
+                                { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                                { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                               ],
                             }}
                             placement="bottomRight"

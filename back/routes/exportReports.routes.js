@@ -6,4 +6,5 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.get('/reports', authMiddleware, exportReportsController.exportReportsHandler);
 
+
 module.exports = router;

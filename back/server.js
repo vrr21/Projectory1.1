@@ -21,7 +21,7 @@ const timeTrackingRoutes = require('./routes/timeTracking');
 const notificationsRouter = require('./routes/notifications');
 const commentsRoutes = require('./routes/comments.routes');
 const reportsRoutes = require('./routes/reports.routes');
-const exportRoutes = require('./routes/export.routes');
+const exportProjectsRoutes = require('./routes/exportProjects.routes');
 const exportTeamsRoutes = require('./routes/exportTeams.routes');
 const exportTasksRoutes = require('./routes/exportTasks.routes');
 const exportReportsRoutes = require('./routes/exportReports.routes');
@@ -30,6 +30,9 @@ const executionsRoutes = require('./routes/executions.routes');
 const app = express();
 const PORT = process.env.PORT || 3002;
 const uploadAvatarRoutes = require('./routes/uploadAvatar.routes');
+const exportEmployeeReportsRoutes = require('./routes/exportEmployeeReports.routes');
+const usersRoutes = require('./routes/users.routes');
+
 // ✅ CORS с раскрытием Content-Disposition
 app.use(cors({
   origin: 'http://localhost:5173',
@@ -57,7 +60,8 @@ app.use('/api/comments', commentsRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/executions', executionsRoutes);
 // ✅ Все экспортные функции через единый префикс /api/export
-app.use('/api/export', exportRoutes);         // Стандартные экспорты
+app.use('/api/export', exportEmployeeReportsRoutes);
+app.use('/api/export', exportProjectsRoutes);
 app.use('/api/export', exportTeamsRoutes);    // Экспорт команд
 app.use('/api/export', exportTasksRoutes);    // Экспорт задач
 app.use('/api/export', exportReportsRoutes);  // Экспорт отчётов
@@ -65,6 +69,13 @@ app.use('/api/roles', roleRoutes);
 app.use('/api/reports/employee', require('./routes/employeeReports.routes'));
 app.use('/api/employees', uploadAvatarRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+app.use('/api/manager', require('./routes/manager.routes'));
+app.use('/api/employees', require('./routes/employees.routes'));
+app.use('/api/users', usersRoutes);
+const exportEmployeesRoutes = require('./routes/ListexportEmployees.routes');
+app.use('/api/export/employees', exportEmployeesRoutes);
+
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
 // ✅ Запуск сервера

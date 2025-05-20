@@ -118,7 +118,13 @@ const MyCommandsManager: React.FC = () => {
         <div className="dashboard-body">
           <SidebarManager />
           <main className="main-content">
-            <h1>Мои команды</h1>
+          <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: "24px",
+                }}
+              >Мои команды</h1>
             <Table
               dataSource={teams}
               columns={columns}

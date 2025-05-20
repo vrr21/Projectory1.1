@@ -23,6 +23,7 @@ import TimeTrackingEmployee from './pages/TimeTrackingEmployee';
 import TimeTrackingManager from './pages/TimeTrackingManager';
 import ManagerReportsPage from './pages/ManagerReportsPage';
 import EmployeeReportsPage from './pages/EmployeeReportsPage'; // ✅ Добавлено
+import ListEmployee from './pages/ListEmployee'; // ✅ Новый импорт
 
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -73,6 +74,8 @@ const AnimatedRoutes: React.FC = () => {
 
         <Route path="/manager-reports" element={<ManagerReportsPage />} />
         <Route path="/employee-reports" element={<PageWrapper><EmployeeReportsPage /></PageWrapper>} /> {/* ✅ Добавлено */}
+        <Route path="/employee-management" element={<ListEmployee />} />
+
       </Routes>
     </AnimatePresence>
   );

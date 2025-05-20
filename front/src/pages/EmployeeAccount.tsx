@@ -9,6 +9,7 @@ import {
   message,
   Input,
   Button,
+  Tabs,
 } from "antd";
 import {
   MailOutlined,
@@ -30,25 +31,32 @@ import { useTheme } from "../contexts/ThemeContext";
 import HeaderEmployee from "../components/HeaderEmployee";
 import "../styles/pages/EmployeeAccount.css";
 import imageCompression from "browser-image-compression";
-const { Title, Text } = Typography;
-const API_URL = import.meta.env.VITE_API_URL;
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+
+const { Title, Text } = Typography;
+const { TabPane } = Tabs;
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface Team {
   ID_Team: number;
   Team_Name: string;
+  Status: string; // ✅ добавлено свойство Status
   members: { email: string }[];
 }
+
 interface Project {
   ID_Order: number;
   Order_Name: string;
   ID_Team: number;
+  Status: string;
 }
+
 interface Task {
   ID_Task: number;
   Task_Name: string;
   Status_Name: string;
+  ID_Order: number; // ✅ Добавлено для связи с проектом
 }
 
 const EmployeeAccount: React.FC = () => {
@@ -98,7 +106,17 @@ const EmployeeAccount: React.FC = () => {
         const taskRes = await fetch(`${API_URL}/api/tasks/employee/${user.id}`);
         const userTasks: Task[] = await taskRes.json();
         setTasks(userTasks);
-      } catch {
+
+        console.log("Загруженные задачи:", userTasks);
+        console.log("Активные проекты:", userProjects);
+
+        const computedActiveTasks = userTasks.filter((task) =>
+          userProjects.some((project) => project.ID_Order === task.ID_Order)
+        );
+
+        console.log("Активные задачи после фильтрации:", computedActiveTasks);
+      } catch (error) {
+        console.error(error);
         messageApi.error("Ошибка загрузки данных");
       }
     };
@@ -114,8 +132,6 @@ const EmployeeAccount: React.FC = () => {
   };
 
   const handleAvatarUpload = async (file: RcFile) => {
-    console.log("Отправка запроса на:", `${API_URL}/api/upload-avatar`);
-
     if (!file) {
       messageApi.error("Файл не выбран");
       return;
@@ -198,6 +214,42 @@ const EmployeeAccount: React.FC = () => {
   if (!user) return <div className="dashboard">Загрузка...</div>;
 
   const fullName = `${formData.lastName} ${formData.firstName}`.trim();
+  // Фильтрация команд
+  const activeTeams = teams.filter(
+    (team) => team.Status !== "Закрыт" && team.Status !== "Удален"
+  );
+  const archivedTeams = teams.filter(
+    (team) => team.Status === "Закрыт" || team.Status === "Удален"
+  );
+
+  // Фильтрация проектов
+  const activeProjects = projects.filter(
+    (project) =>
+      project.Status !== "Закрыт" &&
+      project.Status !== "Удален" &&
+      project.Status !== "Завершён"
+  );
+  const archivedProjects = projects.filter(
+    (project) =>
+      project.Status === "Закрыт" ||
+      project.Status === "Удален" ||
+      project.Status === "Завершён"
+  );
+
+  // Фильтрация задач по активным проектам
+  const activeTasks = tasks.filter((task) =>
+    activeProjects.some((project) => project.ID_Order === task.ID_Order)
+  );
+
+  // Фильтрация задач по архивным проектам
+  const archivedTasks = tasks.filter((task) =>
+    archivedProjects.some((project) => project.ID_Order === task.ID_Order)
+  );
+
+  const findTeamNameByProject = (teamId: number): string => {
+    const team = teams.find((t) => t.ID_Team === teamId);
+    return team ? team.Team_Name : "Неизвестная команда";
+  };
 
   return (
     <App>
@@ -270,10 +322,7 @@ const EmployeeAccount: React.FC = () => {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                       if (e.target?.result) {
-                        // ✅ Отображаем предпросмотр сразу
                         setAvatarUrl(e.target.result as string);
-
-                        // ✅ Асинхронно загружаем файл на сервер
                         handleAvatarUpload(file as RcFile).catch((error) => {
                           console.error(error);
                           messageApi.error(
@@ -283,11 +332,11 @@ const EmployeeAccount: React.FC = () => {
                       }
                     };
                     reader.readAsDataURL(file);
-                    return false; // Останавливаем авто-отправку Upload
+                    return false;
                   }}
                 >
                   <label className="upload-label">
-                    <UploadOutlined /> Загрузить аватар
+                    <UploadOutlined /> Сменить фото
                   </label>
                 </Upload>
 
@@ -307,43 +356,65 @@ const EmployeeAccount: React.FC = () => {
                       onChange={handleChange}
                       style={{ marginTop: 8 }}
                     />
-                  <PhoneInput
-  country={"by"}
-  value={formData.phone}
-  onChange={(phone) => setFormData((prev) => ({ ...prev, phone }))}
-  enableSearch
-  onlyCountries={["ru", "by", "kz", "ua", "kg", "md", "tj", "tm", "uz", "az", "am"]}
-  inputProps={{
-    name: "phone",
-    required: true,
-    autoComplete: "off",
-    style: {
-      width: "100%",
-      padding: "4px 11px 4px 48px",
-      borderRadius: "6px",
-      border: `1px solid ${theme === "dark" ? "#434343" : "#d9d9d9"}`,
-      backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
-      color: theme === "dark" ? "#fff" : "#000",
-      marginTop: 8,
-    },
-  }}
-  buttonStyle={{
-    backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
-    borderRight: `1px solid ${theme === "dark" ? "#434343" : "#d9d9d9"}`,
-  }}
-  dropdownStyle={{
-    backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
-    color: theme === "dark" ? "#fff" : "#000",
-    border: `1px solid ${theme === "dark" ? "#434343" : "#d9d9d9"}`,
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-  }}
-  searchStyle={{
-    backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
-    color: theme === "dark" ? "#fff" : "#000",
-    border: `1px solid ${theme === "dark" ? "#434343" : "#d9d9d9"}`,
-  }}
-/>
-
+                    <PhoneInput
+                      country={"by"}
+                      value={formData.phone}
+                      onChange={(phone) =>
+                        setFormData((prev) => ({ ...prev, phone }))
+                      }
+                      enableSearch
+                      onlyCountries={[
+                        "ru",
+                        "by",
+                        "kz",
+                        "ua",
+                        "kg",
+                        "md",
+                        "tj",
+                        "tm",
+                        "uz",
+                        "az",
+                        "am",
+                      ]}
+                      inputProps={{
+                        name: "phone",
+                        required: true,
+                        autoComplete: "off",
+                        style: {
+                          width: "100%",
+                          padding: "4px 11px 4px 48px",
+                          borderRadius: "6px",
+                          border: `1px solid ${
+                            theme === "dark" ? "#434343" : "#d9d9d9"
+                          }`,
+                          backgroundColor:
+                            theme === "dark" ? "#1f1f1f" : "#fff",
+                          color: theme === "dark" ? "#fff" : "#000",
+                          marginTop: 8,
+                        },
+                      }}
+                      buttonStyle={{
+                        backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
+                        borderRight: `1px solid ${
+                          theme === "dark" ? "#434343" : "#d9d9d9"
+                        }`,
+                      }}
+                      dropdownStyle={{
+                        backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
+                        color: theme === "dark" ? "#fff" : "#000",
+                        border: `1px solid ${
+                          theme === "dark" ? "#434343" : "#d9d9d9"
+                        }`,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                      }}
+                      searchStyle={{
+                        backgroundColor: theme === "dark" ? "#1f1f1f" : "#fff",
+                        color: theme === "dark" ? "#fff" : "#000",
+                        border: `1px solid ${
+                          theme === "dark" ? "#434343" : "#d9d9d9"
+                        }`,
+                      }}
+                    />
                   </>
                 ) : (
                   <>
@@ -367,95 +438,145 @@ const EmployeeAccount: React.FC = () => {
                   </>
                 )}
               </Card>
+              <div style={{ margin: 0, padding: 0 }}>
+                <Tabs
+                  defaultActiveKey="current"
+                  tabBarStyle={{
+                    margin: 0,
+                    padding: 0,
+                    borderBottom: "none",
+                  }}
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    borderRadius: 0, // ✅ Убирает скругления у Tabs
+                    overflow: "hidden", // ✅ Устраняет переполнение закруглениями внутри
+                  }}
+                >
+                  <TabPane tab="Текущая информация" key="current">
+                    {renderSummary(teams, projects, tasks, "Моя статистика")}
+                  </TabPane>
+                  <TabPane tab="Архив" key="archive">
+                    {renderSummary(
+                      archivedTeams,
+                      archivedProjects,
+                      archivedTasks,
+                      "Архивная статистика"
+                    )}
+                  </TabPane>
+                </Tabs>
+              </div>
 
-              <Card className="account-summary-card" variant="borderless">
-                <Divider orientation="left">
-                  <Title level={3} className="text-color" style={{ margin: 0 }}>
-                    <FileTextOutlined style={{ marginRight: 8 }} />
-                    Сводная информация о сотруднике
-                  </Title>
-                </Divider>
-
-                {/* Команды */}
-                <Divider orientation="left" style={{ marginTop: 24 }}>
-                  <Title level={4} className="text-color" style={{ margin: 0 }}>
-                    <TeamOutlined style={{ marginRight: 8 }} /> Участие в
-                    командах
-                  </Title>
-                </Divider>
-                {teams.length > 0 ? (
-                  teams.map((team) => (
-                    <Text
-                      key={team.ID_Team}
-                      className="text-color"
-                      style={{ display: "block" }}
-                    >
-                      <CheckCircleOutlined style={{ marginRight: 8 }} />{" "}
-                      <strong>{team.Team_Name}</strong>
-                    </Text>
-                  ))
-                ) : (
-                  <Text type="secondary">Не состоит ни в одной команде.</Text>
-                )}
-
-                {/* Проекты */}
-                <Divider orientation="left" style={{ marginTop: 24 }}>
-                  <Title level={4} className="text-color" style={{ margin: 0 }}>
-                    <ProjectOutlined style={{ marginRight: 8 }} /> Активные
-                    проекты
-                  </Title>
-                </Divider>
-                {projects.length > 0 ? (
-                  projects.map((project) => (
-                    <Text
-                      key={project.ID_Order}
-                      className="text-color"
-                      style={{ display: "block" }}
-                    >
-                      <RocketOutlined style={{ marginRight: 8 }} />{" "}
-                      <strong>{project.Order_Name}</strong>
-                    </Text>
-                  ))
-                ) : (
-                  <Text type="secondary">Нет активных проектов.</Text>
-                )}
-
-                {/* Задачи */}
-                <Divider orientation="left" style={{ marginTop: 24 }}>
-                  <Title level={4} className="text-color" style={{ margin: 0 }}>
-                    <PushpinOutlined style={{ marginRight: 8 }} /> Текущие
-                    задачи
-                  </Title>
-                </Divider>
-                {tasks.length > 0 ? (
-                  tasks.map((task, index) => (
-                    <Text
-                      key={task.ID_Task}
-                      className="text-color"
-                      style={{ display: "block" }}
-                    >
-                      {index + 1}. <EditOutlined style={{ marginRight: 8 }} />{" "}
-                      <strong>{task.Task_Name}</strong> — Статус:{" "}
-                      <em>{task.Status_Name}</em>
-                    </Text>
-                  ))
-                ) : (
-                  <Text type="secondary">Нет назначенных задач.</Text>
-                )}
-
-                <Divider style={{ marginTop: 24 }} />
-                <Text className="text-color">
-                  <FileTextOutlined style={{ marginRight: 8 }} />
-                  Назначено <strong>{tasks.length}</strong> задач в{" "}
-                  <strong>{projects.length}</strong> проектах.
-                </Text>
-              </Card>
+              {/* Принудительное использование переменных */}
+              <div style={{ display: "none" }}>
+                {renderSummary(activeTeams, activeProjects, activeTasks)}
+              </div>
             </div>
           </main>
         </div>
       </div>
     </App>
   );
+
+  function renderSummary(
+    displayTeams: Team[],
+    displayProjects: Project[],
+    displayTasks: Task[],
+    title: string = "Сводная информация о сотруднике",
+    tightLayout = false
+  ) {
+    return (
+      <Card
+        className="account-summary-card"
+        variant="borderless"
+        style={{
+          margin: 0,
+          padding: tightLayout ? 0 : undefined,
+          border: "none",
+          boxShadow: "none",
+          borderRadius: 0, // Убирает скругления со всех сторон
+        }}
+        bodyStyle={{
+          padding: tightLayout ? 0 : 24,
+        }}
+      >
+        <Divider orientation="left">
+          <Title level={3} className="text-color" style={{ margin: 0 }}>
+            {title}
+          </Title>
+        </Divider>
+
+        <Divider orientation="left" style={{ marginTop: 24 }}>
+          <Title level={4} className="text-color" style={{ margin: 0 }}>
+            <TeamOutlined style={{ marginRight: 8 }} /> Участие в командах
+          </Title>
+        </Divider>
+        {displayTeams.length > 0 ? (
+          displayTeams.map((team) => (
+            <Text
+              key={team.ID_Team}
+              className="text-color"
+              style={{ display: "block" }}
+            >
+              <CheckCircleOutlined style={{ marginRight: 8 }} />{" "}
+              <strong>{team.Team_Name}</strong>
+            </Text>
+          ))
+        ) : (
+          <Text type="secondary">Нет данных о командах.</Text>
+        )}
+
+        <Divider orientation="left" style={{ marginTop: 24 }}>
+          <Title level={4} className="text-color" style={{ margin: 0 }}>
+            <ProjectOutlined style={{ marginRight: 8 }} /> Проекты
+          </Title>
+        </Divider>
+        {displayProjects.length > 0 ? (
+          displayProjects.map((project) => (
+            <Text
+              key={project.ID_Order}
+              className="text-color"
+              style={{ display: "block" }}
+            >
+              <RocketOutlined style={{ marginRight: 8 }} />{" "}
+              <strong>{project.Order_Name}</strong> (
+              {findTeamNameByProject(project.ID_Team)})
+            </Text>
+          ))
+        ) : (
+          <Text type="secondary">Нет данных о проектах.</Text>
+        )}
+
+        <Divider orientation="left" style={{ marginTop: 24 }}>
+          <Title level={4} className="text-color" style={{ margin: 0 }}>
+            <PushpinOutlined style={{ marginRight: 8 }} /> Задачи
+          </Title>
+        </Divider>
+        {displayTasks.length > 0 ? (
+          displayTasks.map((task, index) => (
+            <Text
+              key={task.ID_Task}
+              className="text-color"
+              style={{ display: "block" }}
+            >
+              {index + 1}. <EditOutlined style={{ marginRight: 8 }} />{" "}
+              <strong>{task.Task_Name}</strong> — Статус:{" "}
+              <em>{task.Status_Name}</em>
+            </Text>
+          ))
+        ) : (
+          <Text type="secondary">Нет данных о задачах.</Text>
+        )}
+
+        <Divider style={{ marginTop: 24 }} />
+        <Text className="text-color">
+          <FileTextOutlined style={{ marginRight: 8 }} />
+          Назначено <strong>{displayTasks.length}</strong> задач в{" "}
+          <strong>{displayProjects.length}</strong> проектах.
+        </Text>
+      </Card>
+    );
+  }
 };
 
 export default EmployeeAccount;

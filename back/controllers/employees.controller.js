@@ -6,14 +6,34 @@ const { pool, poolConnect, sql } = require('../config/db');
 exports.getAllEmployees = async (req, res) => {
   try {
     await poolConnect;
-    const result = await pool.request()
-      .query('SELECT * FROM Users WHERE ID_Role != 1'); // ID_Role != 1 — исключаем менеджеров
+    const result = await pool.request().query(`
+      SELECT 
+        u.ID_User,
+        u.First_Name,
+        u.Last_Name,
+        u.Email,
+        u.Phone,
+        u.Avatar,
+        STRING_AGG(DISTINCT tm.Team_Name, ', ') AS Teams,
+        STRING_AGG(DISTINCT o.Order_Name, ', ') AS Projects,
+        STRING_AGG(DISTINCT t.Task_Name, ', ') AS Tasks
+      FROM Users u
+      LEFT JOIN TeamMembers m ON u.ID_User = m.ID_User
+      LEFT JOIN Teams tm ON m.ID_Team = tm.ID_Team
+      LEFT JOIN Assignment a ON u.ID_User = a.ID_Employee
+      LEFT JOIN Tasks t ON a.ID_Task = t.ID_Task
+      LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
+      WHERE u.ID_Role != 1
+      GROUP BY 
+        u.ID_User, u.First_Name, u.Last_Name, u.Email, u.Phone, u.Avatar
+    `);
     res.json(result.recordset);
   } catch (err) {
     console.error('Ошибка при получении сотрудников:', err);
     res.status(500).json({ message: 'Ошибка при получении сотрудников' });
   }
 };
+
 
 // Поиск данных сотрудника (используется в поиске в шапке)
 exports.fullSearchEmployeeData = async (req, res) => {
@@ -150,3 +170,122 @@ exports.uploadAvatar = [
     }
   },
 ];
+
+exports.getExtendedEmployeeList = async (req, res) => {
+  try {
+    await poolConnect;
+    const result = await pool.request().query(`
+      SELECT 
+        u.ID_User,
+        u.First_Name,
+        u.Last_Name,
+        u.Email,
+        u.Phone,
+        u.Avatar,
+        STRING_AGG(tm.Role + ' (Команда: ' + t.Team_Name + ')', ', ') AS Roles
+      FROM Users u
+      LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
+      LEFT JOIN Teams t ON tm.ID_Team = t.ID_Team
+      WHERE u.ID_Role != 1
+      GROUP BY u.ID_User, u.First_Name, u.Last_Name, u.Email, u.Phone, u.Avatar
+    `);
+
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Ошибка при получении расширенного списка сотрудников:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
+  }
+};
+
+
+exports.getAllEmployeesFull = async (req, res) => {
+  try {
+    await poolConnect;
+    const result = await pool.request().query(`
+      SELECT 
+        U.ID_User,
+        U.First_Name,
+        U.Last_Name,
+        U.Email,
+        U.Phone,
+        R.Role_Name AS Role,
+        STRING_AGG(DISTINCT T.Team_Name, ', ') AS Teams,
+        STRING_AGG(DISTINCT O.Order_Name, ', ') AS Projects,
+        STRING_AGG(DISTINCT TK.Task_Name, ', ') AS Tasks
+      FROM Users U
+      LEFT JOIN Roles R ON U.ID_Role = R.ID_Role
+      LEFT JOIN TeamMembers TM ON TM.ID_User = U.ID_User
+      LEFT JOIN Teams T ON TM.ID_Team = T.ID_Team
+      LEFT JOIN Orders O ON O.ID_Team = T.ID_Team
+      LEFT JOIN Assignment A ON A.ID_Employee = U.ID_User
+      LEFT JOIN Tasks TK ON A.ID_Task = TK.ID_Task
+      WHERE U.ID_Role != 1
+      GROUP BY U.ID_User, U.First_Name, U.Last_Name, U.Email, U.Phone, R.Role_Name
+    `);
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Ошибка при получении сотрудников (full):', err);
+    res.status(500).json({ message: 'Ошибка при получении сотрудников (full)' });
+  }
+};
+
+exports.getAllEmployeesExtended = async (req, res) => {
+  try {
+    await poolConnect;
+
+    const result = await pool.request().query(`
+      SELECT 
+        U.ID_User,
+        U.First_Name,
+        U.Last_Name,
+        U.Email,
+        U.Phone,
+        U.Avatar,
+        U.Archived, -- ✅ добавлено
+
+        -- Роли
+        ISNULL((
+          SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
+          FROM TeamMembers TM
+          JOIN Teams T ON TM.ID_Team = T.ID_Team
+          WHERE TM.ID_User = U.ID_User
+        ), '–') AS Roles,
+
+        -- Команды
+        ISNULL((
+          SELECT STRING_AGG(T.Team_Name, ', ')
+          FROM TeamMembers TM
+          JOIN Teams T ON TM.ID_Team = T.ID_Team
+          WHERE TM.ID_User = U.ID_User
+        ), '–') AS Teams,
+
+        -- Проекты
+        ISNULL((
+          SELECT STRING_AGG(O.Order_Name, ', ')
+          FROM Orders O
+          WHERE EXISTS (
+            SELECT 1
+            FROM Teams T
+            JOIN TeamMembers TM ON T.ID_Team = TM.ID_Team
+            WHERE T.ID_Team = O.ID_Team AND TM.ID_User = U.ID_User
+          )
+        ), '–') AS Projects,
+
+        -- Задачи
+        ISNULL((
+          SELECT STRING_AGG(TK.Task_Name, ', ')
+          FROM Assignment A
+          JOIN Tasks TK ON A.ID_Task = TK.ID_Task
+          WHERE A.ID_Employee = U.ID_User
+        ), '–') AS Tasks
+
+      FROM Users U
+      WHERE U.ID_Role != 1
+    `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Ошибка при получении расширенной информации о сотрудниках:', err);
+    res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
+  }
+};

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, ConfigProvider, theme, message, Tabs, Input, Button } from 'antd';
+import { Table, ConfigProvider, theme, message, Tabs, Input, Button, Dropdown } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import Header from '../components/HeaderEmployee';
 import Sidebar from '../components/Sidebar';
@@ -68,6 +68,26 @@ const MyCommandsEmployee: React.FC = () => {
   useEffect(() => {
     fetchTeamsAndProjects();
   }, []);
+
+  const exportHandler = async (type: 'teams' | 'projects', format: 'xlsx' | 'pdf' | 'docx') => {
+    try {
+      const endpoint = type === 'teams' ? 'teams' : 'projects';
+      const res = await fetch(`${API_URL}/api/export/${endpoint}?format=${format === 'xlsx' ? 'excel' : format}`);
+      if (!res.ok) throw new Error();
+  
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${endpoint}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch {
+      messageApi.error('Ошибка экспорта данных');
+    }
+  };
+  
 
   const teamColumns: ColumnsType<Team> = [
     {
@@ -146,6 +166,21 @@ const MyCommandsEmployee: React.FC = () => {
     project.Status.toLowerCase().includes(projectSearch.toLowerCase())
   );
 
+  const renderExportMenu = (type: 'teams' | 'projects') => (
+    <Dropdown
+      menu={{
+        items: [
+          { key: 'docx', label: 'Экспорт в Word (.docx)', onClick: () => exportHandler(type, 'docx') },
+          { key: 'xlsx', label: 'Экспорт в Excel (.xlsx)', onClick: () => exportHandler(type, 'xlsx') },
+          { key: 'pdf', label: 'Экспорт в PDF (.pdf)', onClick: () => exportHandler(type, 'pdf') },
+        ],
+      }}
+    >
+      <Button icon={<DownloadOutlined />}>Экспорт</Button>
+    </Dropdown>
+  );
+  
+
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       {contextHolder}
@@ -154,23 +189,28 @@ const MyCommandsEmployee: React.FC = () => {
         <div className="dashboard-body">
           <Sidebar role="employee" />
           <main className="main-content">
-            <h2 className="dashboard-title">Управление командами и проектами</h2>
+          <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: "24px",
+                }}
+              >Данные командам и проектов</h1>
             <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" items={[
               {
                 key: 'teams',
                 label: 'Мои команды',
                 children: (
                   <>
-<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-  <Input
-    placeholder="Поиск по командам..."
-    value={teamSearch}
-    onChange={(e) => setTeamSearch(e.target.value)}
-    style={{ width: 250 }}
-  />
-  <Button icon={<DownloadOutlined />}>Экспорт</Button>
-</div>
-
+                    <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <Input
+                        placeholder="Поиск по командам..."
+                        value={teamSearch}
+                        onChange={(e) => setTeamSearch(e.target.value)}
+                        style={{ width: 250 }}
+                      />
+                      {renderExportMenu('teams')}
+                    </div>
                     <Table
                       dataSource={filteredTeams}
                       columns={teamColumns}
@@ -185,16 +225,15 @@ const MyCommandsEmployee: React.FC = () => {
                 label: 'Мои проекты',
                 children: (
                   <>
-<div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-  <Input
-    placeholder="Поиск по проектам..."
-    value={projectSearch}
-    onChange={(e) => setProjectSearch(e.target.value)}
-    style={{ width: 250 }}
-  />
-  <Button icon={<DownloadOutlined />}>Экспорт</Button>
-</div>
-
+                    <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <Input
+                        placeholder="Поиск по проектам..."
+                        value={projectSearch}
+                        onChange={(e) => setProjectSearch(e.target.value)}
+                        style={{ width: 250 }}
+                      />
+                      {renderExportMenu('projects')}
+                    </div>
                     <Table
                       dataSource={filteredProjects}
                       columns={projectColumns}
