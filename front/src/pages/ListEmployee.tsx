@@ -34,7 +34,7 @@ interface User {
   Last_Name: string;
   Email: string;
   Phone: string;
-  Password?: string; 
+  Password?: string;
   Avatar?: string;
   Roles?: string;
   Teams?: string;
@@ -76,35 +76,63 @@ const ListEmployee: React.FC = () => {
     } catch (err) {
       messageApi.error((err as Error).message);
     }
-  }, [messageApi]); 
-  
+  }, [messageApi]);
+
   useEffect(() => {
     fetchEmployees();
-  }, [fetchEmployees]); 
-  
+  }, [fetchEmployees]);
+
   const handleSave = async (values: Partial<User>) => {
     try {
+      // Проверка: email уже существует?
+      if (!editingEmployee && employees.some(emp => emp.Email === values.Email)) {
+        messageApi.error("Пользователь с таким email уже существует");
+        return;
+      }
+  
+      // Проверка: пароль существует?
+      if (
+        values.Password &&
+        employees.some(emp => emp.Password === values.Password)
+      ) {
+        messageApi.error("Пароль уже используется другим сотрудником");
+        return;
+      }
+  
+      // Проверка: длина и состав пароля
+      if (
+        values.Password &&
+        (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password))
+      ) {
+        messageApi.error(
+          "Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру"
+        );
+        return;
+      }
+      
+  
       if (!editingEmployee) {
-        // 📦 СОЗДАНИЕ НОВОГО ПОЛЬЗОВАТЕЛЯ
         const res = await fetch(`${API_URL}/api/users`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),
         });
   
-        if (!res.ok) throw new Error('Ошибка при создании пользователя');
-        messageApi.success('Сотрудник создан');
+        if (!res.ok) throw new Error("Ошибка при создании пользователя");
+        messageApi.success("Сотрудник создан");
       } else {
-        // ✏️ РЕДАКТИРОВАНИЕ СУЩЕСТВУЮЩЕГО
         if (!values.Password) {
           delete values.Password;
         }
   
-        const res = await fetch(`${API_URL}/api/users/${editingEmployee.ID_User}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
-        });
+        const res = await fetch(
+          `${API_URL}/api/users/${editingEmployee.ID_User}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(values),
+          }
+        );
   
         if (!res.ok) throw new Error("Ошибка при обновлении данных");
         messageApi.success("Сотрудник обновлён");
@@ -119,6 +147,7 @@ const ListEmployee: React.FC = () => {
     }
   };
   
+
   const handleArchive = async (id: number, archive: boolean) => {
     try {
       const res = await fetch(`${API_URL}/api/users/${id}/archive`, {
@@ -126,6 +155,7 @@ const ListEmployee: React.FC = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ Archived: archive }),
       });
+
       if (!res.ok) throw new Error("Ошибка при архивации");
       messageApi.success(
         archive ? "Сотрудник архивирован" : "Сотрудник восстановлен"
@@ -135,7 +165,6 @@ const ListEmployee: React.FC = () => {
       messageApi.error((err as Error).message);
     }
   };
-  
 
   const handleExport = async (format: string) => {
     try {
@@ -146,6 +175,7 @@ const ListEmployee: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       if (!res.ok) throw new Error("Ошибка экспорта");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -168,6 +198,7 @@ const ListEmployee: React.FC = () => {
       const res = await fetch(`${API_URL}/api/users/${employeeIdToDelete}`, {
         method: "DELETE",
       });
+
       if (!res.ok) throw new Error("Ошибка при удалении");
       messageApi.success("Сотрудник удалён окончательно");
       fetchEmployees();
@@ -180,14 +211,12 @@ const ListEmployee: React.FC = () => {
   };
 
   const filteredEmployees = employees
-  .filter(emp =>
-    `${emp.First_Name} ${emp.Last_Name} ${emp.Email} ${emp.Phone} ${emp.Roles} ${emp.Teams} ${emp.Projects} ${emp.Tasks}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  )
-  .filter(emp => (emp.Archived ? true : false) === showArchive);
-
-
+    .filter((emp) =>
+      `${emp.First_Name} ${emp.Last_Name} ${emp.Email} ${emp.Phone} ${emp.Roles} ${emp.Teams} ${emp.Projects} ${emp.Tasks}`
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
+    )
+    .filter((emp) => (emp.Archived ? true : false) === showArchive);
 
   const columns: ColumnsType<User> = [
     {
@@ -247,14 +276,20 @@ const ListEmployee: React.FC = () => {
       dataIndex: "Phone",
       key: "Phone",
       align: "center",
-      render: (text) => (
-        <div
-          style={{ textAlign: isNumericOrDateOrDash(text) ? "center" : "left" }}
-        >
-          {text}
-        </div>
-      ),
+      render: (text) => {
+        const formatted = text?.startsWith("+") ? text : `+${text}`;
+        return (
+          <div
+            style={{
+              textAlign: isNumericOrDateOrDash(formatted) ? "center" : "left",
+            }}
+          >
+            {formatted}
+          </div>
+        );
+      },
     },
+
     {
       title: <div style={{ textAlign: "center" }}>Роли</div>,
       dataIndex: "Roles",
@@ -311,51 +346,61 @@ const ListEmployee: React.FC = () => {
       title: <div style={{ textAlign: "center" }}>Действия</div>,
       key: "actions",
       align: "center",
-      render: (_text, record) =>
-        record.Archived ? (
-          <>
+      render: (_text, record) => {
+        const buttonStyle = {
+          width: 36,
+          height: 36,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 0,
+        };
+
+        return record.Archived ? (
+          <div
+            style={{ display: "flex", justifyContent: "center", gap: "8px" }}
+          >
             <Button
               type="link"
+              style={buttonStyle}
               onClick={() => handleArchive(record.ID_User, false)}
               icon={<EditOutlined />}
-            >
-              Восстановить
-            </Button>
+            ></Button>
             <Button
               danger
               type="link"
+              style={buttonStyle}
               onClick={() => {
                 setEmployeeIdToDelete(record.ID_User);
                 setConfirmDeleteVisible(true);
               }}
               icon={<DeleteOutlined />}
-            >
-              Удалить
-            </Button>
-          </>
+            ></Button>
+          </div>
         ) : (
-          <>
+          <div
+            style={{ display: "flex", justifyContent: "center", gap: "8px" }}
+          >
             <Button
               type="link"
+              style={buttonStyle}
               onClick={() => {
                 setEditingEmployee(record);
                 setIsModalVisible(true);
                 form.setFieldsValue(record);
               }}
               icon={<EditOutlined />}
-            >
-              Редактировать
-            </Button>
+            ></Button>
             <Button
               danger
               type="link"
+              style={buttonStyle}
               onClick={() => handleArchive(record.ID_User, true)}
               icon={<InboxOutlined />}
-            >
-              Архивировать
-            </Button>
-          </>
-        ),
+            ></Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -378,7 +423,7 @@ const ListEmployee: React.FC = () => {
                 justifyContent: "space-between",
                 gap: "8px",
                 flexWrap: "wrap",
-                marginBottom: 16,
+                marginBottom: 0,
               }}
             >
               <Button
@@ -402,7 +447,7 @@ const ListEmployee: React.FC = () => {
                 }}
               >
                 <Input
-                  placeholder="Поиск..."
+                  placeholder="Поиск по сотрудникам..."
                   allowClear
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -432,8 +477,7 @@ const ListEmployee: React.FC = () => {
                 </Dropdown>
               </div>
             </div>
-
-            <h2 style={{ marginBottom: "8px", fontWeight: "400" }}>
+            <h2 style={{ marginBottom: "0", fontWeight: "400" }}>
               {showArchive ? "Архивные сотрудники" : "Активные сотрудники"}
             </h2>
 
@@ -442,6 +486,7 @@ const ListEmployee: React.FC = () => {
               columns={columns}
               rowKey="ID_User"
               pagination={{ pageSize: 10 }}
+              style={{ marginTop: -40 }} // уменьшает расстояние между заголовком и таблицей
             />
 
             <Modal
@@ -456,124 +501,140 @@ const ListEmployee: React.FC = () => {
               okText="Сохранить"
               cancelText="Отмена"
             >
-            <Form form={form} layout="vertical" onFinish={handleSave}>
-  <Form.Item
-    name="First_Name"
-    label="Имя"
-    rules={[{ required: true, message: "Введите имя" }]}
-  >
-    <Input />
-  </Form.Item>
+              <Form form={form} layout="vertical" onFinish={handleSave}>
+                <Form.Item
+                  name="First_Name"
+                  label="Имя"
+                  rules={[{ required: true, message: "Введите имя" }]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Last_Name"
-    label="Фамилия"
-    rules={[{ required: true, message: "Введите фамилию" }]}
-  >
-    <Input />
-  </Form.Item>
+                <Form.Item
+                  name="Last_Name"
+                  label="Фамилия"
+                  rules={[{ required: true, message: "Введите фамилию" }]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Email"
-    label="Email"
-    rules={[
-      { required: true, message: "Введите email" },
-      { type: "email", message: "Некорректный email!" },
-      {
-        validator: (_, value) => {
-          if (!value) return Promise.resolve();
-          const allowedDomains = [
-            "gmail.com",
-            "outlook.com",
-            "hotmail.com",
-            "yahoo.com",
-            "icloud.com",
-            "me.com",
-            "mail.ru",
-            "yandex.ru",
-            "yandex.com",
-            "protonmail.com",
-            "zoho.com",
-            "gmx.com",
-          ];
-          const domain = value.split("@")[1];
-          return allowedDomains.includes(domain)
-            ? Promise.resolve()
-            : Promise.reject(
-                new Error(
-                  "Разрешены только домены: " + allowedDomains.join(", ")
-                )
-              );
-        },
-      },
-    ]}
-  >
-    <Input />
-  </Form.Item>
+                <Form.Item
+                  name="Email"
+                  label="Email"
+                  rules={[
+                    { required: true, message: "Введите email" },
+                    { type: "email", message: "Некорректный email!" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const allowedDomains = [
+                          "gmail.com",
+                          "outlook.com",
+                          "hotmail.com",
+                          "yahoo.com",
+                          "icloud.com",
+                          "me.com",
+                          "mail.ru",
+                          "yandex.ru",
+                          "yandex.com",
+                          "protonmail.com",
+                          "zoho.com",
+                          "gmx.com",
+                        ];
+                        const domain = value.split("@")[1];
+                        return allowedDomains.includes(domain)
+                          ? Promise.resolve()
+                          : Promise.reject(
+                              new Error(
+                                "Разрешены только домены: " +
+                                  allowedDomains.join(", ")
+                              )
+                            );
+                      },
+                    },
+                  ]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Phone"
-    label="Телефон"
-    rules={[
-      { required: true, message: "Введите номер телефона" },
-      {
-        validator: (_, value) =>
-          value && value.length >= 10
-            ? Promise.resolve()
-            : Promise.reject(
-                new Error("Некорректный номер телефона")
-              ),
-      },
-    ]}
-  >
-    <PhoneInput
-      country={"by"}
-      enableSearch
-      onlyCountries={[
-        "ru", "by", "kz", "ua", "kg", "md", "tj", "tm", "uz", "az", "am"
-      ]}
-      inputProps={{
-        name: "Phone",
-        required: true,
-        autoComplete: "off",
-        style: { width: "100%", paddingLeft: "48px" },
-      }}
-      dropdownStyle={{
-        backgroundColor: "#f5f5f5",
-        color: "#000",
-        border: "1px solid #ccc",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-      }}
-      searchStyle={{
-        backgroundColor: "#f5f5f5",
-        color: "#000",
-        border: "1px solid #ccc",
-      }}
-      buttonStyle={{
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
-        borderRight: "1px solid #444",
-      }}
-    />
-  </Form.Item>
+                <Form.Item
+                  name="Phone"
+                  label="Телефон"
+                  rules={[
+                    { required: true, message: "Введите номер телефона" },
+                    {
+                      validator: (_, value) =>
+                        value && value.length >= 10
+                          ? Promise.resolve()
+                          : Promise.reject(
+                              new Error("Некорректный номер телефона")
+                            ),
+                    },
+                  ]}
+                >
+                  <PhoneInput
+                    country={"by"}
+                    enableSearch
+                    onlyCountries={["ru", "by"]}
+                    inputProps={{
+                      name: "Phone",
+                      required: true,
+                      autoComplete: "off",
+                      style: { width: "100%", paddingLeft: "48px" },
+                    }}
+                    dropdownStyle={{
+                      backgroundColor: "#f5f5f5",
+                      color: "#000",
+                      border: "1px solid #ccc",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
+                    }}
+                    searchStyle={{
+                      backgroundColor: "#f5f5f5",
+                      color: "#000",
+                      border: "1px solid #ccc",
+                    }}
+                    buttonStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.15)",
+                      borderRight: "1px solid #444",
+                    }}
+                  />
+                </Form.Item>
 
-  <Form.Item
-    name="Password"
-    label="Пароль"
-    rules={
-      editingEmployee
-        ? []
-        : [{ required: true, message: "Введите пароль" }]
-    }
-    tooltip={
-      editingEmployee
-        ? "Оставьте пустым, чтобы не менять пароль"
-        : undefined
-    }
-  >
-    <Input.Password autoComplete="new-password" />
-  </Form.Item>
-</Form>
-
+                <Form.Item
+                  name="Password"
+                  label="Пароль"
+                  rules={[
+                    ...(editingEmployee
+                      ? []
+                      : [{ required: true, message: "Введите пароль" }]),
+                    {
+                      validator: (_, value) => {
+                        if (!value && editingEmployee) return Promise.resolve();
+                        if (!value || value.length < 8) {
+                          return Promise.reject(
+                            new Error("Пароль должен быть не менее 8 символов")
+                          );
+                        }
+                        if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+                          return Promise.reject(
+                            new Error(
+                              "Пароль должен содержать как минимум одну букву и одну цифру"
+                            )
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                  tooltip={
+                    editingEmployee
+                      ? "Оставьте пустым, чтобы не менять пароль"
+                      : undefined
+                  }
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+              </Form>
             </Modal>
 
             <Modal
@@ -597,4 +658,3 @@ const ListEmployee: React.FC = () => {
 };
 
 export default ListEmployee;
-

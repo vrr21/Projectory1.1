@@ -1,4 +1,6 @@
 const db = require("../config/db");
+const { notifyProjectAssignment } = require('../services/notification.service');
+
 
 // Получение всех проектов с ID_Manager
 exports.getAllProjects = async (req, res) => {
@@ -136,5 +138,46 @@ exports.deleteProject = async (req, res) => {
   } catch (err) {
     console.error("Ошибка при удалении проекта:", err);
     res.status(500).json({ error: "Ошибка при удалении проекта" });
+  }
+};
+
+exports.assignEmployeeToProject = async (req, res) => {
+  const { ID_Order, employeeIds = [] } = req.body;
+
+  if (!ID_Order || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+    return res.status(400).json({ message: 'ID проекта и ID сотрудников обязательны' });
+  }
+
+  try {
+    await poolConnect;
+
+    const projectResult = await pool.request()
+      .input('ID_Order', sql.Int, ID_Order)
+      .query('SELECT Order_Name FROM Orders WHERE ID_Order = @ID_Order');
+
+    if (!projectResult.recordset.length) {
+      return res.status(404).json({ message: 'Проект не найден' });
+    }
+
+    const projectName = projectResult.recordset[0].Order_Name;
+
+    for (const empId of employeeIds) {
+      await pool.request()
+        .input('ID_Order', sql.Int, ID_Order)
+        .input('ID_Employee', sql.Int, empId)
+        .query(`
+          INSERT INTO ProjectAssignments (ID_Order, ID_Employee)
+          VALUES (@ID_Order, @ID_Employee)
+        `);
+
+      console.log(`📨 Назначен сотрудник ${empId} на проект "${projectName}"`);
+
+      await notifyProjectAssignment(empId, projectName); // ✅ уведомление
+    }
+
+    res.status(200).json({ message: 'Сотрудники добавлены в проект и уведомлены' });
+  } catch (error) {
+    console.error('❌ Ошибка при назначении сотрудников на проект:', error);
+    res.status(500).json({ message: 'Ошибка сервера при назначении сотрудников' });
   }
 };

@@ -35,6 +35,8 @@ import "../styles/pages/ManagerAccount.css";
 import imageCompression from "browser-image-compression";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -52,10 +54,9 @@ interface Project {
   ID_Team: number;
   IsArchived?: boolean;
   Deadline?: string | null;
-  Status?: string;          // ✅ Статус проекта (например, 'В работе')
+  Status?: string; // ✅ Статус проекта (например, 'В работе')
   ID_Manager?: number | null; // ✅ Менеджер проекта
 }
-
 
 interface Task {
   ID_Task: number;
@@ -72,6 +73,7 @@ const ManagerAccount: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -265,6 +267,30 @@ const ManagerAccount: React.FC = () => {
       {contextHolder}
       <div className="dashboard">
         <HeaderManager />
+        <div
+          style={{
+            position: "absolute",
+            top: "80px",
+            left: "24px",
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            zIndex: 1000,
+          }}
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeftOutlined
+            style={{
+              fontSize: "20px",
+              marginRight: "8px",
+              color: "var(--accent-color)",
+            }}
+          />
+          <Text style={{ fontSize: "16px", color: "var(--text-color)" }}>
+            Назад
+          </Text>
+        </div>
+
         <div className="dashboard-body account-page-centered">
           <main className="main-content account-content">
             <div className="account-container">
@@ -424,18 +450,32 @@ const ManagerAccount: React.FC = () => {
               </Card>
 
               <Tabs
-  defaultActiveKey="current"
-  tabBarStyle={{ margin: 0, padding: 0, borderBottom: "none" }}
-  style={{ margin: 0, padding: 0, borderRadius: 0, overflow: "hidden" }}
->
-  <Tabs.TabPane tab="Текущая информация" key="current">
-    {renderSummary(activeTeams, activeProjects, activeTasks, "Текущая статистика")}
-  </Tabs.TabPane>
-  <Tabs.TabPane tab="Архив" key="archive">
-    {renderSummary(archivedTeams, archivedProjects, archivedTasks, "Архивная статистика")}
-  </Tabs.TabPane>
-</Tabs>
-
+                defaultActiveKey="current"
+                tabBarStyle={{ margin: 0, padding: 0, borderBottom: "none" }}
+                style={{
+                  margin: 0,
+                  padding: 0,
+                  borderRadius: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <Tabs.TabPane tab="Текущая информация" key="current">
+                  {renderSummary(
+                    activeTeams,
+                    activeProjects,
+                    activeTasks,
+                    "Текущая статистика всех сотрудников"
+                  )}
+                </Tabs.TabPane>
+                <Tabs.TabPane tab="Архив" key="archive">
+                  {renderSummary(
+                    archivedTeams,
+                    archivedProjects,
+                    archivedTasks,
+                    "Архивная статистика всех сотрудников"
+                  )}
+                </Tabs.TabPane>
+              </Tabs>
             </div>
           </main>
         </div>
@@ -451,26 +491,24 @@ const ManagerAccount: React.FC = () => {
   ) {
     return (
       <Card
-      className="account-summary-card"
-      variant="borderless"
-      style={{
-        margin: 0,
-        padding: 0,
-        border: "none",
-        boxShadow: "none",
-        borderRadius: 0,
-      }}
-      bodyStyle={{
-        padding: 24,
-      }}
-    >
-    
-       <Divider orientation="left" style={{ marginTop: 0, marginBottom: 0 }}>
-  <Title level={3} style={{ margin: 0 }}>
-    {title}
-  </Title>
-</Divider>
-
+        className="account-summary-card"
+        variant="borderless"
+        style={{
+          margin: 0,
+          padding: 0,
+          border: "none",
+          boxShadow: "none",
+          borderRadius: 0,
+        }}
+        bodyStyle={{
+          padding: 24,
+        }}
+      >
+        <Divider orientation="left" style={{ marginTop: 0, marginBottom: 0 }}>
+          <Title level={3} style={{ margin: 0 }}>
+            {title}
+          </Title>
+        </Divider>
 
         <Divider orientation="left" style={{ marginTop: 24 }}>
           <Title level={4} style={{ margin: 0 }}>

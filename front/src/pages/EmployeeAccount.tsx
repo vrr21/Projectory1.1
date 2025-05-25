@@ -33,16 +33,23 @@ import "../styles/pages/EmployeeAccount.css";
 import imageCompression from "browser-image-compression";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { useParams } from "react-router-dom";
+import HeaderManager from "../components/HeaderManager";
+import { ArrowLeftOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Team {
   ID_Team: number;
   Team_Name: string;
   Status: string; // ✅ добавлено свойство Status
-  members: { email: string }[];
+  members: {
+    email: string;
+    role: string;
+    fullName: string;
+  }[];
 }
 
 interface Project {
@@ -58,6 +65,14 @@ interface Task {
   Status_Name: string;
   ID_Order: number; // ✅ Добавлено для связи с проектом
 }
+interface GuestUser {
+  id: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  avatar?: string;
+}
 
 const EmployeeAccount: React.FC = () => {
   const { user, setUser } = useAuth();
@@ -67,34 +82,103 @@ const EmployeeAccount: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [messageApi, contextHolder] = message.useMessage();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const isSelf = !id || Number(id) === user?.id;
+  useEffect(() => {
+    console.log("Loaded EmployeeAccount with id:", id);
+  }, [id]);
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!id) return;
+  
+      try {
+        const response = await fetch(`${API_URL}/api/employees/${id}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error("Профиль сотрудника не найден");
+          } else {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+          }
+        }
+        const data = await response.json();
+        setGuestUser({
+          id: data.ID_User,
+          firstName: data.First_Name,
+          lastName: data.Last_Name,
+          phone: data.Phone,
+          email: data.Email,
+          avatar: data.Avatar,
+        });
+      } catch (error) {
+        console.error("Ошибка при загрузке профиля:", error);
+        if (error instanceof Error) {
+          messageApi.error(error.message);
+        } else {
+          messageApi.error("Неизвестная ошибка при загрузке профиля");
+        }
+      }
+    };
+  
+    if (!isSelf) {
+      fetchProfile();
+    }
+  }, [id, isSelf, messageApi]);
+  
+  useEffect(() => {
+    if (!isSelf) setIsEditing(false);
+  }, [isSelf]);
 
   const [isEditing, setIsEditing] = useState(false);
+  // Добавить состояние
+  const [guestUser, setGuestUser] = useState<GuestUser | null>(null);
+
+
+  const displayedUser = isSelf ? user : guestUser;
+
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || "",
-    lastName: user?.lastName || "",
-    phone: user?.phone || "",
+    firstName: "",
+    lastName: "",
+    phone: "",
   });
+  
+  useEffect(() => {
+    if (displayedUser) {
+      setFormData({
+        firstName: displayedUser.firstName ?? "",
+        lastName: displayedUser.lastName ?? "",
+        phone: displayedUser.phone ?? "",
+      });
+    }
+  }, [displayedUser]);
+
+  // Заменить все `user.` на `displayedUser.` в JSX (email, phone, avatar и т.д.)
+  // Отключить Upload, если !isSelf
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
 
   useEffect(() => {
-    if (user?.avatar) setAvatarUrl(`${API_URL}/uploads/${user.avatar}`);
-  }, [user]);
+    if (displayedUser?.avatar) {
+      setAvatarUrl(`${API_URL}/uploads/${displayedUser.avatar}`);
+    }
+  }, [displayedUser]);
 
   useEffect(() => {
-    if (!user) return;
-
+    if (!displayedUser) return;
+  
     const fetchData = async () => {
       try {
         const teamRes = await fetch(`${API_URL}/api/teams`);
         const allTeams: Team[] = await teamRes.json();
         const userTeams = allTeams.filter((team) =>
-          team.members.some((member) => member.email === user.email)
+          team.members.some((member) => member.email === displayedUser.email)
         );
         setTeams(userTeams);
-
+  
         const projectRes = await fetch(`${API_URL}/api/projects`);
         const allProjects: Project[] = await projectRes.json();
         const userTeamIds = userTeams.map((team) => team.ID_Team);
@@ -102,27 +186,35 @@ const EmployeeAccount: React.FC = () => {
           userTeamIds.includes(project.ID_Team)
         );
         setProjects(userProjects);
-
-        const taskRes = await fetch(`${API_URL}/api/tasks/employee/${user.id}`);
+  
+        const taskRes = await fetch(`${API_URL}/api/tasks/employee/${displayedUser.id}`);
         const userTasks: Task[] = await taskRes.json();
         setTasks(userTasks);
-
-        console.log("Загруженные задачи:", userTasks);
-        console.log("Активные проекты:", userProjects);
-
-        const computedActiveTasks = userTasks.filter((task) =>
-          userProjects.some((project) => project.ID_Order === task.ID_Order)
-        );
-
-        console.log("Активные задачи после фильтрации:", computedActiveTasks);
       } catch (error) {
         console.error(error);
         messageApi.error("Ошибка загрузки данных");
       }
     };
-
+  
     fetchData();
-  }, [user, messageApi]);
+  }, [displayedUser, messageApi]);
+  
+
+  const getUserRolesFromTeams = (): string[] => {
+    if (!displayedUser) return [];
+    const roles: string[] = [];
+  
+    teams.forEach((team) => {
+      team.members.forEach((member) => {
+        if (member.email === displayedUser.email && member.role) {
+          roles.push(member.role);
+        }
+      });
+    });
+  
+    return Array.from(new Set(roles));
+  };
+  
 
   const getInitials = (fullName: string = "") => {
     const parts = fullName.trim().split(/\s+/);
@@ -255,7 +347,21 @@ const EmployeeAccount: React.FC = () => {
     <App>
       {contextHolder}
       <div className="dashboard">
-        <HeaderEmployee />
+      <div style={{
+  position: "absolute",
+  top: "80px",
+  left: "24px",
+  display: "flex",
+  alignItems: "center",
+  cursor: "pointer",
+  zIndex: 1000
+}} onClick={() => navigate(-1)}>
+  <ArrowLeftOutlined style={{ fontSize: "20px", marginRight: "8px", color: "var(--accent-color)" }} />
+  <Text style={{ fontSize: "16px", color: "var(--text-color)" }}>Назад</Text>
+</div>
+
+      {user?.role === "Менеджер" ? <HeaderManager /> : <HeaderEmployee />}
+
         <div className="dashboard-body account-page-centered">
           <main className="main-content account-content">
             <div className="account-container">
@@ -267,36 +373,38 @@ const EmployeeAccount: React.FC = () => {
                     <span className="account-card-title">
                       Профиль сотрудника
                     </span>
-                    <div className="account-card-actions">
-                      {isEditing ? (
-                        <>
+                    {isSelf && (
+                      <div className="account-card-actions">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              type="text"
+                              icon={<CheckOutlined />}
+                              onClick={handleSave}
+                              style={{ marginRight: 8 }}
+                            />
+                            <Button
+                              type="text"
+                              icon={<CloseOutlined />}
+                              onClick={() => {
+                                setFormData({
+                                  firstName: user?.firstName || "",
+                                  lastName: user?.lastName || "",
+                                  phone: user?.phone || "",
+                                });
+                                setIsEditing(false);
+                              }}
+                            />
+                          </>
+                        ) : (
                           <Button
                             type="text"
-                            icon={<CheckOutlined />}
-                            onClick={handleSave}
-                            style={{ marginRight: 8 }}
+                            icon={<EditOutlined />}
+                            onClick={() => setIsEditing(true)}
                           />
-                          <Button
-                            type="text"
-                            icon={<CloseOutlined />}
-                            onClick={() => {
-                              setFormData({
-                                firstName: user?.firstName || "",
-                                lastName: user?.lastName || "",
-                                phone: user?.phone || "",
-                              });
-                              setIsEditing(false);
-                            }}
-                          />
-                        </>
-                      ) : (
-                        <Button
-                          type="text"
-                          icon={<EditOutlined />}
-                          onClick={() => setIsEditing(true)}
-                        />
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 }
               >
@@ -315,30 +423,32 @@ const EmployeeAccount: React.FC = () => {
                   </Avatar>
                 </div>
 
-                <Upload
-                  showUploadList={false}
-                  accept="image/*"
-                  beforeUpload={(file) => {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                      if (e.target?.result) {
-                        setAvatarUrl(e.target.result as string);
-                        handleAvatarUpload(file as RcFile).catch((error) => {
-                          console.error(error);
-                          messageApi.error(
-                            "Ошибка при загрузке на сервер, но предпросмотр сохранён."
-                          );
-                        });
-                      }
-                    };
-                    reader.readAsDataURL(file);
-                    return false;
-                  }}
-                >
-                  <label className="upload-label">
-                    <UploadOutlined /> Сменить фото
-                  </label>
-                </Upload>
+                {isSelf && (
+                  <Upload
+                    showUploadList={false}
+                    accept="image/*"
+                    beforeUpload={(file) => {
+                      const reader = new FileReader();
+                      reader.onload = (e) => {
+                        if (e.target?.result) {
+                          setAvatarUrl(e.target.result as string);
+                          handleAvatarUpload(file as RcFile).catch((error) => {
+                            console.error(error);
+                            messageApi.error(
+                              "Ошибка при загрузке на сервер, но предпросмотр сохранён."
+                            );
+                          });
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                      return false;
+                    }}
+                  >
+                    <label className="upload-label">
+                      <UploadOutlined /> Сменить фото
+                    </label>
+                  </Upload>
+                )}
 
                 {isEditing ? (
                   <>
@@ -425,15 +535,26 @@ const EmployeeAccount: React.FC = () => {
                     >
                       {fullName}
                     </Title>
-                    <Text className="role-text">{user.role}</Text>
+                    {getUserRolesFromTeams().length > 0 ? (
+                      <div style={{ marginTop: 8 }}>
+                        <ul style={{ paddingLeft: 20, margin: 0 }}>
+                          {getUserRolesFromTeams().map((role) => (
+                            <Text key={role}>{role}</Text>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <Text type="secondary">Роль не указана</Text>
+                    )}
+
                     <Divider />
                     <div className="info-item">
                       <MailOutlined className="icon" />
-                      <Text>{user.email}</Text>
+                      <Text>{displayedUser?.email}</Text>
                     </div>
                     <div className="info-item">
                       <PhoneOutlined className="icon" />
-                      <Text>{user.phone || "+7 (999) 999-99-99"}</Text>
+                      <Text>{displayedUser?.phone || "+7 (999) 999-99-99"}</Text>
                     </div>
                   </>
                 )}
@@ -449,22 +570,36 @@ const EmployeeAccount: React.FC = () => {
                   style={{
                     margin: 0,
                     padding: 0,
-                    borderRadius: 0, // ✅ Убирает скругления у Tabs
-                    overflow: "hidden", // ✅ Устраняет переполнение закруглениями внутри
+                    borderRadius: 0,
+                    overflow: "hidden",
                   }}
-                >
-                  <TabPane tab="Текущая информация" key="current">
-                    {renderSummary(teams, projects, tasks, "Моя статистика")}
-                  </TabPane>
-                  <TabPane tab="Архив" key="archive">
-                    {renderSummary(
-                      archivedTeams,
-                      archivedProjects,
-                      archivedTasks,
-                      "Архивная статистика"
-                    )}
-                  </TabPane>
-                </Tabs>
+                  items={[
+                    {
+                      key: "current",
+                      label: "Текущая информация",
+                      children: renderSummary(
+                        teams,
+                        projects,
+                        tasks,
+                        "Моя статистика"
+                      ),
+                    },
+                    ...(isSelf
+                      ? [
+                          {
+                            key: "archive",
+                            label: "Архив",
+                            children: renderSummary(
+                              archivedTeams,
+                              archivedProjects,
+                              archivedTasks,
+                              "Архивная статистика"
+                            ),
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
               </div>
 
               {/* Принудительное использование переменных */}
@@ -494,10 +629,12 @@ const EmployeeAccount: React.FC = () => {
           padding: tightLayout ? 0 : undefined,
           border: "none",
           boxShadow: "none",
-          borderRadius: 0, // Убирает скругления со всех сторон
+          borderRadius: 0,
         }}
-        bodyStyle={{
-          padding: tightLayout ? 0 : 24,
+        styles={{
+          body: {
+            padding: tightLayout ? 0 : 24,
+          },
         }}
       >
         <Divider orientation="left">

@@ -95,7 +95,8 @@ router.post('/register', async (req, res) => {
       .query('SELECT * FROM Users WHERE Email = @email');
 
     if (checkUser.recordset.length > 0) {
-      return res.status(400).json({ message: 'Пользователь уже существует' });
+      return res.status(400).json({ message: "Пользователь с таким email уже существует" });
+
     }
 
     const roleResult = await pool.request()

@@ -12,7 +12,7 @@ import {
   Input,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { FilterOutlined, SearchOutlined } from "@ant-design/icons";
+import { FilterOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 import { Pie, Bar, Line } from "react-chartjs-2";
 import {
@@ -25,7 +25,6 @@ import {
   BarElement,
   PointElement,
   LineElement,
-  ChartDataset,
 } from "chart.js";
 import Header from "../components/HeaderEmployee";
 import SidebarEmployee from "../components/Sidebar";
@@ -92,18 +91,42 @@ const EmployeeReportsPage: React.FC = () => {
   const gridColor =
     appTheme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)";
 
-  const [loading, setLoading] = useState(true);
-  const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
-  const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
-  const [kanbanData, setKanbanData] = useState<KanbanTask[]>([]);
-  const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>(
-    []
-  );
-  const [dateRange, setDateRange] = useState<
-    [Dayjs | null, Dayjs | null] | null
-  >(null);
-  const [searchText, setSearchText] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
+    const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
+    const [kanbanData, setKanbanData] = useState<KanbanTask[]>([]);
+    const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>([]);
+    const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+    const [searchText, setSearchText] = useState("");
+    const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "active" | "closed">("all");
+    
+    const applyDateFilter = <T extends DateRecord>(data: T[]) => {
+      if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
+      const [start, end] = dateRange;
+      return data.filter((item) => {
+        const dateStr =
+          item.Task_Date || item.Start_Date || item.End_Date || item.Deadline;
+        if (!dateStr) return false;
+        const date = dayjs(dateStr);
+        return (
+          date.isAfter(start.startOf("day")) && date.isBefore(end.endOf("day"))
+        );
+      });
+    };
 
+    const filterByStatus = <T extends { Status_Name?: string }>(data: T[]): T[] => {
+      if (taskStatusFilter === "all") return data;
+      return data.filter((item) =>
+        taskStatusFilter === "active"
+          ? item.Status_Name !== "Завершена" && item.Status_Name !== "Закрыта"
+          : item.Status_Name === "Завершена" || item.Status_Name === "Закрыта"
+      );
+    };
+    
+    const filteredTasksByType = filterByStatus(
+      applyDateFilter(tasksByType) as (TaskByType & { Status_Name?: string })[]
+    );
+    
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.email) return;
@@ -144,19 +167,7 @@ const EmployeeReportsPage: React.FC = () => {
   };
   
   
-  const applyDateFilter = <T extends DateRecord>(data: T[]) => {
-    if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
-    const [start, end] = dateRange;
-    return data.filter((item) => {
-      const dateStr =
-        item.Task_Date || item.Start_Date || item.End_Date || item.Deadline;
-      if (!dateStr) return false;
-      const date = dayjs(dateStr);
-      return (
-        date.isAfter(start.startOf("day")) && date.isBefore(end.endOf("day"))
-      );
-    });
-  };
+
 
   const buildFilterMenu = (
     setRange: (range: [Dayjs, Dayjs] | null) => void
@@ -303,15 +314,49 @@ const EmployeeReportsPage: React.FC = () => {
     },
     scales: {
       x: { ticks: { color: textColor }, grid: { color: gridColor } },
-      y: { ticks: { color: textColor }, grid: { color: gridColor } },
+      y: {
+        ticks: {
+          color: textColor,
+          stepSize: 1, // 🔧 Только целые числа
+          callback: function (value: string | number) {
+            return Number(value) % 1 === 0 ? value : null;
+          },
+        },
+        grid: { color: gridColor },
+      },
     },
   };
+  
 
+  const taskStatusMenu = (
+    <Dropdown
+      menu={{
+        items: [
+          { key: "all", label: "Все задачи" },
+          { key: "active", label: "Текущие задачи" },
+          { key: "closed", label: "Закрытые задачи" },
+        ],
+        onClick: ({ key }) => setTaskStatusFilter(key as typeof taskStatusFilter),
+      }}
+      placement="bottomRight"
+    >
+      <Button>Фильтр задач</Button>
+    </Dropdown>
+  );
+  
+  const aggregatedTasksByType = filteredTasksByType.reduce(
+    (acc: Record<string, number>, item) => {
+      acc[item.Task_Type] = (acc[item.Task_Type] || 0) + item.Task_Count;
+      return acc;
+    },
+    {}
+  );
+  
   const pieData = {
-    labels: applyDateFilter(tasksByType).map((item) => item.Task_Type),
+    labels: Object.keys(aggregatedTasksByType),
     datasets: [
       {
-        data: applyDateFilter(tasksByType).map((item) => item.Task_Count),
+        data: Object.values(aggregatedTasksByType),
         backgroundColor: [
           "#1976D2",
           "#26A69A",
@@ -325,38 +370,63 @@ const EmployeeReportsPage: React.FC = () => {
       },
     ],
   };
-
+  
+  const filteredTasksByProject = filterByStatus(
+    applyDateFilter(tasksByProject) as (TaskByProject & { Status_Name?: string })[]
+  );
+  
+  const aggregatedTasksByProject = filteredTasksByProject.reduce(
+    (acc: Record<string, number>, item) => {
+      acc[item.Project_Name] = (acc[item.Project_Name] || 0) + item.Task_Count;
+      return acc;
+    },
+    {}
+  );
+  
   const barData = {
-    labels: applyDateFilter(tasksByProject).map((item) => item.Project_Name),
+    labels: Object.keys(aggregatedTasksByProject),
     datasets: [
       {
         label: "Количество задач",
-        data: applyDateFilter(tasksByProject).map((item) => item.Task_Count),
+        data: Object.values(aggregatedTasksByProject),
         backgroundColor: "#1976D2",
+        maxBarThickness: 150,
       },
     ],
   };
+  
+  const dateFiltered = applyDateFilter(kanbanData);
 
+  // Группируем: { [Project_Name]: { [Deadline]: count } }
+  const grouped: Record<string, Record<string, number>> = {};
+  
+  dateFiltered.forEach((task) => {
+    const dateKey = dayjs(task.Deadline).format("YYYY-MM-DD");
+    const project = task.Order_Name;
+  
+    if (!grouped[project]) {
+      grouped[project] = {};
+    }
+  
+    grouped[project][dateKey] = (grouped[project][dateKey] || 0) + 1;
+  });
+  
+  // Все уникальные даты (сортировка)
+  const allDates = [
+    ...new Set(dateFiltered.map((t) => dayjs(t.Deadline).format("YYYY-MM-DD"))),
+  ].sort();
+  
+  // Строим datasets для каждого проекта
   const lineData = {
-    labels: applyDateFilter(tasksByProject).map((item) =>
-      dayjs(item.Task_Date).format("DD.MM.YYYY")
-    ),
-    datasets: applyDateFilter(tasksByProject).reduce(
-      (acc: ChartDataset<"line">[], item) => {
-        const existing = acc.find((d) => d.label === item.Project_Name);
-        if (existing) existing.data.push(item.Task_Count);
-        else
-          acc.push({
-            label: item.Project_Name,
-            data: [item.Task_Count],
-            borderColor: "#26A69A",
-            fill: false,
-          });
-        return acc;
-      },
-      []
-    ),
+    labels: allDates,
+    datasets: Object.keys(grouped).map((project) => ({
+      label: project,
+      data: allDates.map((date) => grouped[project][date] || 0),
+      borderColor: "#" + Math.floor(Math.random()*16777215).toString(16), // случайный цвет
+      fill: false,
+    })),
   };
+  
 
   const handleExport = async (format: string) => {
     try {
@@ -409,12 +479,28 @@ const EmployeeReportsPage: React.FC = () => {
     }
   };
 
+  
   const applySearchFilter = <T extends KanbanTask | TimeTrackingEntry>(
     data: T[]
   ) => {
-    if (!searchText.trim()) return data;
+    let filtered = data;
+  
+    if (taskStatusFilter !== "all" && "Status_Name" in data[0]) {
+      filtered = filtered.filter((item: KanbanTask | TimeTrackingEntry) => {
+        if ("Status_Name" in item) {
+          return taskStatusFilter === "active"
+            ? item.Status_Name !== "Завершена" && item.Status_Name !== "Закрыта"
+            : item.Status_Name === "Завершена" || item.Status_Name === "Закрыта";
+        }
+        return true; // Пропустить фильтрацию, если нет Status_Name (например, для TimeTrackingEntry)
+      });
+      
+    }
+  
+    if (!searchText.trim()) return filtered;
+  
     const lowerSearch = searchText.toLowerCase();
-    return data.filter((item) =>
+    return filtered.filter((item) =>
       Object.values(item as Record<keyof T, unknown>).some((value) =>
         typeof value === "string" || typeof value === "number"
           ? value.toString().toLowerCase().includes(lowerSearch)
@@ -422,6 +508,7 @@ const EmployeeReportsPage: React.FC = () => {
       )
     );
   };
+  
 
   const tabItems = [
     {
@@ -468,20 +555,20 @@ const EmployeeReportsPage: React.FC = () => {
                 }}
               >Мои отчёты</h1>
             <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "8px",
-                marginBottom: "16px",
-              }}
-            >
-              <Input
-                placeholder="Поиск по всем данным..."
-                prefix={<SearchOutlined />}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: "300px" }}
-              />
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "8px",
+    marginBottom: "16px",
+  }}
+>
+  <Input
+    placeholder="Поиск по всем данным..."
+    value={searchText}
+    onChange={(e) => setSearchText(e.target.value)}
+    style={{ width: "250px" }}
+  />
+  {taskStatusMenu}
               <Dropdown
                 menu={{
                   items: [
@@ -593,7 +680,7 @@ const EmployeeReportsPage: React.FC = () => {
                   gap: "8px",
                 }}
               >
-                Мои задачи по датам
+                Мои задачи по дедлайнам
                 <Dropdown
                   overlay={buildFilterMenu(setDateRange)}
                   trigger={["click"]}

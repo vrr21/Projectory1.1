@@ -632,3 +632,88 @@
 .ant-picker-cell-in-range::before {
   background-color: rgba(0, 188, 212, 0.2) !important;
 }
+
+
+.time-input {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 6px;
+}
+
+[data-theme="light"] .time-input {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+
+/* Переключатель "Файл / Ссылка" */
+.attachment-type-switch .ant-radio-button-wrapper {
+  background-color: var(--card-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+.attachment-type-switch .ant-radio-button-wrapper-checked {
+  background-color: var(--accent-color) !important;
+  color: #fff !important;
+  border-color: var(--accent-color) !important;
+}
+
+/* Стили контейнеров для загрузки файлов и ввода ссылок */
+.attachment-upload,
+.attachment-link {
+  background-color: var(--card-bg-color);
+  border: 1px dashed var(--border-color);
+  padding: 16px;
+  border-radius: 8px;
+}
+
+
+[data-theme="light"] .attachment-type-switch .ant-radio-button-wrapper {
+  background-color: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+}
+
+[data-theme="light"] .attachment-type-switch .ant-radio-button-wrapper-checked {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+}
+
+[data-theme="light"] .attachment-upload,
+[data-theme="light"] .attachment-link {
+  background-color: #ffffff;
+  border: 1px dashed #ccc;
+}
+
+@media (max-width: 480px) {
+  .horizontal-column {
+    min-width: 100px;
+    padding: 6px;
+  }
+
+  .entry-card {
+    padding: 0.5rem;
+  }
+
+  .page-content {
+    padding: 0 8px;
+  }
+
+  .ant-modal {
+    max-width: 95vw !important;
+  }
+
+  .ant-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .entry-card .ant-btn {
+    font-size: 12px;
+    padding: 4px;
+  }
+}

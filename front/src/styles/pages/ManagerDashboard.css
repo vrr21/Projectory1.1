@@ -1,7 +1,7 @@
-
 :root {
   --sidebar-width: 240px;
-  --sidebar-collapsed-width: 80px;
+  --sidebar-collapsed-width: 64px; /* было 80px, теперь ещё уже */
+  --header-height: 64px;
 }
 
 
@@ -16,18 +16,15 @@
 .dashboard-body {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  box-sizing: border-box;
-  padding-left: var(--sidebar-width);
+  margin-top: var(--header-height);
   padding-right: 2rem;
+  padding-left: var(--sidebar-width);
   transition: all 0.3s ease;
 }
 
 body.sidebar-collapsed .dashboard-body {
   padding-left: var(--sidebar-collapsed-width) !important;
 }
-
-
 
 
 .kanban-board {
@@ -66,15 +63,20 @@ body.sidebar-collapsed .dashboard-body {
 
 .kanban-task {
   background: linear-gradient(145deg, #2c2c2c, #1f1f1f);
-  border: none !important; /* 🔥 Убрана белая обводка */
+  border: 1px solid #444;
   border-radius: 10px;
   padding: 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* более мягкая тень */
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
   color: #f0f0f0;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
+
 
 .kanban-task:hover {
   transform: translateY(-2px);
@@ -160,9 +162,9 @@ body.sidebar-collapsed .dashboard-body {
     flex-direction: column;
     gap: 3rem;
     transition: all 0.3s ease;
-    box-sizing: border-box;
+    margin-left: var(--sidebar-width);
+    width: calc(100% - var(--sidebar-width));
   }
-
   
   .dashboard-title {
     font-size: 18px;
@@ -184,19 +186,6 @@ body.sidebar-collapsed .dashboard-body {
   .dashboard-title {
     font-size: 16px;
   }
-}
-
-
-.kanban-task {
-  background: linear-gradient(145deg, #2c2c2c, #1f1f1f);
-  border: 1px solid #444;
-  border-radius: 10px;
-  padding: 1rem;
-  margin-bottom: 1.5rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-  color: #f0f0f0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  cursor: pointer;
 }
 
 .kanban-task:hover {
@@ -338,16 +327,17 @@ body.sidebar-collapsed .dashboard-body {
   border-radius: 6px;
   text-align: center;
 }
-.kanban-columns {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: flex-start;
-  gap: 2rem;
-  overflow-x: auto;
-  padding: 1rem 0;
-  margin: 0;
+
+.kanban-column {
   width: 100%;
-  box-sizing: border-box;
+  min-width: 280px;
+  max-width: 100%;
+  flex: 1 1 0;
+  padding: 1rem;
+  background-color: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .kanban-status-block {
@@ -604,4 +594,61 @@ body.sidebar-collapsed .dashboard-body {
 [data-theme="light"] .sticky-toolbar {
   background-color: #ffffff;
   border-bottom: 1px solid #ddd;
+}
+
+
+@media (max-width: 768px) {
+  .kanban-column {
+    min-width: 100%;
+    padding: 0.5rem;
+  }
+
+  .kanban-task {
+    padding: 0.75rem;
+    font-size: 13px;
+  }
+
+  .kanban-task-content strong {
+    font-size: 14px !important;
+  }
+
+  .kanban-task-content p {
+    font-size: 12px;
+  }
+}
+
+
+/* === Квадратные кнопки внутри карточек === */
+.kanban-task .task-footer .ant-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background-color: #222;
+  transition: all 0.2s ease;
+}
+
+.kanban-task .task-footer .ant-btn:hover {
+  border-color: #00bcd4;
+  background-color: #2c2c2c;
+  color: #00bcd4;
+}
+
+/* Светлая тема */
+[data-theme="light"] .kanban-task .task-footer .ant-btn {
+  border: 1px solid #ccc;
+  background-color: #eee;
+  color: #000;
+}
+
+[data-theme="light"] .kanban-task .task-footer .ant-btn:hover {
+  background-color: #ddd;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }

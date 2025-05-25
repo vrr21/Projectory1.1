@@ -112,6 +112,22 @@
     width: calc(100% - 80px);
   }
 }
+/* При сворачивании сайдбара */
 body.sidebar-collapsed .main-content {
-  padding-left: 64px !important; /* ширина свернутого сайдбара */
+  margin-left: var(--sidebar-collapsed-width);
+  width: calc(100% - var(--sidebar-collapsed-width));
+}
+.team-info {
+  display: flex;
+  text-align: center;
+  padding: 16px 8px 8px;
+}
+
+.team-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -224,3 +224,28 @@
   border: none !important;
   overflow: hidden !important;
 }
+
+
+/* styles/pages/ManagerReportsPage.css или глобальный layout */
+.dashboard-body {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  padding-left: var(--sidebar-width);
+  padding-right: 2rem;
+  transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .dashboard-body {
+    flex-direction: column;
+  }
+
+  .main-content {
+    padding: 16px;
+    width: 100%;
+  }
+}
+
+

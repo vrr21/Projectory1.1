@@ -261,3 +261,40 @@
   margin: 0 !important;
 }
 
+[data-theme="light"] .text-color,
+[data-theme="light"] .role-text,
+[data-theme="light"] .info-text,
+[data-theme="light"] .account-card,
+[data-theme="light"] .account-summary-card,
+[data-theme="light"] .info-item .ant-typography {
+  color: #000 !important;
+}
+
+
+[data-theme="light"] .ant-tabs-nav {
+  background-color: #f9f9f9 !important;
+  border: 1px solid #ddd !important;
+  border-bottom: none !important;
+  border-radius: 12px 12px 0 0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .ant-tabs-content-holder {
+  background-color: #ffffff !important;
+  border: 1px solid #ddd !important;
+  border-top: none !important;
+  border-radius: 0 0 12px 12px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+
+/* Светлая тема — форсированное исправление цвета текста */
+[data-theme="light"] .account-card,
+[data-theme="light"] .account-card * {
+  color: #000 !important;
+}
+
+[data-theme="light"] .account-summary-card,
+[data-theme="light"] .account-summary-card * {
+  color: #000 !important;
+}

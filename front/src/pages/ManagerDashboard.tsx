@@ -23,11 +23,13 @@ import {
   UserOutlined,
   EyeOutlined,
   EditOutlined,
-  ClockCircleOutlined,
   UploadOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
 import { UpOutlined, DownOutlined } from "@ant-design/icons";
+import { PlusOutlined } from "@ant-design/icons";
+import { ClockCircleOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 import { MessageOutlined } from "@ant-design/icons";
 import { InboxOutlined } from "@ant-design/icons";
@@ -106,11 +108,10 @@ interface Project {
   ID_Order: number;
   Order_Name: string;
   ID_Team: number;
-  ID_Manager: number;  
+  ID_Manager: number;
   IsArchived?: boolean;
   Deadline?: string | null;
 }
-
 
 const statuses = ["Новая", "В работе", "Завершена", "Выполнена"];
 
@@ -148,16 +149,20 @@ const ManagerDashboard: React.FC = () => {
   );
   const handleProjectChange = (orderId: number) => {
     form.setFieldValue("ID_Order", orderId);
-    const selectedProject = filteredProjects.find((p) => p.ID_Order === orderId);
-  
+    const selectedProject = filteredProjects.find(
+      (p) => p.ID_Order === orderId
+    );
+
     console.log("Выбранный проект:", selectedProject); // ✅ ЛОГ ДЛЯ ОТЛАДКИ
-  
+
     setProjectDeadline(
       selectedProject?.Deadline ? dayjs(selectedProject.Deadline) : null
     );
   };
-  
-  const renderEmployees = (employees: { id: number; fullName: string; avatar?: string | null }[]) => {
+
+  const renderEmployees = (
+    employees: { id: number; fullName: string; avatar?: string | null }[]
+  ) => {
     if (!employees?.length) return "—";
     return (
       <Avatar.Group max={{ count: 3 }}>
@@ -165,7 +170,11 @@ const ManagerDashboard: React.FC = () => {
           <Tooltip key={emp.id} title={emp.fullName}>
             <Avatar
               src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-              style={{ backgroundColor: emp.avatar ? "transparent" : "#777" }}
+              style={{
+                backgroundColor: emp.avatar ? "transparent" : "#777",
+                cursor: "pointer",
+              }}
+              onClick={() => navigate(`/employee/${emp.id}`)}
             >
               {!emp.avatar && getInitials(emp.fullName)}
             </Avatar>
@@ -174,7 +183,8 @@ const ManagerDashboard: React.FC = () => {
       </Avatar.Group>
     );
   };
-  
+  const navigate = useNavigate();
+
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
   const [filterProject, setFilterProject] = useState<number | null>(null);
@@ -348,8 +358,13 @@ const ManagerDashboard: React.FC = () => {
       setIsCommentsModalVisible(true);
     } catch (err) {
       console.error(err);
-      messageApi.error("Ошибка при загрузке комментариев");
+      if (err instanceof Error) {
+        messageApi.error(err.message);
+      } else {
+        messageApi.error("Ошибка при загрузке комментариев");
+      }
     }
+    
   };
 
   const submitComment = async () => {
@@ -479,34 +494,33 @@ const ManagerDashboard: React.FC = () => {
           ))}
       </Select>
       <Select
-  value="По дате"
-  style={{ width: "100%", marginBottom: 8 }}
-  dropdownRender={() => (
-    <div style={{ padding: 8 }}>
-      <Button
-        icon={<UpOutlined />}
-        type={sortOrder === "asc" ? "primary" : "default"}
-        onClick={() => setSortOrder("asc")}
-        size="small"
-        style={{ width: "100%", marginBottom: 4 }}
+        value="По дате"
+        style={{ width: "100%", marginBottom: 8 }}
+        dropdownRender={() => (
+          <div style={{ padding: 8 }}>
+            <Button
+              icon={<UpOutlined />}
+              type={sortOrder === "asc" ? "primary" : "default"}
+              onClick={() => setSortOrder("asc")}
+              size="small"
+              style={{ width: "100%", marginBottom: 4 }}
+            >
+              По возрастанию
+            </Button>
+            <Button
+              icon={<DownOutlined />}
+              type={sortOrder === "desc" ? "primary" : "default"}
+              onClick={() => setSortOrder("desc")}
+              size="small"
+              style={{ width: "100%" }}
+            >
+              По убыванию
+            </Button>
+          </div>
+        )}
       >
-        По возрастанию
-      </Button>
-      <Button
-        icon={<DownOutlined />}
-        type={sortOrder === "desc" ? "primary" : "default"}
-        onClick={() => setSortOrder("desc")}
-        size="small"
-        style={{ width: "100%" }}
-      >
-        По убыванию
-      </Button>
-    </div>
-  )}
->
-  <Option value="По дате">По дате</Option>
-</Select>
-
+        <Option value="По дате">По дате</Option>
+      </Select>
 
       <Button
         onClick={clearFilters}
@@ -607,14 +621,21 @@ const ManagerDashboard: React.FC = () => {
       align: "center",
       render: (_: unknown, task: Task) => (
         <div style={{ textAlign: "left" }}>
-          {task.Employees.length === 1 ? (
-            task.Employees[0].fullName
-          ) : (
-            `${task.Employees[0].fullName} +${task.Employees.length - 1}`
-          )}
+          {task.Employees.map((emp, idx) => (
+            <span key={emp.id}>
+              <a
+                href={`/employee/${emp.id}`}
+                style={{ color: "inherit", textDecoration: "underline" }}
+              >
+                {emp.fullName}
+              </a>
+              {idx < task.Employees.length - 1 && ", "}
+            </span>
+          ))}
         </div>
       ),
     },
+    
     
     {
       title: "Статус",
@@ -626,8 +647,16 @@ const ManagerDashboard: React.FC = () => {
       ),
       onFilter: (value, record) =>
         typeof value === "string" && record.Status_Name === value,
-      render: (text: string) => <div style={{ textAlign: "left" }}>{text}</div>,
+      render: (_: unknown, task: Task) => (
+        <div style={{ textAlign: "left" }}>
+          {task.Status_Name}
+          {task.Status_Name === "Завершена" && task.AutoCompleted && (
+            <span style={{ color: "orange", marginLeft: 6 }}>(Просрочено)</span>
+          )}
+        </div>
+      ),
     },
+
     {
       title: "Действия",
       key: "actions",
@@ -718,26 +747,32 @@ const ManagerDashboard: React.FC = () => {
       )?.ID_Status;
 
       // 🔥 Удаление задач без сотрудников
-const tasksToDelete = tasksData.filter((task: Task) => !task.Employees || task.Employees.length === 0);
+      const tasksToDelete = tasksData.filter(
+        (task: Task) => !task.Employees || task.Employees.length === 0
+      );
 
-for (const task of tasksToDelete) {
-  try {
-    await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-    });
-    console.warn(`🗑 Удалена задача без сотрудников: ID ${task.ID_Task}`);
-  } catch (error) {
-    console.error(`❌ Ошибка при удалении задачи ID ${task.ID_Task}:`, error);
-  }
-}
+      for (const task of tasksToDelete) {
+        try {
+          await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+          });
+          console.warn(`🗑 Удалена задача без сотрудников: ID ${task.ID_Task}`);
+        } catch (error) {
+          console.error(
+            `❌ Ошибка при удалении задачи ID ${task.ID_Task}:`,
+            error
+          );
+        }
+      }
 
-// Оставляем только задачи с сотрудниками
-const cleanedTasks = tasksData.filter((task: Task) => task.Employees && task.Employees.length > 0);
+      // Оставляем только задачи с сотрудниками
+      const cleanedTasks = tasksData.filter(
+        (task: Task) => task.Employees && task.Employees.length > 0
+      );
 
       const updatedTasks: Task[] = [];
       for (const task of cleanedTasks) {
-
         const team = teamsData.find(
           (team: Team) => team.Team_Name === task.Team_Name
         );
@@ -749,8 +784,12 @@ const cleanedTasks = tasksData.filter((task: Task) => task.Employees && task.Emp
         const isInProgress =
           task.Status_Name === "Новая" || task.Status_Name === "В работе";
 
-          if (allMembersRemoved && isInProgress && completedStatusId && task.Employees.length === 0) {
-
+        if (
+          allMembersRemoved &&
+          isInProgress &&
+          completedStatusId &&
+          task.Employees.length === 0
+        ) {
           try {
             const res = await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
               method: "PUT",
@@ -800,16 +839,13 @@ const cleanedTasks = tasksData.filter((task: Task) => task.Employees && task.Emp
         }
       }
       setTasks(Array.from(expandedTasksMap.values()));
-      
-
 
       const activeTeams = teamsData.filter((team: Team) => !team.IsArchived);
       setTeams(activeTeams);
 
       setStatusesData(statusesDataRaw);
       setProjects(projectsData);
-console.log("Загруженные проекты:", projectsData);  // ✅ Добавлено
-
+      console.log("Загруженные проекты:", projectsData); // ✅ Добавлено
     } catch (err) {
       console.error(err);
       messageApi.error("Ошибка при загрузке данных");
@@ -858,26 +894,30 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
     autoUpdateOverdueTasks();
   }, [tasks, statusesData, fetchAll]);
 
-  
   const filteredTasks = useMemo(() => {
     const oneWeekAgo = dayjs().subtract(7, "day");
-  
+
     const filtered = tasks.filter((task) => {
-      const isArchivedStatus = ["Завершена", "Выполнена"].includes(task.Status_Name);
+      const isArchivedStatus = ["Завершена", "Выполнена"].includes(
+        task.Status_Name
+      );
       const dateToCompare = task.Status_Updated_At
         ? dayjs(task.Status_Updated_At)
         : task.Deadline
         ? dayjs(task.Deadline)
         : null;
-  
-      const isOlderThanWeek = dateToCompare && dateToCompare.isBefore(oneWeekAgo);
+
+      const isOlderThanWeek =
+        dateToCompare && dateToCompare.isBefore(oneWeekAgo);
       const shouldBeArchived = isArchivedStatus && isOlderThanWeek;
-      const shouldBeActive = !isArchivedStatus || (isArchivedStatus && !isOlderThanWeek);
+      const shouldBeActive =
+        !isArchivedStatus || (isArchivedStatus && !isOlderThanWeek);
       const isVisible = showArchive ? shouldBeArchived : shouldBeActive;
-  
+
       const matchesTeam =
         !filterTeam ||
-        teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team === filterTeam;
+        teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team ===
+          filterTeam;
       const matchesProject = !filterProject || task.ID_Order === filterProject;
       const matchesEmployee =
         !filterEmployee ||
@@ -888,11 +928,19 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
         task.Task_Name.toLowerCase().includes(query) ||
         task.Description.toLowerCase().includes(query) ||
         task.Order_Name.toLowerCase().includes(query) ||
-        task.Employees.some((emp) => emp.fullName.toLowerCase().includes(query));
-  
-      return isVisible && matchesTeam && matchesProject && matchesEmployee && matchesSearch;
+        task.Employees.some((emp) =>
+          emp.fullName.toLowerCase().includes(query)
+        );
+
+      return (
+        isVisible &&
+        matchesTeam &&
+        matchesProject &&
+        matchesEmployee &&
+        matchesSearch
+      );
     });
-  
+
     return filtered.sort((a, b) => {
       const dateA = dayjs(a.Status_Updated_At || a.Deadline || "").valueOf();
       const dateB = dayjs(b.Status_Updated_At || b.Deadline || "").valueOf();
@@ -908,7 +956,6 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
     showArchive,
     sortOrder,
   ]);
-  
 
   const filteredGroupedMap: Record<string, Task[]> = useMemo(() => {
     const map: Record<string, Task[]> = {};
@@ -930,7 +977,7 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
     }
     return Array.from(taskMap.values());
   }, [filteredTasks]);
-  
+
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination || source.droppableId === destination.droppableId) return;
@@ -1090,33 +1137,42 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
       messageApi.error("Дедлайн не может быть назначен прошедшей датой!");
       return;
     }
-  
+
+    const team = teams.find((t) => t.ID_Team === selectedTeamId);
+
     // 🔍 Проверка: не более 5 активных задач на сотрудника
-    const overAssigned: { name: string; count: number }[] = [];
-  
+    const overAssigned: { id: number; name: string; count: number }[] = [];
+
     for (const memberName of selectedMembers) {
+      const member = team?.members.find((m) => m.fullName === memberName);
+      if (!member) continue;
+
       const taskCount = tasks.filter(
         (task) =>
-          task.Employees.some((e) => e.fullName === memberName) &&
-          !["Завершена", "Выполнена"].includes(task.Status_Name)
+          task.Employees.some((e) => e.id === member.id) &&
+          ["Новая", "В работе"].includes(task.Status_Name)
       ).length;
-  
+
       if (taskCount >= 5) {
-        overAssigned.push({ name: memberName, count: taskCount });
+        overAssigned.push({
+          id: member.id,
+          name: member.fullName,
+          count: taskCount,
+        });
       }
     }
-  
+
     if (overAssigned.length > 0) {
       const names = overAssigned
-        .map((o) => `${o.name} — уже назначено ${o.count} задач`)
+        .map((o) => `${o.name} — уже ${o.count} активных задач`)
         .join("\n");
-  
+
       messageApi.error(
-        `Ошибка: нельзя назначить задачу следующим сотрудникам:\n${names}\n(максимум — 5 задач на человека)`
+        `Ошибка: нельзя назначить задачу следующим сотрудникам:\n${names}\n(максимум — 5 задач в статусе "Новая" или "В работе")`
       );
       return;
     }
-  
+
     const uploadedFilenames: string[] = [];
     for (const file of selectedFiles) {
       if (file.originFileObj) {
@@ -1125,13 +1181,13 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
         if (editingTask?.ID_Task) {
           formData.append("taskId", editingTask.ID_Task.toString());
         }
-  
+
         try {
           const res = await fetch(`${API_URL}/api/upload-task`, {
             method: "POST",
             body: formData,
           });
-  
+
           if (res.ok) {
             const data = await res.json();
             uploadedFilenames.push(data.filename);
@@ -1145,34 +1201,43 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
         uploadedFilenames.push(file.name);
       }
     }
-  
+
     const newStatus = statusesData.find((s) => s.Status_Name === "Новая");
     if (!newStatus) {
       messageApi.error('Не найден статус "Новая"');
       return;
     }
-  
+
     const selectedOrderId = Number(values.ID_Order);
-    const selectedProject = projects.find((p) => Number(p.ID_Order) === selectedOrderId);
+    const selectedProject = projects.find(
+      (p) => Number(p.ID_Order) === selectedOrderId
+    );
     if (selectedProject && !selectedProject.ID_Manager) {
-      selectedProject.ID_Manager = JSON.parse(localStorage.getItem("user") || "{}")?.id;
+      selectedProject.ID_Manager = JSON.parse(
+        localStorage.getItem("user") || "{}"
+      )?.id;
     }
-  
+
     if (!selectedProject || !selectedProject.ID_Manager) {
-      console.error("Не удалось определить ID менеджера для выбранного проекта", selectedProject);
-      messageApi.error("Не удалось определить ID менеджера для выбранного проекта");
+      console.error(
+        "Не удалось определить ID менеджера для выбранного проекта",
+        selectedProject
+      );
+      messageApi.error(
+        "Не удалось определить ID менеджера для выбранного проекта"
+      );
       return;
     }
-  
-    const team = teams.find((t) => t.ID_Team === selectedTeamId);
-    const selectedIds = team?.members
-      .filter((m) => selectedMembers.includes(m.fullName))
-      .map((m) => m.id) ?? [];
-  
+
+    const selectedIds =
+      team?.members
+        .filter((m) => selectedMembers.includes(m.fullName))
+        .map((m) => m.id) ?? [];
+
     const payload = {
       Task_Name: values.Task_Name,
       Description: values.Description,
-      ID_Order: Number(values.ID_Order),
+      ID_Order: selectedOrderId,
       ID_Status: newStatus.ID_Status,
       Time_Norm: values.Time_Norm,
       Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
@@ -1180,21 +1245,21 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
       attachments: uploadedFilenames,
       ID_Manager: selectedProject.ID_Manager,
     };
-  
+
     try {
       const url = editingTask
         ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
         : `${API_URL}/api/tasks`;
       const method = editingTask ? "PUT" : "POST";
-  
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-  
+
       if (!res.ok) throw new Error();
-  
+
       messageApi.success(editingTask ? "Задача обновлена" : "Задача создана");
       setIsModalVisible(false);
       fetchAll();
@@ -1202,32 +1267,28 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
       messageApi.error("Ошибка при сохранении задачи");
     }
   };
-  
-  
-  
 
   const handleTeamChange = (teamId: number) => {
-    console.log('Все проекты:', projects); // ✅ ЛОГ 1
-    console.log('Фильтрация для команды ID:', teamId); // ✅ ЛОГ 2
-  
+    console.log("Все проекты:", projects); // ✅ ЛОГ 1
+    console.log("Фильтрация для команды ID:", teamId); // ✅ ЛОГ 2
+
     const activeProjects = projects.filter(
       (proj) =>
         proj.ID_Team === teamId &&
         !proj.IsArchived &&
         (!proj.Deadline || dayjs(proj.Deadline).isAfter(dayjs()))
     );
-  
-    console.log('Фильтрованные проекты:', activeProjects); // ✅ ЛОГ 3
-  
+
+    console.log("Фильтрованные проекты:", activeProjects); // ✅ ЛОГ 3
+
     setSelectedTeamId(teamId);
     setSelectedMembers([]);
     setFilteredProjects(activeProjects);
     form.setFieldsValue({ ID_Order: undefined });
-  
+
     const team = teams.find((t) => t.ID_Team === teamId);
     console.log("Members for selected team:", team?.members);
   };
-  
 
   const openViewModal = (task: Task) => {
     setViewingTask(task);
@@ -1276,6 +1337,92 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
     }
   };
 
+  const renderDeadlineBox = (task: Task) => {
+    const deadline = task.Deadline ? dayjs(task.Deadline) : null;
+    const now = dayjs();
+
+    // 🔴 1. Завершена (автоматически или вручную)
+    if (task.Status_Name === "Завершена") {
+      return (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: "13px",
+            color: task.AutoCompleted ? "red" : "#aaa",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ClockCircleOutlined />
+          {task.AutoCompleted ? "Срок истёк" : "Завершено"}
+        </div>
+      );
+    }
+
+    // ✅ 2. Выполнена (перетащена вручную)
+    if (task.Status_Name === "Выполнена") {
+      return (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: "13px",
+            color: "#aaa",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ClockCircleOutlined />
+          Выполнено
+        </div>
+      );
+    }
+
+    // ⚪ 3. Без срока
+    if (!deadline) {
+      return (
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: "13px",
+            color: "#aaa",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <ClockCircleOutlined />
+          Дедлайн: без срока
+        </div>
+      );
+    }
+
+    // ⏰ 4. Срок есть — считаем цвет
+    const isExpired = deadline.isBefore(now);
+    const isUrgent = deadline.diff(now, "hour") <= 24;
+
+    let color = "#52c41a"; // 🟢 по умолчанию
+    if (isExpired) color = "red"; // 🔴 просрочено
+    else if (isUrgent) color = "#faad14"; // 🟡 приближается
+
+    return (
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: "13px",
+          color,
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        <ClockCircleOutlined />
+        Дедлайн: {deadline.format("YYYY-MM-DD HH:mm")}
+      </div>
+    );
+  };
+
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
@@ -1315,6 +1462,7 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                             backgroundColor: "transparent",
                             borderBottom: "none",
                             boxShadow: "none",
+                            marginBottom: "16px", // ✅ ВОТ ЭТА СТРОКА — ДОБАВЬ ЕЁ
                           }}
                         >
                           <div
@@ -1329,8 +1477,9 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                             <Button
                               className="add-task-button"
                               onClick={() => showModal()}
+                              icon={<PlusOutlined />}
                             >
-                              ➕ Добавить задачу
+                              Добавить задачу
                             </Button>
 
                             <div
@@ -1374,9 +1523,18 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                                 menu={{
                                   onClick: ({ key }) => handleExport(key),
                                   items: [
-                                    { key: "word", label: "Экспорт в Word (.docx)" },
-                                    { key: "excel", label: "Экспорт в Excel (.xlsx)" },
-                                    { key: "pdf", label: "Экспорт в PDF (.pdf)" },
+                                    {
+                                      key: "word",
+                                      label: "Экспорт в Word (.docx)",
+                                    },
+                                    {
+                                      key: "excel",
+                                      label: "Экспорт в Excel (.xlsx)",
+                                    },
+                                    {
+                                      key: "pdf",
+                                      label: "Экспорт в PDF (.pdf)",
+                                    },
                                   ],
                                 }}
                                 placement="bottomRight"
@@ -1400,169 +1558,211 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                           <DragDropContext onDragEnd={handleDragEnd}>
                             <div
                               style={{
-                                display: "grid",
-                                gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
-                                gap: "16px",
+                                maxHeight: "calc(100vh - 250px)",
+                                overflowY: "auto",
+                                overflowX: "auto",
                               }}
                             >
-                              {statuses.map((status) => (
-                                <div
-                                  key={`header-${status}`}
-                                  className="kanban-status-header"
-                                  style={{
-                                    position: "sticky",
-                                    top: 0,
-                                    zIndex: 10,
-                                    // ✅ Удалено: border: '1px solid #444',
-                                  }}
-                                >
-                                  {status}
-                                </div>
-                              ))}
+                              {/* Заголовки статусов */}
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
+                                  gap: "16px",
+                                  marginBottom: "12px",
+                                  paddingInline: "4px",
+                                }}
+                              >
+                                {statuses.map((status) => (
+                                  <div
+                                    key={`status-title-${status}`}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      position: "relative",
+                                      backgroundColor: "var(--card-bg-color)",
+                                      padding: "10px 12px",
+                                      borderRadius: "8px",
+                                      boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                                      textTransform: "uppercase",
+                                      fontSize: "15px",
+                                      fontWeight: 400,
+                                      color: "var(--text-color)",
+
+                                      minHeight: "40px",
+                                    }}
+                                  >
+                                    <div
+                                      style={{
+                                        position: "absolute",
+                                        left: 0,
+                                        top: 0,
+                                        bottom: 0,
+                                        width: "5px",
+                                        borderTopLeftRadius: "8px",
+                                        borderBottomLeftRadius: "8px",
+                                        backgroundColor: "#00bcd4",
+                                      }}
+                                    />
+                                    {status.toUpperCase()}
+                                  </div>
+                                ))}
+                              </div>
 
                               {/* Колонки с задачами */}
-                              {statuses.map((status) => {
-                                const tasksForStatus =
-                                  filteredGroupedMap[status] || [];
-                                const isExpanded =
-                                  expandedStatuses.includes(status);
-                                const visibleTasks = isExpanded
-                                  ? tasksForStatus
-                                  : tasksForStatus.slice(0, 5);
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
+                                  gap: "16px",
+                                  paddingInline: "4px",
+                                }}
+                              >
+                                {statuses.map((status) => {
+                                  const tasksForStatus =
+                                    filteredGroupedMap[status] || [];
+                                  const isExpanded =
+                                    expandedStatuses.includes(status);
+                                  const visibleTasks = isExpanded
+                                    ? tasksForStatus
+                                    : tasksForStatus.slice(0, 5);
 
-                                return (
-                                  <Droppable key={status} droppableId={status}>
-                                  {(provided) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.droppableProps}
-                                      style={{
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: "16px",
-                                        minWidth: "300px",
-                                        backgroundColor: "var(--card-bg-color)", // ✅ поддержка тем
-                                        borderRadius: "10px",
-                                        padding: "1rem",
-                                        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", // Оставляем универсальной
-                                      }}
+                                  return (
+                                    <Droppable
+                                      key={status}
+                                      droppableId={status}
                                     >
-                                      {visibleTasks.map((task, index) => (
-                                        <Draggable
-                                          key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
-                                          draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
-                                          index={index}
-                                        >
-                                          {(providedDraggable) => (
-                                            <div
-                                              className="kanban-task"
-                                              ref={providedDraggable.innerRef}
-                                              {...providedDraggable.draggableProps}
-                                              {...providedDraggable.dragHandleProps}
-                                            >
-                                              <div className="kanban-task-content">
-                                                <strong>{task.Task_Name}</strong>
-                                                <p>{task.Description}</p>
-                                                <p
-                                                  style={{
-                                                    fontWeight: "bold",
-                                                    fontStyle: "italic",
-                                                    fontSize: "14px",
-                                                    textDecoration: "underline",
-                                                    textDecorationColor: "#00bcd4",
-                                                    display: "inline-flex",
-                                                    alignItems: "center",
-                                                  }}
-                                                >
-                                                 
-                                                  Назначено для: {task.EmployeeName}
-                                                </p>
-                                                <p><i>Проект:</i> {task.Order_Name}</p>
-                                
-                                                <div className="kanban-avatars">
-                                                {renderEmployees(task.Employees)}
-
-                                                </div>
-                                
-                                                <div className="task-footer">
-                                                  <Button
-                                                    type="text"
-                                                    icon={<EyeOutlined />}
-                                                    onClick={() => openViewModal(task)}
-                                                    style={{ padding: 0, height: "auto", marginRight: 8 }}
-                                                  />
-                                                  <Button
-                                                    type="text"
-                                                    icon={<MessageOutlined />}
-                                                    onClick={() => openCommentsModal(task.ID_Task)}
-                                                    style={{ padding: 0, height: "auto" }}
-                                                  />
-                                                  {task.Status_Name === "Завершена" && task.AutoCompleted ? (
-                                                    <div className="deadline-box expired">
-                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
-                                                      Срок истёк
-                                                    </div>
-                                                  ) : task.Status_Name === "Завершена" ? (
-                                                    <div className="deadline-box completed">
-                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
-                                                      Завершена
-                                                    </div>
-                                                  ) : task.Status_Name === "Выполнена" ? (
-                                                    <div className="deadline-box completed">
-                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
-                                                      Выполнено
-                                                    </div>
-                                                  ) : task.Deadline ? (
-                                                    <div
-                                                      className={`deadline-box ${
-                                                        dayjs(task.Deadline).isBefore(dayjs())
-                                                          ? "expired"
-                                                          : dayjs(task.Deadline).diff(dayjs(), "hour") <= 24
-                                                          ? "warning"
-                                                          : "safe"
-                                                      }`}
-                                                    >
-                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
-                                                      {dayjs(task.Deadline).diff(dayjs(), "day") > 0
-                                                        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), "day")} дн`
-                                                        : dayjs(task.Deadline).diff(dayjs(), "hour") > 0
-                                                        ? `Осталось ${dayjs(task.Deadline).diff(dayjs(), "hour")} ч`
-                                                        : "Срок истёк"}
-                                                    </div>
-                                                  ) : (
-                                                    <div className="deadline-box undefined">
-                                                      <ClockCircleOutlined style={{ marginRight: 6 }} />
-                                                      Без срока
-                                                    </div>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            </div>
-                                          )}
-                                        </Draggable>
-                                      ))}
-                                
-                                      {tasksForStatus.length > 5 && !isExpanded && (
-                                        <Button
-                                          type="link"
-                                          onClick={() => setExpandedStatuses([...expandedStatuses, status])}
+                                      {(provided) => (
+                                        <div
+                                          ref={provided.innerRef}
+                                          {...provided.droppableProps}
                                           style={{
-                                            alignSelf: "center",
-                                            marginTop: 8,
-                                            color: "#00bcd4",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            gap: "16px",
+                                            minWidth: "300px",
+                                            backgroundColor:
+                                              "var(--card-bg-color)",
+                                            borderRadius: "10px",
+                                            padding: "1rem",
+                                            boxShadow:
+                                              "0 4px 12px rgba(0, 0, 0, 0.2)",
                                           }}
                                         >
-                                          Смотреть далее ({tasksForStatus.length - 5} ещё)
-                                        </Button>
+                                          {visibleTasks.map((task, index) => (
+                                            <Draggable
+                                              key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                              draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                              index={index}
+                                            >
+                                              {(providedDraggable) => (
+                                                <div
+                                                  className="kanban-task"
+                                                  ref={
+                                                    providedDraggable.innerRef
+                                                  }
+                                                  {...providedDraggable.draggableProps}
+                                                  {...providedDraggable.dragHandleProps}
+                                                >
+                                                  <div className="kanban-task-content">
+                                                    <strong>
+                                                      {task.Task_Name}
+                                                    </strong>
+                                                    <p>{task.Description}</p>
+                                                    <p
+                                                      style={{
+                                                        fontWeight: "bold",
+                                                        fontStyle: "italic",
+                                                        fontSize: "14px",
+                                                        textDecoration:
+                                                          "underline",
+                                                        textDecorationColor:
+                                                          "#00bcd4",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                      }}
+                                                    >
+                                                      Назначено для:{" "}
+                                                      {task.EmployeeName}
+                                                    </p>
+                                                    <p>
+                                                      <i>Проект:</i>{" "}
+                                                      {task.Order_Name}
+                                                    </p>
+
+                                                    <div className="kanban-avatars">
+                                                      {renderEmployees(
+                                                        task.Employees
+                                                      )}
+                                                    </div>
+
+                                                    {/* ✅ ВСТАВЛЕН БЛОК С ДЕДЛАЙНОМ */}
+                                                    {renderDeadlineBox(task)}
+
+                                                    <div className="task-footer">
+                                                      <Button
+                                                        type="text"
+                                                        icon={<EyeOutlined />}
+                                                        onClick={() =>
+                                                          openViewModal(task)
+                                                        }
+                                                        style={{
+                                                          padding: 0,
+                                                          height: "auto",
+                                                          marginRight: 8,
+                                                        }}
+                                                      />
+                                                      <Button
+                                                        type="text"
+                                                        icon={
+                                                          <MessageOutlined />
+                                                        }
+                                                        onClick={() =>
+                                                          openCommentsModal(
+                                                            task.ID_Task
+                                                          )
+                                                        }
+                                                        style={{
+                                                          padding: 0,
+                                                          height: "auto",
+                                                        }}
+                                                      />
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            </Draggable>
+                                          ))}
+
+                                          {tasksForStatus.length > 5 &&
+                                            !isExpanded && (
+                                              <Button
+                                                type="link"
+                                                onClick={() =>
+                                                  setExpandedStatuses([
+                                                    ...expandedStatuses,
+                                                    status,
+                                                  ])
+                                                }
+                                                style={{
+                                                  alignSelf: "center",
+                                                  marginTop: 8,
+                                                  color: "#00bcd4",
+                                                }}
+                                              >
+                                                Смотреть далее (
+                                                {tasksForStatus.length - 5} ещё)
+                                              </Button>
+                                            )}
+
+                                          {provided.placeholder}
+                                        </div>
                                       )}
-                                
-                                      {provided.placeholder}
-                                    </div>
-                                  )}
-                                </Droppable>
-                                
-                                );
-                              })}
+                                    </Droppable>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </DragDropContext>
                         </div>
@@ -1596,8 +1796,9 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                               <Button
                                 className="add-task-button"
                                 onClick={() => showModal()}
+                                icon={<PlusOutlined />}
                               >
-                                ➕ Добавить задачу
+                                Добавить задачу
                               </Button>
 
                               <div
@@ -1641,9 +1842,18 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                                   menu={{
                                     onClick: ({ key }) => handleExport(key),
                                     items: [
-                                      { key: "word", label: "Экспорт в Word (.docx)" },
-                                      { key: "excel", label: "Экспорт в Excel (.xlsx)" },
-                                      { key: "pdf", label: "Экспорт в PDF (.pdf)" },
+                                      {
+                                        key: "word",
+                                        label: "Экспорт в Word (.docx)",
+                                      },
+                                      {
+                                        key: "excel",
+                                        label: "Экспорт в Excel (.xlsx)",
+                                      },
+                                      {
+                                        key: "pdf",
+                                        label: "Экспорт в PDF (.pdf)",
+                                      },
                                     ],
                                   }}
                                   placement="bottomRight"
@@ -1662,8 +1872,7 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                           </h2>
 
                           <Table
-  dataSource={collapsedTasks} 
-
+                            dataSource={collapsedTasks}
                             columns={tableColumns}
                             rowKey="ID_Task"
                             pagination={{ pageSize: 10 }}
@@ -1711,42 +1920,42 @@ console.log("Загруженные проекты:", projectsData);  // ✅ Д�
                     rules={[{ required: true }]}
                   >
                     <Select
-  placeholder="Выберите проект"
-  onChange={handleProjectChange}
->
-  {filteredProjects.map((proj) => (
-    <Option key={proj.ID_Order} value={proj.ID_Order}>
-      {proj.Order_Name}
-    </Option>
-  ))}
-</Select>
-
+                      placeholder="Выберите проект"
+                      onChange={handleProjectChange}
+                    >
+                      {filteredProjects.map((proj) => (
+                        <Option key={proj.ID_Order} value={proj.ID_Order}>
+                          {proj.Order_Name}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
 
                   <Form.Item label="Исполнители">
-                  <Select
-  mode="multiple"
-  placeholder="Выберите участников"
-  value={selectedMembers}
-  onChange={(vals) => setSelectedMembers(vals)}
-  disabled={!selectedTeamId}
-  optionLabelProp="label"
->
-  {(teams.find((t) => t.ID_Team === selectedTeamId)?.members || []).map(
-    (member) => (
-      <Option
-        key={`member-${member.id}`}
-        value={member.fullName}
-        label={member.fullName}
-      >
-        {member.fullName}
-        {member.role ? ` — ${member.role}` : " — [должность не указана]"}
-      </Option>
-    )
-  )}
-</Select>
-
-
+                    <Select
+                      mode="multiple"
+                      placeholder="Выберите участников"
+                      value={selectedMembers}
+                      onChange={(vals) => setSelectedMembers(vals)}
+                      disabled={!selectedTeamId}
+                      optionLabelProp="label"
+                    >
+                      {(
+                        teams.find((t) => t.ID_Team === selectedTeamId)
+                          ?.members || []
+                      ).map((member) => (
+                        <Option
+                          key={`member-${member.id}`}
+                          value={member.fullName}
+                          label={member.fullName}
+                        >
+                          {member.fullName}
+                          {member.role
+                            ? ` — ${member.role}`
+                            : " — [должность не указана]"}
+                        </Option>
+                      ))}
+                    </Select>
                   </Form.Item>
 
                   <Form.Item

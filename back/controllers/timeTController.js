@@ -1,6 +1,7 @@
 const { sql, poolConnect, pool } = require('../config/db');
+const { createNotification } = require('../services/notification.service');
 
-// Добавить запись учета времени
+// 🔹 Добавить запись учета времени
 const createTimeEntry = async (req, res) => {
   const { taskName, description, hours, date } = req.body;
 
@@ -12,6 +13,7 @@ const createTimeEntry = async (req, res) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
+    // 1. Вставка записи в Execution
     await pool.request()
       .input('ID_Task', sql.Int, taskName)
       .input('ID_Employee', sql.Int, tokenUser.id)
@@ -24,6 +26,48 @@ const createTimeEntry = async (req, res) => {
         VALUES (@ID_Task, @ID_Employee, @Start_Date, @End_Date, @Description, @Hours_Spent)
       `);
 
+    // 2. Получение информации о задаче, проекте, сотруднике
+    const infoResult = await pool.request()
+      .input('ID_Task', sql.Int, taskName)
+      .input('ID_User', sql.Int, tokenUser.id)
+      .query(`
+        SELECT 
+          t.Task_Name,
+          o.Order_Name,
+          o.ID_Team,
+          u.First_Name + ' ' + u.Last_Name AS EmployeeName
+        FROM Tasks t
+        JOIN Orders o ON t.ID_Order = o.ID_Order
+        JOIN Users u ON u.ID_User = @ID_User
+        WHERE t.ID_Task = @ID_Task
+      `);
+
+    const taskInfo = infoResult.recordset[0];
+    if (!taskInfo) {
+      return res.status(201).json({ message: 'Время добавлено, но уведомление не отправлено (нет данных о задаче)' });
+    }
+
+    // 3. Поиск email менеджера команды
+    const managerResult = await pool.request()
+      .input('ID_Team', sql.Int, taskInfo.ID_Team)
+      .query(`
+        SELECT TOP 1 u.Email
+        FROM TeamMembers tm
+        JOIN Users u ON tm.ID_User = u.ID_User
+        WHERE tm.ID_Team = @ID_Team AND u.ID_Role IN (
+          SELECT ID_Role FROM Roles WHERE Role_Name LIKE N'%менеджер%'
+        )
+      `);
+
+    const managerEmail = managerResult.recordset[0]?.Email;
+    if (managerEmail) {
+      await createNotification({
+        userEmail: managerEmail,
+        title: 'Добавлена карточка времени',
+        description: `Сотрудник ${taskInfo.EmployeeName} добавил время к задаче "${taskInfo.Task_Name}"`,
+      });
+    }
+
     res.status(201).json({ message: 'Время добавлено' });
   } catch (error) {
     console.error('Ошибка при добавлении:', error);
@@ -31,7 +75,7 @@ const createTimeEntry = async (req, res) => {
   }
 };
 
-// Обновить запись учета времени
+// 🔹 Обновить запись учета времени
 const updateTimeEntry = async (req, res) => {
   const { id } = req.params;
   const { taskName, description, hours, date } = req.body;
@@ -68,7 +112,7 @@ const updateTimeEntry = async (req, res) => {
   }
 };
 
-// Удалить запись учета времени
+// 🔹 Удалить запись учета времени
 const deleteTimeEntry = async (req, res) => {
   const { id } = req.params;
 
@@ -94,7 +138,7 @@ const deleteTimeEntry = async (req, res) => {
   }
 };
 
-// Получить все записи времени
+// 🔹 Получить все записи времени
 const getTimeEntries = async (req, res) => {
   try {
     const userId = req.user?.id;

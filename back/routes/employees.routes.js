@@ -8,7 +8,9 @@ const {
   uploadAvatar,
   getExtendedEmployeeList,
   getAllEmployeesFull,
-  getAllEmployeesExtended
+  getAllEmployeesExtended,
+  getEmployeeById,
+  getTasksByEmployee // ✅ добавлен импорт
 } = require('../controllers/employees.controller');
 const { getExtendedEmployees } = require('../controllers/employeesExtended.controller');
 
@@ -85,5 +87,11 @@ router.get('/legacy-extended', getExtendedEmployeeList);
 
 // Альтернативный расширенный маршрут (например, из другого контроллера)
 router.get('/alt-extended', getExtendedEmployees);
+
+// Получение задач по сотруднику (новый маршрут) ✅
+router.get('/:id/tasks', getTasksByEmployee);
+
+// Получение одного сотрудника по ID
+router.get('/:id', getEmployeeById);
 
 module.exports = router;

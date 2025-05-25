@@ -12,13 +12,12 @@ import {
   Modal,
   Button,
 } from "antd";
-import {
-  EyeOutlined,
-  ClockCircleOutlined,
-} from "@ant-design/icons";
+import { EyeOutlined, ClockCircleOutlined } from "@ant-design/icons";
+
 import { useAuth } from "../contexts/useAuth";
 import HeaderEmployee from "../components/HeaderEmployee";
 import Sidebar from "../components/Sidebar";
+
 import {
   DragDropContext,
   Droppable,
@@ -80,7 +79,20 @@ const EmployeeDashboard = () => {
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const [pendingDrag, setPendingDrag] = useState<DropResult | null>(null);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
-
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    // Добавляем или убираем класс для изменения отступов при сворачивании сайдбара
+    if (sidebarCollapsed) {
+      document.body.classList.add("sidebar-collapsed");
+    } else {
+      document.body.classList.remove("sidebar-collapsed");
+    }
+  
+    // Возвращаем отступы в нормальное состояние при монтировании компонента
+    return () => document.body.classList.remove("sidebar-collapsed");
+  
+  }, [sidebarCollapsed]);
+  
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Только потом объявлять filteredTasks
@@ -267,8 +279,15 @@ const EmployeeDashboard = () => {
   }, [user?.id, messageApi]);
 
   useEffect(() => {
-    fetchTasks();
+    fetchTasks(); // первая загрузка
+  
+    const interval = setInterval(() => {
+      fetchTasks(); // периодическая проверка
+    }, 10000); // каждые 10 сек
+  
+    return () => clearInterval(interval); // очистка при размонтировании
   }, [fetchTasks]);
+  
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
@@ -289,14 +308,9 @@ const EmployeeDashboard = () => {
       return;
     }
 
-    if (
-      fromStatus === "Выполнена" &&
-      (toStatus === "Новая" ||
-        toStatus === "В работе" ||
-        toStatus === "Завершена")
-    ) {
+    if (fromStatus === "Выполнена" && toStatus !== "Выполнена") {
       messageApi.warning(
-        'Нельзя переместить задачу из "Выполнена" в "Новая", "В работе" или "Завершена"'
+        'Нельзя переместить задачу из "Выполнена" в другие статусы'
       );
       return;
     }
@@ -307,32 +321,6 @@ const EmployeeDashboard = () => {
       setIsConfirmModalVisible(true);
     } else {
       confirmDragAction(result);
-    }
-  };
-
-  const confirmDragAction = async (result: DropResult) => {
-    const { draggableId, destination } = result;
-    const taskId = parseInt(draggableId, 10);
-    const updatedStatus = destination?.droppableId;
-
-    try {
-      await fetch(
-        `${API_URL}/api/tasks/${taskId}/status?employeeId=${user?.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            taskId,
-            employeeId: user?.id,
-            statusName: updatedStatus,
-          }),
-        }
-      );
-      fetchTasks();
-    } catch {
-      messageApi.error("Ошибка при изменении статуса задачи");
-    } finally {
-      setPendingDrag(null);
     }
   };
 
@@ -353,63 +341,57 @@ const EmployeeDashboard = () => {
       </Avatar.Group>
     );
   };
-  
 
-  const getDeadlineClass = (deadline: string) => {
-    const now = dayjs();
-    const time = dayjs(deadline);
-    if (time.isBefore(now)) return "expired";
-    if (time.diff(now, "hour") <= 24) return "warning";
-    return "safe";
-  };
+  const confirmDragAction = async (result: DropResult) => {
+    const { draggableId, destination, source } = result;
+    const taskId = parseInt(draggableId.replace("task-", ""), 10);
+    const updatedStatus = destination?.droppableId;
 
-  const renderDeadlineBox = (
-    deadline: string | null | undefined,
-    status?: string
-  ) => {
-    if (status === "Завершена") {
-      return (
-        <div className="deadline-box">
-          <ClockCircleOutlined style={{ marginRight: 6 }} />
-          Завершена
-        </div>
+    if (!updatedStatus) return;
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/tasks/${taskId}/status?employeeId=${user?.id}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            taskId,
+            employeeId: user?.id,
+            statusName: updatedStatus,
+          }),
+        }
       );
+
+      if (!response.ok) {
+        throw new Error("Ошибка при обновлении статуса");
+      }
+
+      // ✅ Только после успешного запроса — обновляем UI
+      setColumns((prev) => {
+        const newColumns = { ...prev };
+        const fromStatus = source.droppableId;
+        const toStatus = updatedStatus;
+
+        const taskIndex = newColumns[fromStatus].findIndex(
+          (t) => `task-${t.ID_Task}` === result.draggableId
+        );
+
+        if (taskIndex !== -1) {
+          const [movedTask] = newColumns[fromStatus].splice(taskIndex, 1);
+          movedTask.Status_Name = toStatus;
+          newColumns[toStatus].push(movedTask);
+        }
+
+        return newColumns;
+      });
+    } catch (error) {
+      messageApi.error("Ошибка при изменении статуса");
+      console.error(error);
+    } finally {
+      setPendingDrag(null);
+      setIsConfirmModalVisible(false);
     }
-
-    if (status === "Выполнена") {
-      return (
-        <div className="deadline-box">
-          <ClockCircleOutlined style={{ marginRight: 6 }} />
-          Выполнено
-        </div>
-      );
-    }
-
-    if (!deadline) {
-      return (
-        <div className="deadline-box undefined">
-          <ClockCircleOutlined style={{ marginRight: 6 }} />
-          Без срока
-        </div>
-      );
-    }
-
-    const time = dayjs(deadline);
-    const now = dayjs();
-    const diffDays = time.diff(now, "day");
-    const diffHours = time.diff(now, "hour");
-
-    let label = "";
-    if (diffDays > 0) label = `Осталось ${diffDays} дн`;
-    else if (diffHours > 0) label = `Осталось ${diffHours} ч`;
-    else label = "Срок истёк";
-
-    return (
-      <div className={`deadline-box ${getDeadlineClass(deadline)}`}>
-        <ClockCircleOutlined style={{ marginRight: 6 }} />
-        {label}
-      </div>
-    );
   };
 
   const tableColumns = [
@@ -517,21 +499,84 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const renderDeadlineBox = (task: Task) => {
+    const now = dayjs();
+    if (task.Status_Name === "Выполнена") {
+      return (
+        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+          <ClockCircleOutlined />
+          Выполнено
+        </div>
+      );
+    }
+  
+    if (task.Status_Name === "Завершена") {
+      if (!task.Deadline || dayjs(task.Deadline).isBefore(now)) {
+        return (
+          <div style={{ marginTop: 8, fontSize: "13px", color: "red", display: "flex", alignItems: "center", gap: 6 }}>
+            <ClockCircleOutlined />
+            Срок истёк
+          </div>
+        );
+      } else {
+        return (
+          <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+            <ClockCircleOutlined />
+            Завершено
+          </div>
+        );
+      }
+    }
+  
+    if (!task.Deadline) {
+      return (
+        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+          <ClockCircleOutlined />
+          Без срока
+        </div>
+      );
+    }
+  
+    const deadline = dayjs(task.Deadline);
+    const isExpired = deadline.isBefore(now);
+    const isSoon = deadline.diff(now, "hour") <= 24;
+  
+    return (
+      <div style={{
+        marginTop: 8,
+        fontSize: "13px",
+        color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}>
+        <ClockCircleOutlined />
+        {isExpired
+          ? "Срок истёк"
+          : `Дедлайн: ${deadline.format("YYYY-MM-DD HH:mm")}`}
+      </div>
+    );
+  };
+  
+  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
         <div className="dashboard">
           <HeaderEmployee />
           <div className="dashboard-body">
-            <Sidebar role="employee" />
+          <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
+
             <main className="main-content kanban-board">
-            <h1
+              <h1
                 style={{
                   fontSize: "28px",
                   fontWeight: 600,
                   marginBottom: "24px",
                 }}
-              >Мои задачи</h1>
+              >
+                Мои задачи
+              </h1>
               {contextHolder}
 
               <Tabs
@@ -566,15 +611,21 @@ const EmployeeDashboard = () => {
                             placeholder="Поиск задач..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            style={{ width: 200 }}
+                            style={{ width: "250px" }}
                           />
 
                           <Dropdown
                             menu={{
                               onClick: ({ key }) => handleExport(key),
                               items: [
-                                { key: "word", label: "Экспорт в Word (.docx)" },
-                                { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                                {
+                                  key: "word",
+                                  label: "Экспорт в Word (.docx)",
+                                },
+                                {
+                                  key: "excel",
+                                  label: "Экспорт в Excel (.xlsx)",
+                                },
                                 { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                               ],
                             }}
@@ -584,7 +635,6 @@ const EmployeeDashboard = () => {
                             <Button icon={<DownloadOutlined />}>Экспорт</Button>
                           </Dropdown>
                         </div>
-
                         <DragDropContext onDragEnd={handleDragEnd}>
                           <div
                             style={{
@@ -593,51 +643,89 @@ const EmployeeDashboard = () => {
                               overflowX: "auto",
                             }}
                           >
+                            {/* Заголовки статусов — в отдельных блоках */}
                             <div
                               style={{
                                 display: "grid",
                                 gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
-                                gap: "16px",
+                                gap: "12px",
+                                marginBottom: "12px",
+                                paddingInline: "4px",
+                              }}
+                            >
+                              {statuses.map((status) => (
+                                <div
+                                  key={`status-title-${status}`}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    backgroundColor: "var(--card-bg-color)",
+                                    padding: "10px 12px",
+                                    borderRadius: "8px",
+                                    boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                                    textTransform: "uppercase",
+                                    fontSize: "15px",
+                                    fontWeight: 400,
+                                    color: "var(--text-color)",
+
+                                    justifyContent: "center",
+                                    position: "relative",
+                                    minHeight: "40px",
+                                  }}
+                                >
+                                  {/* Вертикальная полоска слева */}
+                                  <div
+                                    style={{
+                                      position: "absolute",
+                                      left: 0,
+                                      top: 0,
+                                      bottom: 0,
+                                      width: "5px",
+                                      borderTopLeftRadius: "8px",
+                                      borderBottomLeftRadius: "8px",
+                                      backgroundColor: "#00bcd4",
+                                    }}
+                                  />
+                                  {status.toUpperCase()}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Колонки задач */}
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
+                                gap: "12px",
+                                paddingInline: "4px",
                               }}
                             >
                               {statuses.map((status) => (
                                 <Droppable key={status} droppableId={status}>
-                                       {(provided) => (
-                             <div
-                               ref={provided.innerRef}
-                               {...provided.droppableProps}
-                               style={{
-                                 display: "flex",
-                                 flexDirection: "column",
-                                 gap: "16px",
-                                 minWidth: "300px",
-                                 backgroundColor: "var(--card-bg-color)", // ✅ тема из переменной
-                                 borderRadius: "10px",
-                                 padding: "1rem",
-                                 boxShadow: "0 4px 12px rgba(0, 0, 0, 0.2)", // универсальная тень
-                               }}
-                             >
-                                      <div
-                                        key={`header-${status}`}
-                                        className="kanban-status-header"
-                                        style={{
-                                          position: "sticky",
-                                          top: 0,
-                                          zIndex: 10,
-                                          // ✅ Удалено: border: '1px solid #444',
-                                        }}
-                                      >
-                                        {status}
-                                      </div>
-
+                                  {(provided) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.droppableProps}
+                                      style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: "12px",
+                                        minWidth: "300px",
+                                        backgroundColor: "var(--card-bg-color)",
+                                        borderRadius: "10px",
+                                        padding: "12px",
+                                        boxShadow:
+                                          "0 4px 12px rgba(0, 0, 0, 0.2)",
+                                      }}
+                                    >
                                       {filteredTasks
                                         .filter(
                                           (task) => task.Status_Name === status
                                         )
                                         .map((task, index) => (
                                           <Draggable
-                                            key={`${task.ID_Task}`}
-                                            draggableId={`${task.ID_Task}`}
+                                            key={`task-${task.ID_Task}`}
+                                            draggableId={`task-${task.ID_Task}`}
                                             index={index}
                                           >
                                             {(providedDraggable) => (
@@ -666,11 +754,17 @@ const EmployeeDashboard = () => {
                                                     <i>Проект:</i>{" "}
                                                     {task.Order_Name}
                                                   </p>
+
+                                                  {/* Аватарки сотрудников */}
                                                   <div className="kanban-avatars">
                                                     {renderEmployees(
                                                       task.Employees
                                                     )}
                                                   </div>
+
+                                                  {renderDeadlineBox(task)}
+
+                                                  {/* Кнопки просмотров и комментариев — отдельно ниже */}
                                                   <div className="task-footer">
                                                     <Button
                                                       type="text"
@@ -691,10 +785,6 @@ const EmployeeDashboard = () => {
                                                       }
                                                       style={{ padding: 0 }}
                                                     />
-                                                    {renderDeadlineBox(
-                                                      task.Deadline,
-                                                      task.Status_Name
-                                                    )}
                                                   </div>
                                                 </div>
                                               </div>
@@ -740,8 +830,14 @@ const EmployeeDashboard = () => {
                             menu={{
                               onClick: ({ key }) => handleExport(key),
                               items: [
-                                { key: "word", label: "Экспорт в Word (.docx)" },
-                                { key: "excel", label: "Экспорт в Excel (.xlsx)" },
+                                {
+                                  key: "word",
+                                  label: "Экспорт в Word (.docx)",
+                                },
+                                {
+                                  key: "excel",
+                                  label: "Экспорт в Excel (.xlsx)",
+                                },
                                 { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                               ],
                             }}
@@ -809,19 +905,21 @@ const EmployeeDashboard = () => {
                           key={`emp-view-${emp.ID_Employee}-${idx}`}
                           title={emp.Full_Name}
                         >
-<Avatar
-  src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
-  style={{
-    backgroundColor: emp.Avatar ? "transparent" : "#777",
-    marginRight: 4,
-  }}
->
-  {!emp.Avatar && getInitials(emp.Full_Name || "")}
-</Avatar>
-
-
-
-
+                          <Avatar
+                            src={
+                              emp.Avatar
+                                ? `${API_URL}/uploads/${emp.Avatar}`
+                                : undefined
+                            }
+                            style={{
+                              backgroundColor: emp.Avatar
+                                ? "transparent"
+                                : "#777",
+                              marginRight: 4,
+                            }}
+                          >
+                            {!emp.Avatar && getInitials(emp.Full_Name || "")}
+                          </Avatar>
                         </Tooltip>
                       ))}
                     </div>
@@ -933,15 +1031,20 @@ const EmployeeDashboard = () => {
                           <List.Item.Meta
                             avatar={
                               <Avatar
-                              src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
-                              style={{
-                                backgroundColor: item.Avatar ? "transparent" : "#777",
-                              }}
-                            >
-                              {!item.Avatar && getInitials(item.AuthorName || "")}
-                            </Avatar>
-                            
-
+                                src={
+                                  item.Avatar
+                                    ? `${API_URL}/uploads/${item.Avatar}`
+                                    : undefined
+                                }
+                                style={{
+                                  backgroundColor: item.Avatar
+                                    ? "transparent"
+                                    : "#777",
+                                }}
+                              >
+                                {!item.Avatar &&
+                                  getInitials(item.AuthorName || "")}
+                              </Avatar>
                             }
                             title={
                               <div

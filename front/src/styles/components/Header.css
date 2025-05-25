@@ -1,3 +1,4 @@
+/* ===== ОСНОВНАЯ ШАПКА ===== */
 .header {
   position: fixed;
   top: 0;
@@ -30,11 +31,11 @@
   min-width: 0;
 }
 
-/* === СТИЛИ ПОИСКА === */
+/* ===== ПОИСК ===== */
 .search-input {
   width: 250px;
   margin-right: 16px;
-  flex-shrink: 1; /* Позволяет сжиматься */
+  flex-shrink: 1;
 }
 
 .search-input .ant-select {
@@ -72,7 +73,7 @@
   color: var(--text-color) !important;
 }
 
-/* Стили для выпадающего списка */
+/* ===== ВЫПАДАЮЩЕЕ МЕНЮ ПОИСКА ===== */
 .autocomplete-dropdown {
   background-color: var(--card-bg-color) !important;
   border-radius: 8px !important;
@@ -88,13 +89,13 @@
   background-color: var(--hover-bg-color) !important;
 }
 
-/* === СТИЛИ ИКОНОК === */
+/* ===== ИКОНКИ ===== */
 .icon {
   margin-right: 16px;
   flex-shrink: 0;
 }
 
-/* Модалки */
+/* ===== МОДАЛКИ ===== */
 .dark-modal .ant-modal-content,
 .dark-modal .ant-modal-header,
 .dark-modal .ant-modal-footer {
@@ -110,7 +111,7 @@
   border-top: 1px solid #333;
 }
 
-/* Меню профиля */
+/* ===== МЕНЮ ПРОФИЛЯ ===== */
 .ant-dropdown-menu {
   background-color: var(--card-bg-color) !important;
   border-radius: 8px;
@@ -118,24 +119,163 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Цвет текста пунктов */
 .ant-dropdown-menu-item {
   color: var(--text-color) !important;
   transition: background-color var(--transition-time), color var(--transition-time);
 }
 
-/* При наведении */
 .ant-dropdown-menu-item:hover {
   background-color: var(--hover-bg-color) !important;
   color: var(--accent-color) !important;
 }
 
-/* Для светлой темы */
 [data-theme="light"] .ant-dropdown-menu-item {
   color: #000000 !important;
 }
 
-/* Для тёмной темы */
 [data-theme="dark"] .ant-dropdown-menu-item {
   color: #ffffff !important;
+}
+
+/* ===== УВЕДОМЛЕНИЯ ===== */
+.notification-item {
+  background: none !important;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.notification-item:hover {
+  background-color: var(--hover-bg-color);
+}
+
+.notification-title {
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.notification-description {
+  color: var(--text-color);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.notification-time {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.notification-close {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  font-size: 16px;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.notification-close:hover {
+  color: var(--accent-color);
+}
+/* Drawer уведомлений */
+.ant-drawer-content {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.ant-drawer-header {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.ant-drawer-title {
+  color: var(--text-color) !important;
+}
+
+/* Кнопка закрытия */
+.ant-drawer-close {
+  color: var(--text-color) !important;
+}
+
+.ant-drawer-close:hover {
+  color: var(--accent-color) !important;
+}
+/* Custom toast — адаптация под темы */
+.Toastify__toast {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.Toastify__toast--info {
+  border-left: 4px solid var(--accent-color) !important;
+}
+
+.Toastify__toast-body {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.Toastify__close-button {
+  color: var(--text-color) !important;
+}
+
+
+/* Убираем верхний отступ у списка уведомлений */
+.ant-drawer .ant-list {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+
+/* === Модальное окно выхода — единый стиль для обеих тем === */
+.confirm-logout-modal .ant-modal-content {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+.confirm-logout-modal .ant-modal-header {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+.confirm-logout-modal .ant-modal-footer {
+  background-color: var(--card-bg-color) !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+.confirm-logout-modal .ant-btn {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.3s ease;
+}
+
+.confirm-logout-modal .ant-btn:hover {
+  color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+
+
+/* === Модальное окно: фон оверлея адаптивный === */
+.confirm-logout-modal .ant-modal-root,
+.confirm-logout-modal .ant-modal-wrap {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+
+[data-theme="dark"] .confirm-logout-modal .ant-modal-wrap {
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+[data-theme="light"] .confirm-logout-modal .ant-modal-wrap {
+  background-color: rgba(240, 240, 240, 0.6) !important;
 }

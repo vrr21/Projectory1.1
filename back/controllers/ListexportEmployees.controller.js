@@ -57,7 +57,6 @@ async function getEmployeesData() {
       ), '–') AS Tasks
 
     FROM Users U
-    WHERE U.ID_Role != 1
   `);
   return result.recordset;
 }

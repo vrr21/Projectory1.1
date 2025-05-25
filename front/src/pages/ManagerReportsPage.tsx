@@ -29,7 +29,6 @@ import {
 import Header from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
 import { useTheme } from "../contexts/ThemeContext";
-import { SearchOutlined } from "@ant-design/icons";
 import { DownloadOutlined } from "@ant-design/icons";
 import { useAuth } from "../contexts/useAuth";
 
@@ -56,10 +55,11 @@ const { RangePicker } = DatePicker;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TaskByProjectType {
-  Project_Type: string;
+  Task_Type: string; // ← Исправлено
   Task_Count: number;
   Task_Date: string;
 }
+
 
 interface TaskByEmployee {
   Employee_Name: string;
@@ -323,34 +323,44 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
     },
     scales: {
       x: { ticks: { color: textColor }, grid: { color: gridColor } },
-      y: { ticks: { color: textColor }, grid: { color: gridColor } },
+      y: {
+        ticks: {
+          color: textColor,
+          stepSize: 1,
+          callback: function (value: string | number) {
+            return Number(value) % 1 === 0 ? value : null;
+          },
+        },
+        grid: { color: gridColor },
+      },
     },
-    maintainAspectRatio: false
+    maintainAspectRatio: false,
   };
   
-
+  const groupedByProjectType = applyDateFilter(tasksByProjectType).reduce((acc, item) => {
+    if (!item.Task_Type) return acc;
+    if (!acc[item.Task_Type]) acc[item.Task_Type] = 0;
+    acc[item.Task_Type] += item.Task_Count;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  
   const pieData = {
-    labels: applyDateFilter(tasksByProjectType).map(
-      (item) => item.Project_Type
-    ),
+    labels: Object.keys(groupedByProjectType),
     datasets: [
       {
-        data: applyDateFilter(tasksByProjectType).map(
-          (item) => item.Task_Count
-        ),
+        data: Object.values(groupedByProjectType),
         backgroundColor: [
-          "#1976D2",
-          "#26A69A",
-          "#FFB300",
-          "#66BB6A",
-          "#EF5350",
-          "#AB47BC",
+          "#1976D2", "#26A69A", "#FFB300", "#66BB6A", "#EF5350", "#AB47BC",
+          "#5C6BC0", "#EC407A", "#FFA726", "#42A5F5", "#9CCC65", "#FF7043"
         ],
         borderColor: textColor,
         borderWidth: 0.3,
       },
     ],
   };
+  
+  
   const groupedTasksByEmployee = applyDateFilter(tasksByEmployee).reduce((acc, curr) => {
     if (!acc[curr.Employee_Name]) {
       acc[curr.Employee_Name] = 0;
@@ -506,10 +516,9 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
             >
               <Input
                 placeholder="Поиск по всем данным..."
-                prefix={<SearchOutlined />}
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
-                style={{ width: "300px" }}
+                style={{ width: "250px" }}
               />
               <Dropdown
                 menu={{
@@ -599,7 +608,7 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
             </div>
 
             <Divider>
-              <span>Количество задач по проектам по датам</span>
+              <span>Количество задач проектов по датам</span>
               <Dropdown
                 overlay={buildFilterMenu(setDateRange)}
                 trigger={["click"]}

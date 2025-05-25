@@ -23,7 +23,6 @@ exports.getAllEmployees = async (req, res) => {
       LEFT JOIN Assignment a ON u.ID_User = a.ID_Employee
       LEFT JOIN Tasks t ON a.ID_Task = t.ID_Task
       LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
-      WHERE u.ID_Role != 1
       GROUP BY 
         u.ID_User, u.First_Name, u.Last_Name, u.Email, u.Phone, u.Avatar
     `);
@@ -186,7 +185,6 @@ exports.getExtendedEmployeeList = async (req, res) => {
       FROM Users u
       LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
       LEFT JOIN Teams t ON tm.ID_Team = t.ID_Team
-      WHERE u.ID_Role != 1
       GROUP BY u.ID_User, u.First_Name, u.Last_Name, u.Email, u.Phone, u.Avatar
     `);
 
@@ -219,7 +217,6 @@ exports.getAllEmployeesFull = async (req, res) => {
       LEFT JOIN Orders O ON O.ID_Team = T.ID_Team
       LEFT JOIN Assignment A ON A.ID_Employee = U.ID_User
       LEFT JOIN Tasks TK ON A.ID_Task = TK.ID_Task
-      WHERE U.ID_Role != 1
       GROUP BY U.ID_User, U.First_Name, U.Last_Name, U.Email, U.Phone, R.Role_Name
     `);
     res.json(result.recordset);
@@ -228,6 +225,7 @@ exports.getAllEmployeesFull = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении сотрудников (full)' });
   }
 };
+
 
 exports.getAllEmployeesExtended = async (req, res) => {
   try {
@@ -280,12 +278,101 @@ exports.getAllEmployeesExtended = async (req, res) => {
         ), '–') AS Tasks
 
       FROM Users U
-      WHERE U.ID_Role != 1
     `);
 
     res.json(result.recordset);
   } catch (err) {
     console.error('Ошибка при получении расширенной информации о сотрудниках:', err);
     res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
+  }
+};
+
+
+// back/controllers/employees.controller.js
+// Получить профиль сотрудника по ID
+exports.getEmployeeById = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await poolConnect;
+
+    const result = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT 
+          U.ID_User,
+          U.First_Name,
+          U.Last_Name,
+          U.Email,
+          U.Phone,
+          U.Avatar,
+          R.Role_Name AS Role,
+
+          -- Агрегация команд
+          (
+            SELECT STRING_AGG(T.Team_Name, ', ')
+            FROM TeamMembers TM
+            JOIN Teams T ON TM.ID_Team = T.ID_Team
+            WHERE TM.ID_User = U.ID_User
+          ) AS Teams,
+
+          -- Агрегация проектов
+          (
+            SELECT STRING_AGG(O.Order_Name, ', ')
+            FROM Orders O
+            WHERE EXISTS (
+              SELECT 1 FROM TeamMembers TM
+              JOIN Teams T ON TM.ID_Team = T.ID_Team
+              WHERE TM.ID_User = U.ID_User AND T.ID_Team = O.ID_Team
+            )
+          ) AS Projects,
+
+          -- Агрегация задач
+          (
+            SELECT STRING_AGG(TK.Task_Name, ', ')
+            FROM Assignment A
+            JOIN Tasks TK ON A.ID_Task = TK.ID_Task
+            WHERE A.ID_Employee = U.ID_User
+          ) AS Tasks
+
+        FROM Users U
+        LEFT JOIN Roles R ON U.ID_Role = R.ID_Role
+        WHERE U.ID_User = @id
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: 'Профиль сотрудника не найден' });
+    }
+
+    res.json(result.recordset[0]);
+  } catch (error) {
+    console.error('Ошибка при получении профиля сотрудника:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении профиля сотрудника' });
+  }
+};
+
+exports.getTasksByEmployee = async (req, res) => {
+  const employeeId = parseInt(req.params.id, 10);
+
+  if (isNaN(employeeId)) {
+    return res.status(400).json({ message: 'Некорректный ID сотрудника' });
+  }
+
+  try {
+    await poolConnect;
+    const result = await pool.request()
+      .input('employeeId', sql.Int, employeeId)
+      .query(`
+        SELECT T.ID_Task, T.Task_Name, S.Status_Name AS Status
+        FROM Tasks T
+        JOIN Assignment A ON T.ID_Task = A.ID_Task
+        LEFT JOIN Statuses S ON T.ID_Status = S.ID_Status
+        WHERE A.ID_Employee = @employeeId
+      `);
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Ошибка при получении задач сотрудника:', err);
+    res.status(500).json({ message: 'Ошибка при получении задач сотрудника' });
   }
 };

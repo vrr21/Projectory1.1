@@ -37,13 +37,31 @@ const RegisterPage: React.FC = () => {
 
   const onFinish = async (values: RegisterForm) => {
     try {
+      const allowedDomains = [
+        "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
+        "icloud.com", "me.com", "mail.ru", "yandex.ru",
+        "yandex.com", "protonmail.com", "zoho.com", "gmx.com"
+      ];
+      const emailDomain = values.email.split("@")[1];
+  
+      if (!allowedDomains.includes(emailDomain)) {
+        return messageApi.error("Разрешены только адреса: " + allowedDomains.join(", "));
+      }
+  
       if (values.password !== values.confirmPassword) {
         return messageApi.warning("Пароли не совпадают!");
+      }
+  
+      if (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.password)) {
+        return messageApi.error(
+          "Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру"
+        );
       }
   
       if (!values.phone || values.phone.length < 10) {
         return messageApi.error("Введите корректный номер телефона!");
       }
+  
       await registerUser({
         firstName: values.firstName,
         lastName: values.lastName,
@@ -52,12 +70,15 @@ const RegisterPage: React.FC = () => {
         password: values.password,
         isManager: false,
       });
-      
   
       messageApi.success("Регистрация успешна! Вход...");
       setTimeout(() => navigate("/login", { state: { fromRegister: true } }), 1000);
     } catch (error: unknown) {
-      if (typeof error === "object" && error !== null && "response" in error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error
+      ) {
         const err = error as { response?: { data?: { message?: string } } };
         console.error("Ошибка регистрации:", err.response?.data);
         messageApi.error(err.response?.data?.message || "Ошибка при регистрации");
@@ -67,6 +88,7 @@ const RegisterPage: React.FC = () => {
       }
     }
   };
+  
   
 
   return (
@@ -109,7 +131,7 @@ const RegisterPage: React.FC = () => {
               <PhoneInput
                 country={"by"}
                 enableSearch
-                onlyCountries={["ru", "by", "kz", "ua", "kg", "md", "tj", "tm", "uz", "az", "am"]}
+                onlyCountries={["ru", "by"]}
                 inputProps={{
                   name: "phone",
                   required: true,

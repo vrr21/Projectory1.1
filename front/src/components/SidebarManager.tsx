@@ -91,7 +91,15 @@ const SidebarManager: React.FC = () => {
     if (layout) {
       layout.classList.toggle('collapsed', collapsed);
     }
+  
+    // 🔧 синхронизация с body
+    if (collapsed) {
+      document.body.classList.add('sidebar-collapsed');
+    } else {
+      document.body.classList.remove('sidebar-collapsed');
+    }
   }, [collapsed]);
+  
 
   return (
     <Sider

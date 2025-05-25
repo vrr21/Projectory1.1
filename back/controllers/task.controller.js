@@ -1,5 +1,6 @@
 const { pool, sql, poolConnect } = require('../config/db');
 const db = require("../config/db");
+const { createNotification } = require('../services/notification.service');
 
 // 🔹 Получение задач с фильтрацией
 exports.getAllTasks = async (req, res) => {
@@ -13,30 +14,30 @@ exports.getAllTasks = async (req, res) => {
 
     const result = await request.query(`
       SELECT 
-  t.ID_Task,
-  t.Task_Name,
-  t.Description,
-  t.Time_Norm,
-  t.Deadline,
-  s.Status_Name,
-  o.Order_Name,
-  o.ID_Manager,  -- ✅ ДОБАВЛЕНО
-  tm.Team_Name,
-  u.ID_User,
-  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-  u.Avatar
-
+        t.ID_Task,
+        t.Task_Name,
+        t.Description,
+        t.Time_Norm,
+        t.Deadline,
+        s.Status_Name,
+        o.Order_Name,
+        o.ID_Manager,
+        
+        tm.Team_Name,
+        u.ID_User,
+        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+        u.Avatar
       FROM Tasks t
       INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
       INNER JOIN Orders o ON t.ID_Order = o.ID_Order
       INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
-      LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task
-      LEFT JOIN Users u ON a.ID_Employee = u.ID_User
+      INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
+      INNER JOIN Users u ON a.ID_Employee = u.ID_User
       WHERE 1=1
-      ${employee ? 'AND EXISTS (SELECT 1 FROM Assignment a2 WHERE a2.ID_Task = t.ID_Task AND a2.ID_Employee = @EmployeeID)' : ''}
+      ${employee ? 'AND a.ID_Employee = @EmployeeID' : ''}
       ${team ? 'AND tm.ID_Team = @TeamID' : ''}
     `);
-
+    
     const tasks = Object.values(
       result.recordset.reduce((acc, row) => {
         if (!acc[row.ID_Task]) {
@@ -69,6 +70,8 @@ exports.getAllTasks = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении задач', error: error.message });
   }
 };
+
+
 // 🔹 Создание задачи с уведомлением
 exports.createTask = async (req, res) => {
   try {
@@ -83,12 +86,11 @@ exports.createTask = async (req, res) => {
       ID_Manager
     } = req.body;
 
-    // ✅ Проверка наличия ID_Manager
     if (!ID_Manager) {
       return res.status(400).json({ error: "ID_Manager не указан" });
     }
 
-    // ✅ Получение ID статуса "Новая" из базы
+    // Получение ID статуса "Новая"
     const statusResult = await db.pool
       .request()
       .input("Status_Name", db.sql.NVarChar, "Новая")
@@ -100,7 +102,7 @@ exports.createTask = async (req, res) => {
 
     const newStatusId = statusResult.recordset[0].ID_Status;
 
-    // ✅ Вставка задачи
+    // Вставка новой задачи
     const taskResult = await db.pool
       .request()
       .input("Task_Name", db.sql.NVarChar, Task_Name)
@@ -118,9 +120,10 @@ exports.createTask = async (req, res) => {
 
     const newTaskId = taskResult.recordset[0].ID_Task;
 
-    // ✅ Привязка сотрудников
+    // Привязка сотрудников к задаче через Assignment + отправка уведомлений
     if (EmployeeIds && Array.isArray(EmployeeIds)) {
       for (const empId of EmployeeIds) {
+        // Вставка в Assignment
         await db.pool
           .request()
           .input("ID_Task", db.sql.Int, newTaskId)
@@ -130,10 +133,38 @@ exports.createTask = async (req, res) => {
             INSERT INTO Assignment (ID_Task, ID_Employee, ID_Status)
             VALUES (@ID_Task, @ID_Employee, @ID_Status)
           `);
+
+        // Получение информации о сотруднике
+        const userResult = await db.pool
+          .request()
+          .input("ID_User", db.sql.Int, empId)
+          .query(`
+            SELECT First_Name, Last_Name, Email 
+            FROM Users 
+            WHERE ID_User = @ID_User
+          `);
+        const employee = userResult.recordset[0];
+
+        // Получение информации о менеджере
+        const managerResult = await db.pool
+          .request()
+          .input("ID_Manager", db.sql.Int, ID_Manager)
+          .query(`
+            SELECT First_Name, Last_Name 
+            FROM Users 
+            WHERE ID_User = @ID_Manager
+          `);
+        const manager = managerResult.recordset[0];
+
+        // Создание уведомления
+        await createNotification({
+          userEmail: employee.Email,
+          title: "Назначена новая задача",
+          description: `Менеджер ${manager.First_Name} ${manager.Last_Name} назначил вам задачу "${Task_Name}"`,
+        });
       }
     }
 
-    // ✅ Ответ клиенту
     res.status(201).json({
       ID_Task: newTaskId,
       Task_Name,
@@ -143,9 +174,8 @@ exports.createTask = async (req, res) => {
       Deadline,
       EmployeeIds,
       attachments,
-      ID_Manager
+      ID_Manager,
     });
-
   } catch (error) {
     console.error("🔥 Ошибка при создании задачи:", error);
     res.status(500).json({ error: "Ошибка при создании задачи" });
@@ -444,3 +474,5 @@ exports.deleteTasksWithoutEmployees = async (req, res) => {
     res.status(500).json({ message: "Ошибка при удалении задач без сотрудников", error: error.message });
   }
 };
+
+

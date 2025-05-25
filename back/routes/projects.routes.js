@@ -1,6 +1,8 @@
 const express = require('express');
-const { poolConnect, pool, sql } = require('../config/db');  // Подключение к базе данных
+const { poolConnect, pool, sql } = require('../config/db');
 const router = express.Router();
+const verifyToken = require('../middleware/authMiddleware');
+const { notifyProjectAssignment } = require('../services/notification.service');
 
 // 📥 Получить все проекты
 router.get('/', async (req, res) => {
@@ -182,6 +184,59 @@ router.patch('/:id/restore', async (req, res) => {
   } catch (error) {
     console.error('Ошибка при восстановлении проекта:', error);
     res.status(500).json({ message: 'Ошибка сервера при восстановлении проекта' });
+  }
+});
+
+// 👥 Назначить сотрудников в проект и уведомить
+router.post('/assign', verifyToken, async (req, res) => {
+  const { ID_Order, employeeIds = [] } = req.body;
+
+  if (!ID_Order || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+    return res.status(400).json({ message: 'ID проекта и ID сотрудников обязательны' });
+  }
+
+  try {
+    await poolConnect;
+
+    const projectResult = await pool.request()
+      .input('ID_Order', sql.Int, ID_Order)
+      .query('SELECT Order_Name FROM Orders WHERE ID_Order = @ID_Order');
+
+    if (!projectResult.recordset.length) {
+      return res.status(404).json({ message: 'Проект не найден' });
+    }
+
+    const projectName = projectResult.recordset[0].Order_Name;
+
+    for (const empId of employeeIds) {
+      // проверка, не добавлен ли уже
+      const check = await pool.request()
+        .input('ID_Order', sql.Int, ID_Order)
+        .input('ID_Employee', sql.Int, empId)
+        .query(`
+          SELECT 1 FROM ProjectAssignments 
+          WHERE ID_Order = @ID_Order AND ID_Employee = @ID_Employee
+        `);
+
+      if (!check.recordset.length) {
+        await pool.request()
+          .input('ID_Order', sql.Int, ID_Order)
+          .input('ID_Employee', sql.Int, empId)
+          .query(`
+            INSERT INTO ProjectAssignments (ID_Order, ID_Employee)
+            VALUES (@ID_Order, @ID_Employee)
+          `);
+
+        await notifyProjectAssignment(empId, projectName);
+      } else {
+        console.log(`⚠️ Сотрудник ${empId} уже назначен — уведомление не отправлено повторно.`);
+      }
+    }
+
+    res.status(200).json({ message: 'Сотрудники добавлены в проект и уведомлены (если ранее не были)' });
+  } catch (error) {
+    console.error('❌ Ошибка при назначении сотрудников на проект:', error);
+    res.status(500).json({ message: 'Ошибка сервера при назначении сотрудников' });
   }
 });
 

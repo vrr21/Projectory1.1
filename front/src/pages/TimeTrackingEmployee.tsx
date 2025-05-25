@@ -4,7 +4,6 @@ import {
   Button,
   Form,
   Input,
-  Select,
   DatePicker,
   Upload,
   notification,
@@ -22,6 +21,7 @@ import {
   RightOutlined,
   CalendarOutlined,
 } from "@ant-design/icons";
+
 import { UploadFile } from "antd/es/upload/interface";
 import HeaderEmployee from "../components/HeaderEmployee";
 import Sidebar from "../components/Sidebar";
@@ -35,7 +35,9 @@ import { MessageOutlined, UserOutlined } from "@ant-design/icons";
 import { List, Avatar } from "antd";
 import { Dropdown } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
-
+import { PlusOutlined } from "@ant-design/icons";
+import { Select } from "antd";
+import { Radio } from "antd";
 
 dayjs.extend(isoWeek);
 dayjs.extend(weekday);
@@ -54,6 +56,8 @@ interface Project {
 interface Task {
   ID_Task: string;
   Task_Name: string;
+  Status: string;
+  ID_Order: string; // Добавлено свойство для связи задачи с проектом
 }
 
 interface TimeTrackingFormValues {
@@ -61,6 +65,7 @@ interface TimeTrackingFormValues {
   taskName: string;
   description: string;
   hours: number;
+  minutes: number; // Добавлено свойство minutes
   date: dayjs.Dayjs;
   file: UploadFile[];
 }
@@ -75,7 +80,8 @@ interface RawTimeEntry {
   Hours_Spent: number;
   Description?: string;
   Attachments?: string[];
-  ID_User: string; // Добавьте это поле
+  ID_User: string;
+  link?: string; // Добавлено свойство link
 }
 
 interface CommentType {
@@ -104,9 +110,13 @@ const TimeTrackingEmployee: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
+
   const getFilteredEntriesByDay = (day: dayjs.Dayjs) =>
-    filteredEntries.filter((entry) => dayjs(entry.Start_Date).isSame(day, "day"));
-  
+    filteredEntries.filter((entry) =>
+      dayjs(entry.Start_Date).isSame(day, "day")
+    );
+  const activeTasks = tasks;
+
   const filteredEntries = selectedProjectId
     ? timeEntries.filter((entry) =>
         projects.some(
@@ -139,8 +149,21 @@ const TimeTrackingEmployee: React.FC = () => {
   }, []);
 
   const fetchTasks = useCallback(async () => {
-    const res = await fetch(`${API_URL}/api/tasks`);
-    setTasks(await res.json());
+    const token = localStorage.getItem("token");
+    const userResponse = await fetch(`${API_URL}/api/auth/current-user`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const userData = await userResponse.json();
+
+    const res = await fetch(
+      `${API_URL}/api/employees/${userData.ID_User}/tasks`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+
+    const data = await res.json();
+    setTasks(data);
   }, []);
 
   const fetchTimeEntries = useCallback(async () => {
@@ -182,13 +205,17 @@ const TimeTrackingEmployee: React.FC = () => {
     setEditingFileList(fileList);
     setEditingEntry({ ...entry, Attachments: entry.Attachments || [] });
 
+    const hours = Math.floor(entry.Hours_Spent);
+    const minutes = Math.round((entry.Hours_Spent - hours) * 60);
     form.setFieldsValue({
       project,
       taskName: entry.ID_Task,
-      hours: entry.Hours_Spent,
+      hours,
+      minutes,
       date: dayjs(entry.Start_Date),
       description: entry.Description || "",
       file: fileList,
+      attachmentType: "file",
     });
 
     setIsModalVisible(true);
@@ -220,20 +247,28 @@ const TimeTrackingEmployee: React.FC = () => {
     }
   };
 
-  const handleFormSubmit = async (values: TimeTrackingFormValues) => {
+  const handleFormSubmit = async (
+    values: TimeTrackingFormValues & { attachmentType: string; link?: string }
+  ) => {
     const token = localStorage.getItem("token");
+
+    const totalHours = (values.hours || 0) + (values.minutes || 0) / 60;
+
     const payload = {
       project: values.project,
       taskName: values.taskName,
       date: values.date.toISOString(),
       description: values.description,
-      hours: values.hours,
+      hours: parseFloat(totalHours.toFixed(2)),
     };
 
     const method = editingEntry ? "PUT" : "POST";
     const url = `${API_URL}/api/time-tracking${
       editingEntry ? `/${editingEntry.ID_Execution}` : ""
     }`;
+
+    console.log("Payload отправки:", payload);
+    console.log("URL:", url);
 
     try {
       const res = await fetch(url, {
@@ -245,6 +280,9 @@ const TimeTrackingEmployee: React.FC = () => {
         body: JSON.stringify(payload),
       });
 
+      const text = await res.text();
+      console.log("Ответ сервера:", text);
+
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`Ошибка ${res.status}: ${errorText}`);
@@ -254,38 +292,12 @@ const TimeTrackingEmployee: React.FC = () => {
         message: editingEntry ? "Запись обновлена" : "Время добавлено",
       });
 
-      if (values.file?.length) {
-        for (const file of values.file) {
-          const formData = new FormData();
-          formData.append("file", file.originFileObj as File);
-          formData.append("taskId", values.taskName);
+      await fetchTimeEntries(); // Обновить карточки
+      form.resetFields(); // Очистить форму
+      setEditingEntry(null); // Сброс редактирования
+      setIsModalVisible(false); // Закрыть модал
 
-          try {
-            const uploadRes = await fetch(`${API_URL}/api/upload-task`, {
-              method: "POST",
-              body: formData,
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
-            if (!uploadRes.ok) {
-              throw new Error("Ошибка при загрузке файла");
-            }
-
-            const uploadData = await uploadRes.json();
-            api.success({ message: "Файл прикреплён: " + uploadData.filename });
-          } catch (uploadErr) {
-            console.error(uploadErr);
-            api.error({ message: "Ошибка при загрузке файла" });
-          }
-        }
-      }
-
-      fetchTimeEntries();
-      form.resetFields();
-      setEditingEntry(null);
-      setIsModalVisible(false);
+      // Остальная часть кода...
     } catch (error: unknown) {
       if (error instanceof Error) {
         api.error({ message: `Ошибка при сохранении: ${error.message}` });
@@ -335,20 +347,22 @@ const TimeTrackingEmployee: React.FC = () => {
     setIsCommentsModalVisible(true);
     fetchComments(entry.ID_Task);
   };
+
   const handleViewEntry = async (entry: RawTimeEntry) => {
     try {
       const res = await fetch(
         `${API_URL}/api/tasks/${entry.ID_Task}/attachments`
       );
-      if (!res.ok) {
-        throw new Error(`Ошибка загрузки вложений: ${res.status}`);
-      }
-
+      if (!res.ok) throw new Error(`Ошибка загрузки вложений: ${res.status}`);
       const data = await res.json();
-      setViewingEntry({ ...entry, Attachments: data.attachments || [] });
+      setViewingEntry({
+        ...entry,
+        Attachments: data.attachments || [],
+        link: data.link || "", // Убедитесь, что сервер возвращает поле link
+      });
     } catch (error) {
       console.error("Ошибка при получении вложений:", error);
-      setViewingEntry({ ...entry, Attachments: [] });
+      setViewingEntry({ ...entry, Attachments: [], link: "" });
     } finally {
       setIsViewModalVisible(true);
     }
@@ -361,6 +375,8 @@ const TimeTrackingEmployee: React.FC = () => {
     Array.isArray(e) ? e : e.fileList;
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+  console.log("Активные задачи:", activeTasks);
+
   return (
     <App>
       {contextHolder}
@@ -370,98 +386,106 @@ const TimeTrackingEmployee: React.FC = () => {
           <HeaderEmployee />
           <Content className="content">
             <div className="page-content">
-         
-
-                <h1
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: 600,
-                    marginBottom: 0,
-                    flexBasis: "100%",
-                  }}
-                >
-                  Учёт времени
-                </h1>
-                <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "1rem",
-    width: "100%",
-    marginBottom: 16,
-  }}
->
-<Dropdown
-  menu={{
-    items: [
-      ...projects.map((p) => ({
-        key: p.ID_Order,
-        label: p.Order_Name,
-        onClick: () => setSelectedProjectId(p.ID_Order),
-      })),
-      {
-        type: 'divider',
-      },
-      {
-        key: 'reset',
-        label: 'Сбросить фильтр',
-        onClick: () => setSelectedProjectId(null),
-      },
-    ],
-  }}
-  placement="bottomRight"
-  arrow
->
-  <Button icon={<FilterOutlined />}>
-    {selectedProjectId
-      ? projects.find((p) => p.ID_Order === selectedProjectId)?.Order_Name
-      : "Фильтр по проекту"}
-  </Button>
-</Dropdown>
-
-
-
+              <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  marginBottom: 0,
+                  flexBasis: "100%",
+                }}
+              >
+                Учёт времени
+              </h1>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: "1rem",
+                  width: "100%",
+                  padding: "24px 0", // отступ сверху и снизу
+                }}
+              >
+                {/* Левая часть — кнопка добавления */}
                 <Button
-                  icon={<LeftOutlined />}
-                  onClick={() => setWeekStart(weekStart.subtract(1, "week"))}
-                />
-                <h2 style={{ margin: "0 1rem" }}>
-                  {weekStart.format("D MMMM")} –{" "}
-                  {weekStart.add(6, "day").format("D MMMM YYYY")}
-                </h2>
-
-                <Button
-                  icon={<RightOutlined />}
-                  onClick={() => setWeekStart(weekStart.add(1, "week"))}
-                />
-                <DatePicker
-                  value={weekStart}
-                  format="DD.MM.YYYY"
-                  allowClear={false}
-                  suffixIcon={<CalendarOutlined />}
-                  style={{ marginLeft: 12 }}
-                  inputReadOnly
-                  onChange={(date) => {
-                    if (date && dayjs.isDayjs(date)) {
-                      setWeekStart(date.startOf("isoWeek"));
-                    }
-                  }}
-                  disabledDate={(current) =>
-                    current && (current.year() < 2000 || current.year() > 2100)
-                  }
-                />
-                <Button
-                  className="add-time-button"
+                  className="dark-action-button"
+                  icon={<PlusOutlined style={{ color: "inherit" }} />}
                   onClick={() => {
                     form.resetFields();
                     setEditingEntry(null);
+
                     setIsModalVisible(true);
                   }}
                 >
                   Добавить потраченное время
                 </Button>
+
+                {/* Правая часть — фильтры и навигация */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "1rem",
+                  }}
+                >
+                  <Button
+                    icon={<LeftOutlined />}
+                    onClick={() => setWeekStart(weekStart.subtract(1, "week"))}
+                  />
+                  <h2 style={{ margin: "0 1rem" }}>
+                    {weekStart.format("D MMMM")} –{" "}
+                    {weekStart.add(6, "day").format("D MMMM YYYY")}
+                  </h2>
+                  <Button
+                    icon={<RightOutlined />}
+                    onClick={() => setWeekStart(weekStart.add(1, "week"))}
+                  />
+                  <DatePicker
+                    value={weekStart}
+                    format="DD.MM.YYYY"
+                    allowClear={false}
+                    suffixIcon={<CalendarOutlined />}
+                    style={{ marginLeft: 12 }}
+                    inputReadOnly
+                    onChange={(date) => {
+                      if (date && dayjs.isDayjs(date)) {
+                        setWeekStart(date.startOf("isoWeek"));
+                      }
+                    }}
+                    disabledDate={(current) =>
+                      current &&
+                      (current.year() < 2000 || current.year() > 2100)
+                    }
+                  />
+                  <Dropdown
+                    menu={{
+                      items: [
+                        ...projects.map((p) => ({
+                          key: p.ID_Order,
+                          label: p.Order_Name,
+                          onClick: () => setSelectedProjectId(p.ID_Order),
+                        })),
+                        { type: "divider" },
+                        {
+                          key: "reset",
+                          label: "Сбросить фильтр",
+                          onClick: () => setSelectedProjectId(null),
+                        },
+                      ],
+                    }}
+                    placement="bottomRight"
+                    arrow
+                  >
+                    <Button icon={<FilterOutlined />}>
+                      {selectedProjectId
+                        ? projects.find((p) => p.ID_Order === selectedProjectId)
+                            ?.Order_Name
+                        : "Фильтр по проекту"}
+                    </Button>
+                  </Dropdown>
+                </div>
               </div>
 
               <div className="horizontal-columns">
@@ -473,7 +497,6 @@ const TimeTrackingEmployee: React.FC = () => {
                     <div className="day-date">{day.format("DD.MM")}</div>
                     <div className="card-stack">
                       {getFilteredEntriesByDay(day)
-
                         .filter((entry) => entry.ID_User === user?.id)
                         .map((entry) => (
                           <div key={entry.ID_Execution} className="entry-card">
@@ -530,9 +553,29 @@ const TimeTrackingEmployee: React.FC = () => {
                 title={editingEntry ? "Редактировать" : "Добавить"}
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
-                footer={null}
+                footer={[
+                  <Button key="cancel" onClick={() => setIsModalVisible(false)}>
+                    Отмена
+                  </Button>,
+                  <Button
+                    key="submit"
+                    type="primary"
+                    onClick={() => form.submit()}
+                  >
+                    {editingEntry ? "Сохранить" : "Добавить"}
+                  </Button>,
+                ]}
               >
-                <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+                <Form
+                  form={form}
+                  layout="vertical"
+                  onFinish={handleFormSubmit}
+                  onValuesChange={(changedValues) => {
+                    if (changedValues.project) {
+                      form.setFieldsValue({ taskName: undefined }); // сброс задачи
+                    }
+                  }}
+                >
                   <Form.Item
                     name="project"
                     label="Проект"
@@ -553,11 +596,17 @@ const TimeTrackingEmployee: React.FC = () => {
                     rules={[{ required: true }]}
                   >
                     <Select placeholder="Выберите задачу">
-                      {tasks.map((t) => (
-                        <Select.Option key={t.ID_Task} value={t.ID_Task}>
-                          {t.Task_Name}
-                        </Select.Option>
-                      ))}
+                      {tasks
+                        .filter(
+                          (task) =>
+                            task.ID_Order === form.getFieldValue("project")
+                        )
+
+                        .map((t) => (
+                          <Select.Option key={t.ID_Task} value={t.ID_Task}>
+                            {t.Task_Name}
+                          </Select.Option>
+                        ))}
                     </Select>
                   </Form.Item>
 
@@ -565,25 +614,56 @@ const TimeTrackingEmployee: React.FC = () => {
                     <Input.TextArea />
                   </Form.Item>
 
-                  <Form.Item
-                    name="hours"
-                    label="Потрачено часов"
-                    rules={[
-                      { required: true, message: "Введите количество часов" },
-                      {
-                        validator: (_, value) =>
-                          value > 0
-                            ? Promise.resolve()
-                            : Promise.reject("Часы должны быть больше 0"),
-                      },
-                    ]}
-                  >
-                    <InputNumber
-                      className="hours-input"
-                      min={0.1}
-                      step={0.1}
-                      style={{ width: "100%" }}
-                    />
+                  <Form.Item label="Потрачено времени" required>
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <Form.Item
+                        name="hours"
+                        style={{ marginBottom: 0, flex: 1 }}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Введите часы",
+                          },
+                          {
+                            type: "number",
+                            min: 0,
+                            message: "Часы не могут быть отрицательными",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          placeholder="Часы"
+                          min={0}
+                          style={{ width: "100%" }}
+                          className="time-input"
+                        />
+                      </Form.Item>
+
+                      <Form.Item
+                        name="minutes"
+                        style={{ marginBottom: 0, flex: 1 }}
+                        rules={[
+                          {
+                            required: true,
+                            message: "Введите минуты",
+                          },
+                          {
+                            type: "number",
+                            min: 0,
+                            max: 59,
+                            message: "Минуты от 0 до 59",
+                          },
+                        ]}
+                      >
+                        <InputNumber
+                          placeholder="Минуты"
+                          min={0}
+                          max={59}
+                          style={{ width: "100%" }}
+                          className="time-input"
+                        />
+                      </Form.Item>
+                    </div>
                   </Form.Item>
 
                   <Form.Item
@@ -599,27 +679,73 @@ const TimeTrackingEmployee: React.FC = () => {
                     />
                   </Form.Item>
 
-                  <Form.Item
-                    label="Прикрепить файлы"
-                    name="file"
-                    valuePropName="fileList"
-                    getValueFromEvent={normFile}
-                  >
-                    <Upload
-                      beforeUpload={() => false}
-                      multiple
-                      accept=".pdf,.doc,.docx,.png,.jpg"
-                      fileList={editingFileList}
-                      onChange={({ fileList }) => setEditingFileList(fileList)}
+                  <Form.Item label="Прикрепление материала" required>
+                    <Form.Item
+                      name="attachmentType"
+                      noStyle
+                      initialValue="file"
                     >
-                      <Button icon={<InboxOutlined />}>Выберите файлы</Button>
-                    </Upload>
-                  </Form.Item>
+                      <Radio.Group
+                        optionType="button"
+                        buttonStyle="solid"
+                        className="attachment-type-switch"
+                        style={{ marginBottom: 12 }}
+                      >
+                        <Radio.Button value="file">Файл</Radio.Button>
+                        <Radio.Button value="link">Ссылка</Radio.Button>
+                      </Radio.Group>
+                    </Form.Item>
 
-                  <Form.Item>
-                    <Button type="primary" htmlType="submit" block>
-                      {editingEntry ? "Сохранить изменения" : "Добавить время"}
-                    </Button>
+                    <Form.Item
+                      noStyle
+                      shouldUpdate={(prev, curr) =>
+                        prev.attachmentType !== curr.attachmentType
+                      }
+                    >
+                      {({ getFieldValue }) => {
+                        const type = getFieldValue("attachmentType");
+                        if (type === "file") {
+                          return (
+                            <Form.Item
+                              name="file"
+                              valuePropName="fileList"
+                              getValueFromEvent={normFile}
+                              className="attachment-upload"
+                            >
+                              <Upload
+                                beforeUpload={() => false}
+                                multiple
+                                accept=".pdf,.doc,.docx,.png,.jpg"
+                                fileList={editingFileList}
+                                onChange={({ fileList }) =>
+                                  setEditingFileList(fileList)
+                                }
+                              >
+                                <Button icon={<InboxOutlined />}>
+                                  Выберите файлы
+                                </Button>
+                              </Upload>
+                            </Form.Item>
+                          );
+                        } else {
+                          return (
+                            <Form.Item
+                              name="link"
+                              className="attachment-link"
+                              rules={[
+                                { required: true, message: "Введите ссылку" },
+                                {
+                                  type: "url",
+                                  message: "Введите корректный URL",
+                                },
+                              ]}
+                            >
+                              <Input placeholder="https://example.com" />
+                            </Form.Item>
+                          );
+                        }
+                      }}
+                    </Form.Item>
                   </Form.Item>
                 </Form>
               </Modal>
@@ -662,22 +788,48 @@ const TimeTrackingEmployee: React.FC = () => {
                     )}
                     {viewingEntry.Attachments &&
                       viewingEntry.Attachments.length > 0 && (
-                        <>
+                        <div>
+                          <p>
+                            <b>Вложения:</b>
+                          </p>
                           <ul className="attachments-list">
-                            {viewingEntry.Attachments.map((filename, idx) => (
-                              <li key={idx}>
-                                <a
-                                  href={`${API_URL}/uploads/${filename}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {filename}
-                                </a>
-                              </li>
-                            ))}
+                            {viewingEntry.Attachments.map((item, idx) => {
+                              const isUrl = /^https?:\/\//.test(item);
+                              const href = isUrl
+                                ? item
+                                : `${API_URL}/uploads/${item}`;
+                              const label = isUrl
+                                ? item
+                                : item.split("/").pop();
+                              return (
+                                <li key={idx}>
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    {label}
+                                  </a>
+                                </li>
+                              );
+                            })}
                           </ul>
-                        </>
+                        </div>
                       )}
+                    {viewingEntry.link && (
+                      <div>
+                        <p>
+                          <b>Ссылка:</b>
+                        </p>
+                        <a
+                          href={viewingEntry.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {viewingEntry.link}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
               </Modal>

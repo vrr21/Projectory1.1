@@ -274,32 +274,7 @@ const TimeTrackingManager: React.FC = () => {
                   Учёт времени сотрудников
                 </h1>
 
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    marginLeft: "auto",
-                    gap: "8px",
-                  }}
-                >
-                  <Input
-                    placeholder="Поиск по всем данным..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    allowClear
-                    style={{ width: 250 }}
-                  />
-                  <Dropdown
-                    menu={{ items: [] }}
-                    open={isDropdownOpen}
-                    onOpenChange={setIsDropdownOpen}
-                    dropdownRender={() => filterMenu}
-                  >
-                    <Button icon={<FilterOutlined />} className="filter-button">
-                      Фильтры
-                    </Button>
-                  </Dropdown>
-                </div>
+              
 
                 <Button
                   icon={<LeftOutlined />}
@@ -330,7 +305,35 @@ const TimeTrackingManager: React.FC = () => {
                   disabledDate={(current) =>
                     current && (current.year() < 2000 || current.year() > 2100)
                   }
+
+                  
                 />
+                  <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    marginLeft: "auto",
+                    gap: "8px",
+                  }}
+                >
+                  <Input
+                    placeholder="Поиск по всем данным..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    allowClear
+                    style={{ width: 250 }}
+                  />
+                  <Dropdown
+                    menu={{ items: [] }}
+                    open={isDropdownOpen}
+                    onOpenChange={setIsDropdownOpen}
+                    dropdownRender={() => filterMenu}
+                  >
+                    <Button icon={<FilterOutlined />} className="filter-button">
+                      Фильтры
+                    </Button>
+                  </Dropdown>
+                </div>
               </div>
 
               <div className="horizontal-columns">

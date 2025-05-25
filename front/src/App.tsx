@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { ConfigProvider, App as AntdApp, theme } from 'antd';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ToastContainer } from 'react-toastify';
@@ -22,8 +22,8 @@ import MyCommandsManager from './pages/MyCommandsManager';
 import TimeTrackingEmployee from './pages/TimeTrackingEmployee';
 import TimeTrackingManager from './pages/TimeTrackingManager';
 import ManagerReportsPage from './pages/ManagerReportsPage';
-import EmployeeReportsPage from './pages/EmployeeReportsPage'; // ✅ Добавлено
-import ListEmployee from './pages/ListEmployee'; // ✅ Новый импорт
+import EmployeeReportsPage from './pages/EmployeeReportsPage';
+import ListEmployee from './pages/ListEmployee';
 
 import { AuthProvider } from './contexts/AuthProvider';
 import { useAuth } from './contexts/useAuth';
@@ -33,6 +33,12 @@ const ProtectedProfileRoute = () => {
   if (!user) return <Navigate to="/login" replace />;
   const isManager = user.role?.toLowerCase().includes('менеджер');
   return isManager ? <ManagerAccount /> : <EmployeeAccount />;
+};
+
+// 🔁 Обёртка для перерендера профиля при изменении ID
+const EmployeeAccountWrapper = () => {
+  const { id } = useParams();
+  return <EmployeeAccount key={id} />;
 };
 
 const PageWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -73,9 +79,9 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/myteams" element={<PageWrapper><MyCommandsManager /></PageWrapper>} />
 
         <Route path="/manager-reports" element={<ManagerReportsPage />} />
-        <Route path="/employee-reports" element={<PageWrapper><EmployeeReportsPage /></PageWrapper>} /> {/* ✅ Добавлено */}
+        <Route path="/employee-reports" element={<PageWrapper><EmployeeReportsPage /></PageWrapper>} />
         <Route path="/employee-management" element={<ListEmployee />} />
-
+        <Route path="/employee/:id" element={<PageWrapper><EmployeeAccountWrapper /></PageWrapper>} />
       </Routes>
     </AnimatePresence>
   );

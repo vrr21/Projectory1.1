@@ -1,6 +1,6 @@
 const { pool, poolConnect } = require('../config/db');
 const sql = require('mssql');
-
+const excelJS = require('exceljs');
 // Получение всех команд
 const getAllTeams = async (req, res) => {
   try {
@@ -26,11 +26,12 @@ const getAllTeams = async (req, res) => {
       }
       if (row.userId) {
         teamMap[row.id].members.push({
-          id: row.userId,
+          ID_User: row.userId,
           fullName: row.fullName,
           email: row.Email,
           role: row.Role || '',
         });
+        
       }
     }
 
@@ -412,17 +413,143 @@ const deleteTeamWithProjectsAndTasks = async (req, res) => {
   }
 };
 
+// Обновление роли участника команды
+const updateMemberRole = async (req, res) => {
+  try {
+    await poolConnect;
+    const { teamId, memberId } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ message: 'Роль обязательна' });
+    }
+
+    const result = await pool.request()
+      .input('ID_Team', sql.Int, teamId)
+      .input('ID_User', sql.Int, memberId)
+      .input('Role', sql.NVarChar, role)
+      .query(`
+        UPDATE TeamMembers
+        SET Role = @Role
+        WHERE ID_Team = @ID_Team AND ID_User = @ID_User
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ message: 'Участник не найден в команде' });
+    }
+
+    res.status(200).json({ message: 'Роль обновлена' });
+  } catch (error) {
+    console.error('Ошибка при обновлении роли участника:', error);
+    res.status(500).json({ message: 'Ошибка сервера при обновлении роли' });
+  }
+};
+
+
+const exportCustomTeams = async (req, res) => {
+  try {
+    const { teams, format, userEmail } = req.body;
+
+    if (!teams || !Array.isArray(teams) || teams.length === 0) {
+      return res.status(400).json({ error: 'Нет данных для экспорта' });
+    }
+
+    if (!userEmail) {
+      return res.status(400).json({ error: 'Не указан email пользователя' });
+    }
+
+    // Фильтруем команды, в которых состоит текущий пользователь
+    const userTeams = teams.filter(team =>
+      team.members.some(member => member.email === userEmail)
+    );
+
+    if (userTeams.length === 0) {
+      return res.status(404).json({ error: 'Нет команд для экспорта' });
+    }
+
+    const workbook = new excelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Команды');
+
+    worksheet.columns = [
+      { header: 'Название команды', key: 'name', width: 30 },
+      { header: 'ФИО участника', key: 'fullName', width: 30 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Роль', key: 'role', width: 20 },
+    ];
+
+    userTeams.forEach((team) => {
+      team.members.forEach((member) => {
+        worksheet.addRow({
+          name: team.name,
+          fullName: member.fullName,
+          email: member.email,
+          role: member.role,
+        });
+      });
+    });
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=custom_teams.xlsx'
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Ошибка при экспорте команд:', error);
+    res.status(500).json({ error: 'Ошибка при экспорте команд' });
+  }
+};
+
+const getTeamByUserEmail = async (req, res) => {
+  try {
+    await poolConnect;
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email пользователя обязателен' });
+    }
+
+    const result = await pool
+      .request()
+      .input('Email', sql.NVarChar, email)
+      .query(`
+        SELECT TOP 1 t.Team_Name, t.ID_Team
+        FROM Teams t
+        JOIN TeamMembers tm ON t.ID_Team = tm.ID_Team
+        JOIN Users u ON tm.ID_User = u.ID_User
+        WHERE u.Email = @Email
+      `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ message: 'Команда не найдена' });
+    }
+
+    res.status(200).json(result.recordset[0]);
+  } catch (error) {
+    console.error('Ошибка при получении команды по email:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении команды' });
+  }
+};
+
 
 module.exports = {
   getAllTeams,
+  getTeamByUserEmail, // ✅ ← ДОБАВЬ ЭТО
   createTeam,
   createTeamWithMembers,
-  updateTeamName,
   addTeamMember,
   removeTeamMember,
-  deleteTeam, // Простое удаление
-  deleteTeamWithProjectsAndTasks, // Полное удаление с проектами и задачами
+  updateMemberRole,
+  deleteTeam,
+  deleteTeamWithProjectsAndTasks,
   archiveTeam,
   restoreTeam,
+  updateTeamName,
   archiveTeamWithProjectsAndTasks,
+  exportCustomTeams,
 };
