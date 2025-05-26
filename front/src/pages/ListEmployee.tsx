@@ -412,7 +412,7 @@ const ListEmployee: React.FC = () => {
         <div className="dashboard-body">
           <SidebarManager />
           <main className="main-content">
-            <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: 16 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: -2 }}>
               Сотрудники
             </h1>
 
@@ -423,7 +423,7 @@ const ListEmployee: React.FC = () => {
                 justifyContent: "space-between",
                 gap: "8px",
                 flexWrap: "wrap",
-                marginBottom: 0,
+                marginBottom: -12,
               }}
             >
               <Button

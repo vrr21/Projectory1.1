@@ -60,7 +60,6 @@ interface TaskByProjectType {
   Task_Date: string;
 }
 
-
 interface TaskByEmployee {
   Employee_Name: string;
   Task_Count: number;
@@ -94,7 +93,7 @@ interface TimeTrackingEntry {
 const ManagerReportsPage: React.FC = () => {
   const { theme: appTheme } = useTheme();
   const { user } = useAuth();
-  
+
   const currentAlgorithm =
     appTheme === "dark" ? darkAlgorithm : defaultAlgorithm;
   const textColor = appTheme === "dark" ? "#ffffff" : "#000000";
@@ -163,12 +162,17 @@ const ManagerReportsPage: React.FC = () => {
       );
     });
   };
-// Вставить после const API_URL = import.meta.env.VITE_API_URL;
-const getCellAlignment = (value: unknown): "left" | "center" => {
-  if (typeof value === "number") return "center";
-  if (typeof value === "string" && dayjs(value).isValid() && value.length >= 10) return "center";
-  return "left";
-};
+  // Вставить после const API_URL = import.meta.env.VITE_API_URL;
+  const getCellAlignment = (value: unknown): "left" | "center" => {
+    if (typeof value === "number") return "center";
+    if (
+      typeof value === "string" &&
+      dayjs(value).isValid() &&
+      value.length >= 10
+    )
+      return "center";
+    return "left";
+  };
 
   const buildFilterMenu = (
     setRange: (range: [Dayjs, Dayjs] | null) => void
@@ -275,7 +279,7 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
       render: (date) => new Date(date).toLocaleDateString(),
     },
   ];
-  
+
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
       title: "Сотрудник",
@@ -316,7 +320,7 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
       render: (date) => new Date(date).toLocaleString(),
     },
   ];
-  
+
   const commonOptions = {
     plugins: {
       legend: { labels: { color: textColor } },
@@ -336,39 +340,53 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
     },
     maintainAspectRatio: false,
   };
-  
-  const groupedByProjectType = applyDateFilter(tasksByProjectType).reduce((acc, item) => {
-    if (!item.Task_Type) return acc;
-    if (!acc[item.Task_Type]) acc[item.Task_Type] = 0;
-    acc[item.Task_Type] += item.Task_Count;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  
+
+  const groupedByProjectType = applyDateFilter(tasksByProjectType).reduce(
+    (acc, item) => {
+      if (!item.Task_Type) return acc;
+      if (!acc[item.Task_Type]) acc[item.Task_Type] = 0;
+      acc[item.Task_Type] += item.Task_Count;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
   const pieData = {
     labels: Object.keys(groupedByProjectType),
     datasets: [
       {
         data: Object.values(groupedByProjectType),
         backgroundColor: [
-          "#1976D2", "#26A69A", "#FFB300", "#66BB6A", "#EF5350", "#AB47BC",
-          "#5C6BC0", "#EC407A", "#FFA726", "#42A5F5", "#9CCC65", "#FF7043"
+          "#1976D2",
+          "#26A69A",
+          "#FFB300",
+          "#66BB6A",
+          "#EF5350",
+          "#AB47BC",
+          "#5C6BC0",
+          "#EC407A",
+          "#FFA726",
+          "#42A5F5",
+          "#9CCC65",
+          "#FF7043",
         ],
         borderColor: textColor,
         borderWidth: 0.3,
       },
     ],
   };
-  
-  
-  const groupedTasksByEmployee = applyDateFilter(tasksByEmployee).reduce((acc, curr) => {
-    if (!acc[curr.Employee_Name]) {
-      acc[curr.Employee_Name] = 0;
-    }
-    acc[curr.Employee_Name] += curr.Task_Count;
-    return acc;
-  }, {} as Record<string, number>);
-  
+
+  const groupedTasksByEmployee = applyDateFilter(tasksByEmployee).reduce(
+    (acc, curr) => {
+      if (!acc[curr.Employee_Name]) {
+        acc[curr.Employee_Name] = 0;
+      }
+      acc[curr.Employee_Name] += curr.Task_Count;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
+
   const barData = {
     labels: Object.keys(groupedTasksByEmployee),
     datasets: [
@@ -379,7 +397,6 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
       },
     ],
   };
-  
 
   const lineData = {
     labels: applyDateFilter(tasksByProject).map((item) =>
@@ -422,12 +439,11 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
       label: "Журнал задач на проекты",
       children: (
         <Table
-        columns={kanbanColumns}
-        dataSource={applySearchFilter(applyDateFilter(kanbanData))}
-        rowKey="ID_Task"
-        pagination={{ pageSize: 10 }}
-      />
-      
+          columns={kanbanColumns}
+          dataSource={applySearchFilter(applyDateFilter(kanbanData))}
+          rowKey="ID_Task"
+          pagination={{ pageSize: 10 }}
+        />
       ),
     },
     {
@@ -435,16 +451,14 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
       label: "Отчёт по отработанным часам",
       children: (
         <Table
-        columns={timeTrackingColumns}
-        dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
-        rowKey={(record, index) => index?.toString() ?? ""}
-        pagination={{ pageSize: 10 }}
-      />
-      
+          columns={timeTrackingColumns}
+          dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
+          rowKey={(record, index) => index?.toString() ?? ""}
+          pagination={{ pageSize: 10 }}
+        />
       ),
     },
   ];
-  
 
   const handleExport = async (format: string) => {
     try {
@@ -452,43 +466,49 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
         console.error("Email пользователя не найден");
         return;
       }
-  
-      const token = localStorage.getItem('token');
+
+      const token = localStorage.getItem("token");
       if (!token) {
         console.error("Токен авторизации отсутствует");
         return;
       }
-  
+
       const params = new URLSearchParams({
         format,
-        email: user.email,  // ✅ Вставляем email менеджера в URL
+        email: user.email, // ✅ Вставляем email менеджера в URL
       });
-  
-      const res = await fetch(`${API_URL}/api/export/reports?${params.toString()}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-  
+
+      const res = await fetch(
+        `${API_URL}/api/export/reports?${params.toString()}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
       if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
-  
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `reports.${format === "word" ? "docx" : format === "excel" ? "xlsx" : format}`);
+      link.setAttribute(
+        "download",
+        `reports.${
+          format === "word" ? "docx" : format === "excel" ? "xlsx" : format
+        }`
+      );
       document.body.appendChild(link);
       link.click();
       link.remove();
-      
     } catch (error) {
       console.error("Ошибка при экспорте:", error);
     }
   };
-  
-  
+
   if (loading) return <div>Загрузка данных...</div>;
   return (
     <ConfigProvider theme={{ algorithm: currentAlgorithm }}>
@@ -497,21 +517,22 @@ const getCellAlignment = (value: unknown): "left" | "center" => {
         <div className="dashboard-body">
           <SidebarManager />
           <main className="main-content">
-          <h1
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 600,
-                  marginBottom: "24px",
-                }}
-              >Отчёты по сотрудникам</h1>
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 600,
+                marginBottom: "-2px",
+              }}
+            >
+              Отчёты по сотрудникам
+            </h1>
 
             <div
               style={{
                 display: "flex",
                 justifyContent: "flex-end",
-                alignItems: "center",
                 gap: "8px",
-                marginBottom: "16px",
+                margin: "-12px 0",
               }}
             >
               <Input

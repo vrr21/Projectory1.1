@@ -550,7 +550,7 @@ const TimeTrackingEmployee: React.FC = () => {
               </div>
 
               <Modal
-                title={editingEntry ? "Редактировать" : "Добавить"}
+                title={editingEntry ? "Редактировать" : "Добавить потраченное время"}
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
                 footer={[

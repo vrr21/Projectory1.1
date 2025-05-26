@@ -29,7 +29,7 @@ interface NotificationItem {
   title: string;
   description: string;
   Created_At: string; // 🔥 Добавь это поле
-  datetime?: string;  // ⚠️ опционально, если ты потом форматируешь
+  datetime?: string; // ⚠️ опционально, если ты потом форматируешь
 }
 
 const HeaderEmployee: React.FC = () => {
@@ -111,8 +111,7 @@ const HeaderEmployee: React.FC = () => {
           }),
         }))
       );
-      
-      
+
       if (!localStorage.getItem("notificationsRead")) {
         setUnreadCount(data.length);
       }
@@ -167,7 +166,7 @@ const HeaderEmployee: React.FC = () => {
     const last = parts[1]?.[0] || "";
     return `${first}${last}`.toUpperCase();
   };
-  
+
   return (
     <>
       <Header className="header">
@@ -218,25 +217,29 @@ const HeaderEmployee: React.FC = () => {
             />
           </Tooltip>
 
-          <Dropdown
-            menu={profileMenu}
-            placement="bottomRight"
-            trigger={["click"]}
-          >
-           <Avatar
-  src={user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined}
-  style={{
-    backgroundColor: "#555",
-    marginLeft: "16px",
-    cursor: "pointer",
-    color: "#fff",
-    fontWeight: 600,
-  }}
->
-  {!user?.avatar && getInitials(`${user?.lastName} ${user?.firstName}`)}
-</Avatar>
-
-          </Dropdown>
+          <Tooltip title={`${user?.lastName || ""} ${user?.firstName || ""}`}>
+            <Dropdown
+              menu={profileMenu}
+              placement="bottomRight"
+              trigger={["click"]}
+            >
+              <Avatar
+                src={
+                  user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined
+                }
+                style={{
+                  backgroundColor: "#555",
+                  marginLeft: "16px",
+                  cursor: "pointer",
+                  color: "#fff",
+                  fontWeight: 600,
+                }}
+              >
+                {!user?.avatar &&
+                  getInitials(`${user?.lastName} ${user?.firstName}`)}
+              </Avatar>
+            </Dropdown>
+          </Tooltip>
         </div>
       </Header>
 
@@ -248,7 +251,6 @@ const HeaderEmployee: React.FC = () => {
         okText="Да"
         cancelText="Отмена"
         className="confirm-logout-modal"
-
       >
         <p>Вы действительно хотите выйти из аккаунта?</p>
       </Modal>
@@ -260,7 +262,6 @@ const HeaderEmployee: React.FC = () => {
         open={isDrawerVisible}
         width={350}
         className="confirm-logout-modal"
-
       >
         <List
           itemLayout="vertical"

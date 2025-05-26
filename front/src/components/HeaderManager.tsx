@@ -178,22 +178,23 @@ const HeaderManager: React.FC = () => {
               onClick={toggleTheme}
             />
           </Tooltip>
+          <Tooltip title={`${user?.lastName || ""} ${user?.firstName || ""}`}>
+  <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
+    <Avatar
+      src={user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined}
+      style={{
+        backgroundColor: "#555",
+        marginLeft: "16px",
+        cursor: "pointer",
+        color: "#fff",
+        fontWeight: 600,
+      }}
+    >
+      {!user?.avatar && getInitials(`${user?.lastName} ${user?.firstName}`)}
+    </Avatar>
+  </Dropdown>
+</Tooltip>
 
-          <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
-          <Avatar
-  src={user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined}
-  style={{
-    backgroundColor: "#555",
-    marginLeft: "16px",
-    cursor: "pointer",
-    color: "#fff",
-    fontWeight: 600,
-  }}
->
-  {!user?.avatar && getInitials(`${user?.lastName} ${user?.firstName}`)}
-</Avatar>
-
-          </Dropdown>
         </div>
       </Header>
 

@@ -183,9 +183,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
     >
       <div className="sidebar-content" style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div>
-          <div className="toggle-button" onClick={toggleCollapsed}>
-            {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          </div>
+        <div className="toggle-button-wrapper">
+  <div className="toggle-button" onClick={toggleCollapsed}>
+    {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+  </div>
+</div>
+
           <Menu
             theme="dark"
             mode="inline"

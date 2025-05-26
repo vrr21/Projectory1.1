@@ -43,17 +43,36 @@
   width: calc(100% - 80px);
 }
 
-/* Кнопка бургерного меню */
 .toggle-button {
   display: flex;
+  justify-content: flex-end;
   align-items: center;
   height: 64px;
+  padding-right: 9px;
   font-size: 22px;
-  padding-left: 31px;
   cursor: pointer;
   color: var(--text-color);
   transition: transform 0.3s ease, color 0.3s ease;
-  justify-content: flex-start;
+}
+
+.toggle-button-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  height: 56px;
+  padding: 0 16px;
+  border-bottom: 1px solid #333;
+  background-color: transparent;
+}
+
+.toggle-button {
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--text-color);
+  transition: color 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .toggle-button:hover {

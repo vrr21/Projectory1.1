@@ -37,9 +37,9 @@ const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Employee {
-  ID_Employee: number;
-  Full_Name?: string;
-  Avatar?: string;
+  id: number;
+  fullName: string;
+  avatar?: string | null;
 }
 
 interface Task {
@@ -53,6 +53,9 @@ interface Task {
   Deadline?: string | null;
   Employees: Employee[];
   attachments?: string[];
+  EmployeeId: number; // <- Важно
+  EmployeeName: string;
+  EmployeeAvatar?: string | null;
 }
 
 interface CommentType {
@@ -87,24 +90,23 @@ const EmployeeDashboard = () => {
     } else {
       document.body.classList.remove("sidebar-collapsed");
     }
-  
+
     // Возвращаем отступы в нормальное состояние при монтировании компонента
     return () => document.body.classList.remove("sidebar-collapsed");
-  
   }, [sidebarCollapsed]);
-  
+
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Только потом объявлять filteredTasks
   const filteredTasks = useMemo(() => {
-    return Object.values(columns)
-      .flat()
-      .filter(
-        (task) =>
-          task.Task_Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.Order_Name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    const allTasks = Object.values(columns).flat();
+    if (!Array.isArray(allTasks)) return [];
+    return allTasks.filter(
+      (task) =>
+        task.Task_Name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.Description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.Order_Name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   }, [columns, searchQuery]);
 
   const startEditingComment = (comment: CommentType) => {
@@ -262,32 +264,36 @@ const EmployeeDashboard = () => {
   };
 
   const fetchTasks = useCallback(async () => {
-    try {
-      const url = `${API_URL}/api/tasks?employee=${user?.id}`;
+    if (!user?.id) return;
 
+    try {
+      const url = `${API_URL}/api/tasks?employee=${user.id}`;
       const response = await fetch(url);
       const data: Task[] = await response.json();
-
-      const grouped: Record<string, Task[]> = {};
+      const personalizedGrouped: Record<string, Task[]> = {};
       statuses.forEach((status) => {
-        grouped[status] = data.filter((task) => task.Status_Name === status);
+        personalizedGrouped[status] = data.filter(
+          (task) => task.Status_Name === status
+        );
       });
-      setColumns(grouped);
-    } catch {
+      
+
+      setColumns(personalizedGrouped);
+    } catch (error) {
+      console.error("Ошибка загрузки задач:", error);
       messageApi.error("Не удалось загрузить задачи");
     }
   }, [user?.id, messageApi]);
 
   useEffect(() => {
     fetchTasks(); // первая загрузка
-  
+
     const interval = setInterval(() => {
       fetchTasks(); // периодическая проверка
     }, 10000); // каждые 10 сек
-  
+
     return () => clearInterval(interval); // очистка при размонтировании
   }, [fetchTasks]);
-  
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
@@ -329,12 +335,11 @@ const EmployeeDashboard = () => {
     return (
       <Avatar.Group max={{ count: 3 }}>
         {employees.map((emp) => (
-          <Tooltip key={emp.ID_Employee} title={emp.Full_Name || "—"}>
+          <Tooltip key={emp.id} title={emp.fullName}>
             <Avatar
-              src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
-              style={{ backgroundColor: emp.Avatar ? "transparent" : "#777" }}
+              src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
             >
-              {!emp.Avatar && getInitials(emp.Full_Name || "")}
+              {!emp.avatar && getInitials(emp.fullName)}
             </Avatar>
           </Tooltip>
         ))}
@@ -503,53 +508,91 @@ const EmployeeDashboard = () => {
     const now = dayjs();
     if (task.Status_Name === "Выполнена") {
       return (
-        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: "13px",
+            color: "#aaa",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
           <ClockCircleOutlined />
           Выполнено
         </div>
       );
     }
-  
+
     if (task.Status_Name === "Завершена") {
       if (!task.Deadline || dayjs(task.Deadline).isBefore(now)) {
         return (
-          <div style={{ marginTop: 8, fontSize: "13px", color: "red", display: "flex", alignItems: "center", gap: 6 }}>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: "13px",
+              color: "red",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             <ClockCircleOutlined />
             Срок истёк
           </div>
         );
       } else {
         return (
-          <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: "13px",
+              color: "#aaa",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
             <ClockCircleOutlined />
             Завершено
           </div>
         );
       }
     }
-  
+
     if (!task.Deadline) {
       return (
-        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          style={{
+            marginTop: 8,
+            fontSize: "13px",
+            color: "#aaa",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
           <ClockCircleOutlined />
           Без срока
         </div>
       );
     }
-  
+
     const deadline = dayjs(task.Deadline);
     const isExpired = deadline.isBefore(now);
     const isSoon = deadline.diff(now, "hour") <= 24;
-  
+
     return (
-      <div style={{
-        marginTop: 8,
-        fontSize: "13px",
-        color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-      }}>
+      <div
+        style={{
+          marginTop: 8,
+          fontSize: "13px",
+          color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
         <ClockCircleOutlined />
         {isExpired
           ? "Срок истёк"
@@ -557,15 +600,14 @@ const EmployeeDashboard = () => {
       </div>
     );
   };
-  
-  
+
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
         <div className="dashboard">
           <HeaderEmployee />
           <div className="dashboard-body">
-          <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
+            <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
 
             <main className="main-content kanban-board">
               <h1
@@ -900,29 +942,28 @@ const EmployeeDashboard = () => {
                       <strong>Сотрудники:</strong>
                     </p>
                     <div className="kanban-avatars">
-                      {viewingTask.Employees.map((emp, idx) => (
-                        <Tooltip
-                          key={`emp-view-${emp.ID_Employee}-${idx}`}
-                          title={emp.Full_Name}
-                        >
-                          <Avatar
-                            src={
-                              emp.Avatar
-                                ? `${API_URL}/uploads/${emp.Avatar}`
-                                : undefined
-                            }
-                            style={{
-                              backgroundColor: emp.Avatar
-                                ? "transparent"
-                                : "#777",
-                              marginRight: 4,
-                            }}
-                          >
-                            {!emp.Avatar && getInitials(emp.Full_Name || "")}
-                          </Avatar>
-                        </Tooltip>
-                      ))}
+                    {viewingTask?.Employees?.map((emp) => (
+  <Tooltip key={emp.id} title={emp.fullName || "—"}>
+    <Avatar
+      src={
+        emp.avatar
+          ? `${API_URL}/uploads/${emp.avatar}`
+          : undefined
+      }
+      style={{
+        backgroundColor: emp.avatar
+          ? "transparent"
+          : "#777",
+        marginRight: 4,
+      }}
+    >
+      {!emp.avatar && getInitials(emp.fullName || "")}
+    </Avatar>
+  </Tooltip>
+))}
+
                     </div>
+
                     <p
                       style={{
                         marginTop: 8,

@@ -30,7 +30,6 @@ import { UpOutlined, DownOutlined } from "@ant-design/icons";
 import { PlusOutlined } from "@ant-design/icons";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
-
 import { MessageOutlined } from "@ant-design/icons";
 import { InboxOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -52,6 +51,44 @@ import { DeleteOutlined } from "@ant-design/icons";
 const { Option } = Select;
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
+
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isCyclic(obj: unknown): boolean {
+  const seenObjects = new WeakSet();
+
+  function detect(value: unknown): boolean {
+    if (value && typeof value === "object") {
+      if (seenObjects.has(value)) {
+        return true;
+      }
+      seenObjects.add(value);
+      for (const key in value as Record<string, unknown>) {
+        if (
+          Object.prototype.hasOwnProperty.call(value, key) &&
+          detect((value as Record<string, unknown>)[key])
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  return detect(obj);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function stringifyCircularJSON(obj: unknown): string {
+  const seen = new WeakSet();
+  return JSON.stringify(obj, function (key, value) {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) return;
+      seen.add(value);
+    }
+    return value;
+  });
+}
 
 interface Comment {
   id: number;
@@ -129,7 +166,7 @@ const ManagerDashboard: React.FC = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [expandedStatuses, setExpandedStatuses] = useState<string[]>([]);
@@ -300,6 +337,7 @@ const ManagerDashboard: React.FC = () => {
       setSelectedTaskId(null);
     }
   };
+  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
 
   const [newComment, setNewComment] = useState("");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -364,7 +402,6 @@ const ManagerDashboard: React.FC = () => {
         messageApi.error("Ошибка при загрузке комментариев");
       }
     }
-    
   };
 
   const submitComment = async () => {
@@ -470,29 +507,6 @@ const ManagerDashboard: React.FC = () => {
         ))}
       </Select>
 
-      <Select
-        allowClear
-        showSearch
-        placeholder="Фильтр по сотруднику"
-        style={{ width: "100%", marginBottom: 8 }}
-        onChange={(val) => setFilterEmployee(val)}
-        value={filterEmployee ?? undefined}
-        optionFilterProp="children"
-      >
-        {[
-          ...new Set(
-            tasks.flatMap(
-              (task) => task.Employees?.map((emp) => emp.fullName) || []
-            )
-          ),
-        ]
-          .sort()
-          .map((name) => (
-            <Option key={name} value={name}>
-              {name}
-            </Option>
-          ))}
-      </Select>
       <Select
         value="По дате"
         style={{ width: "100%", marginBottom: 8 }}
@@ -635,8 +649,7 @@ const ManagerDashboard: React.FC = () => {
         </div>
       ),
     },
-    
-    
+
     {
       title: "Статус",
       dataIndex: "Status_Name",
@@ -672,7 +685,10 @@ const ManagerDashboard: React.FC = () => {
                   />
                 }
                 danger
-                onClick={() => handleDeleteTask(task.ID_Task)}
+                onClick={() => {
+                  setSelectedTaskId(task.ID_Task);
+                  setIsDeleteConfirmVisible(true);
+                }}
                 size="small"
                 style={{
                   display: "flex",
@@ -722,6 +738,8 @@ const ManagerDashboard: React.FC = () => {
     },
   ];
 
+  
+  
   const fetchAll = useCallback(async () => {
     try {
       const [resTasks, resTeams, resStatuses, resProjects] = await Promise.all([
@@ -730,124 +748,69 @@ const ManagerDashboard: React.FC = () => {
         fetch(`${API_URL}/api/statuses`),
         fetch(`${API_URL}/api/projects`),
       ]);
-      const [tasksData, teamsData, statusesDataRaw, projectsData] =
+
+      const [rawTasks, teamsData, statusesDataRaw, projectsData] =
         await Promise.all([
           resTasks.json(),
           resTeams.json(),
           resStatuses.json(),
           resProjects.json(),
         ]);
-      console.log(
-        "Fetched raw teams with members:",
-        JSON.stringify(teamsData, null, 2)
+
+      type RawEmployee = {
+        ID_Employee?: number;
+        id?: number;
+        Full_Name?: string;
+        fullName?: string;
+        Avatar?: string | null;
+        avatar?: string | null;
+      };
+
+      type RawTask = Omit<Task, "Employees"> & {
+        Employees?: RawEmployee[];
+      };
+
+      const normalizedTasks: Task[] = (rawTasks as RawTask[]).map((task) => {
+        const employees: Task["Employees"] = (task.Employees || []).map((emp) => ({
+          id: emp.ID_Employee ?? emp.id ?? 0,
+          fullName: emp.Full_Name ?? emp.fullName ?? "",
+          avatar: emp.Avatar ?? emp.avatar ?? null,
+        }));
+      
+        return {
+          ...task,
+          ID_Task: Number(task.ID_Task),
+          Employees: employees,
+          EmployeeId: employees[0]?.id ?? null, // << ОБЯЗАТЕЛЬНО
+          EmployeeName: employees[0]?.fullName ?? "",
+          EmployeeAvatar: employees[0]?.avatar ?? null,
+        };
+      });
+      
+      setTasks(
+        normalizedTasks.map((task) => {
+          if (!task.Employees?.length && task.EmployeeId && task.EmployeeName) {
+            return {
+              ...task,
+              Employees: [
+                {
+                  id: task.EmployeeId,
+                  fullName: task.EmployeeName,
+                  avatar: task.EmployeeAvatar ?? null,
+                },
+              ],
+            };
+          }
+          return task;
+        })
       );
 
-      const completedStatusId = statusesDataRaw.find(
-        (s: Status) => s.Status_Name === "Завершена"
-      )?.ID_Status;
-
-      // 🔥 Удаление задач без сотрудников
-      const tasksToDelete = tasksData.filter(
-        (task: Task) => !task.Employees || task.Employees.length === 0
-      );
-
-      for (const task of tasksToDelete) {
-        try {
-          await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-          });
-          console.warn(`🗑 Удалена задача без сотрудников: ID ${task.ID_Task}`);
-        } catch (error) {
-          console.error(
-            `❌ Ошибка при удалении задачи ID ${task.ID_Task}:`,
-            error
-          );
-        }
-      }
-
-      // Оставляем только задачи с сотрудниками
-      const cleanedTasks = tasksData.filter(
-        (task: Task) => task.Employees && task.Employees.length > 0
-      );
-
-      const updatedTasks: Task[] = [];
-      for (const task of cleanedTasks) {
-        const team = teamsData.find(
-          (team: Team) => team.Team_Name === task.Team_Name
-        );
-        const allMembersRemoved =
-          !team ||
-          !team.members.some((member: TeamMember) =>
-            task.Employees.some((emp: { id: number }) => emp.id === member.id)
-          );
-        const isInProgress =
-          task.Status_Name === "Новая" || task.Status_Name === "В работе";
-
-        if (
-          allMembersRemoved &&
-          isInProgress &&
-          completedStatusId &&
-          task.Employees.length === 0
-        ) {
-          try {
-            const res = await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ ID_Status: completedStatusId }),
-            });
-
-            if (res.ok) {
-              updatedTasks.push({
-                ...task,
-                Status_Name: "Завершена",
-                AutoCompleted: true,
-              });
-              continue;
-            }
-          } catch (err) {
-            console.error(
-              `Ошибка при авто-завершении задачи ID ${task.ID_Task}:`,
-              err
-            );
-          }
-        }
-
-        updatedTasks.push(task);
-      }
-      console.log("Fetched tasks from API:", tasksData);
-      console.log("Updated tasks after auto-complete check:", updatedTasks);
-      const expandedTasksMap = new Map<string, Task>();
-      for (const task of updatedTasks) {
-        if (task.Employees.length > 0) {
-          for (const emp of task.Employees) {
-            const key = `${task.ID_Task}-${emp.id}`;
-            if (!expandedTasksMap.has(key)) {
-              expandedTasksMap.set(key, {
-                ...task,
-                EmployeeId: emp.id,
-                EmployeeName: emp.fullName,
-                EmployeeAvatar: emp.avatar,
-              });
-            }
-          }
-        } else {
-          const key = `${task.ID_Task}-null`;
-          if (!expandedTasksMap.has(key)) {
-            expandedTasksMap.set(key, task);
-          }
-        }
-      }
-      setTasks(Array.from(expandedTasksMap.values()));
-
-      const activeTeams = teamsData.filter((team: Team) => !team.IsArchived);
-      setTeams(activeTeams);
+      setTeams(teamsData.filter((team: Team) => !team.IsArchived));
 
       setStatusesData(statusesDataRaw);
       setProjects(projectsData);
-      console.log("Загруженные проекты:", projectsData); // ✅ Добавлено
     } catch (err) {
-      console.error(err);
+      console.error("Ошибка при fetchAll:", err);
       messageApi.error("Ошибка при загрузке данных");
     }
   }, [messageApi]);
@@ -898,9 +861,6 @@ const ManagerDashboard: React.FC = () => {
     const oneWeekAgo = dayjs().subtract(7, "day");
 
     const filtered = tasks.filter((task) => {
-      const isArchivedStatus = ["Завершена", "Выполнена"].includes(
-        task.Status_Name
-      );
       const dateToCompare = task.Status_Updated_At
         ? dayjs(task.Status_Updated_At)
         : task.Deadline
@@ -909,10 +869,11 @@ const ManagerDashboard: React.FC = () => {
 
       const isOlderThanWeek =
         dateToCompare && dateToCompare.isBefore(oneWeekAgo);
-      const shouldBeArchived = isArchivedStatus && isOlderThanWeek;
-      const shouldBeActive =
-        !isArchivedStatus || (isArchivedStatus && !isOlderThanWeek);
-      const isVisible = showArchive ? shouldBeArchived : shouldBeActive;
+
+      const isVisible = showArchive
+        ? ["Завершена", "Выполнена"].includes(task.Status_Name)
+        : !["Завершена", "Выполнена"].includes(task.Status_Name) ||
+          !isOlderThanWeek;
 
       const matchesTeam =
         !filterTeam ||
@@ -940,6 +901,8 @@ const ManagerDashboard: React.FC = () => {
         matchesSearch
       );
     });
+    console.log("🔍 После фильтрации:", filtered.map(t => t.ID_Task));
+
 
     return filtered.sort((a, b) => {
       const dateA = dayjs(a.Status_Updated_At || a.Deadline || "").valueOf();
@@ -981,36 +944,34 @@ const ManagerDashboard: React.FC = () => {
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
     if (!destination || source.droppableId === destination.droppableId) return;
-
+  
     const taskId = parseInt(draggableId.split("-")[1], 10);
     const task = tasks.find((t) => t.ID_Task === taskId);
     if (!task) return;
-
+  
     const fromStatus = source.droppableId;
     const toStatus = destination.droppableId;
-
+  
     // ❌ Запрет: Из "Выполнена" нельзя двигать никуда
     if (fromStatus === "Выполнена") {
       messageApi.warning('Перемещение из "Выполнена" запрещено');
       return;
     }
-
+  
     // ❌ Запрет: Из "Завершена" можно только в "Выполнена"
     if (fromStatus === "Завершена" && toStatus !== "Выполнена") {
-      messageApi.warning(
-        'Из "Завершена" можно перемещать только в "Выполнено"'
-      );
+      messageApi.warning('Из "Завершена" можно перемещать только в "Выполнено"');
       return;
     }
-
+  
     const statusObj = statusesData.find((s) => s.Status_Name === toStatus);
     if (!statusObj) return;
-
+  
     const isGoingToFinalStatus =
       toStatus === "Завершена" || toStatus === "Выполнена";
     const isFromInitialStatus =
       fromStatus === "Новая" || fromStatus === "В работе";
-
+  
     if (
       isGoingToFinalStatus &&
       (isFromInitialStatus || fromStatus === "Завершена")
@@ -1022,25 +983,32 @@ const ManagerDashboard: React.FC = () => {
       });
       setIsConfirmModalVisible(true);
     } else {
-      await updateTaskStatus(taskId, statusObj.ID_Status);
+      if (!task.EmployeeId) {
+        messageApi.error("Не удалось определить сотрудника для задачи");
+        return;
+      }
+      await updateTaskStatus(
+        task.ID_Task,
+        task.EmployeeId,
+        statusObj.ID_Status
+      );
     }
   };
+  
 
-  const updateTaskStatus = async (taskId: number, statusId: number) => {
+  const updateTaskStatus = async (
+    taskId: number,
+    employeeId: number,
+    statusId: number
+  ) => {
     const updatedAt = new Date().toISOString();
-
-    const task = tasks.find((t) => t.ID_Task === taskId); // Добавлено получение задачи
-    if (!task) {
-      console.error("Задача не найдена для обновления статуса");
-      return;
-    }
 
     try {
       await fetch(`${API_URL}/api/tasks/${taskId}/update-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employeeId: task.EmployeeId, // Теперь task определён
+          employeeId,
           statusName: statusesData.find((s) => s.ID_Status === statusId)
             ?.Status_Name,
         }),
@@ -1048,7 +1016,7 @@ const ManagerDashboard: React.FC = () => {
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.ID_Task === taskId
+          t.ID_Task === taskId && t.EmployeeId === employeeId
             ? {
                 ...t,
                 Status_Name:
@@ -1089,10 +1057,12 @@ const ManagerDashboard: React.FC = () => {
       );
 
       // Фильтруем только активные команды (Status !== "Архив")
-      const activeTeams = teams.filter((t) => t.Status !== "Архив");
+      const activeTeams = editingTask
+        ? teams
+        : teams.filter((t) => t.Status !== "Архив");
       setTeams(activeTeams);
 
-      setSelectedMembers(task.Employees.map((e) => e.fullName));
+      setSelectedMembers(task.Employees.map((e) => e.id));
 
       form.setFieldsValue({
         Task_Name: task.Task_Name,
@@ -1133,141 +1103,163 @@ const ManagerDashboard: React.FC = () => {
     Time_Norm: number;
     Deadline?: dayjs.Dayjs;
   }) => {
-    if (values.Deadline && dayjs(values.Deadline).isBefore(dayjs(), "day")) {
-      messageApi.error("Дедлайн не может быть назначен прошедшей датой!");
+    // Убедимся, что selectedMembers содержит массив чисел
+    const selectedIds: number[] = selectedMembers.map((id) => Number(id));
+  
+    // Проверка, выбраны ли сотрудники
+    if (selectedIds.length === 0) {
+      messageApi.error("Не выбраны сотрудники для задачи");
       return;
     }
-
-    const team = teams.find((t) => t.ID_Team === selectedTeamId);
-
-    // 🔍 Проверка: не более 5 активных задач на сотрудника
-    const overAssigned: { id: number; name: string; count: number }[] = [];
-
-    for (const memberName of selectedMembers) {
-      const member = team?.members.find((m) => m.fullName === memberName);
-      if (!member) continue;
-
-      const taskCount = tasks.filter(
-        (task) =>
-          task.Employees.some((e) => e.id === member.id) &&
-          ["Новая", "В работе"].includes(task.Status_Name)
-      ).length;
-
-      if (taskCount >= 5) {
-        overAssigned.push({
-          id: member.id,
-          name: member.fullName,
-          count: taskCount,
-        });
-      }
-    }
-
-    if (overAssigned.length > 0) {
-      const names = overAssigned
-        .map((o) => `${o.name} — уже ${o.count} активных задач`)
-        .join("\n");
-
-      messageApi.error(
-        `Ошибка: нельзя назначить задачу следующим сотрудникам:\n${names}\n(максимум — 5 задач в статусе "Новая" или "В работе")`
-      );
-      return;
-    }
-
-    const uploadedFilenames: string[] = [];
-    for (const file of selectedFiles) {
-      if (file.originFileObj) {
-        const formData = new FormData();
-        formData.append("file", file.originFileObj);
-        if (editingTask?.ID_Task) {
-          formData.append("taskId", editingTask.ID_Task.toString());
-        }
-
-        try {
-          const res = await fetch(`${API_URL}/api/upload-task`, {
-            method: "POST",
-            body: formData,
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            uploadedFilenames.push(data.filename);
-          } else {
-            messageApi.error(`Ошибка при загрузке файла: ${file.name}`);
-          }
-        } catch {
-          messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name}`);
-        }
-      } else if (file.url) {
-        uploadedFilenames.push(file.name);
-      }
-    }
-
-    const newStatus = statusesData.find((s) => s.Status_Name === "Новая");
-    if (!newStatus) {
-      messageApi.error('Не найден статус "Новая"');
-      return;
-    }
-
-    const selectedOrderId = Number(values.ID_Order);
-    const selectedProject = projects.find(
-      (p) => Number(p.ID_Order) === selectedOrderId
-    );
-    if (selectedProject && !selectedProject.ID_Manager) {
-      selectedProject.ID_Manager = JSON.parse(
-        localStorage.getItem("user") || "{}"
-      )?.id;
-    }
-
-    if (!selectedProject || !selectedProject.ID_Manager) {
-      console.error(
-        "Не удалось определить ID менеджера для выбранного проекта",
-        selectedProject
-      );
-      messageApi.error(
-        "Не удалось определить ID менеджера для выбранного проекта"
-      );
-      return;
-    }
-
-    const selectedIds =
-      team?.members
-        .filter((m) => selectedMembers.includes(m.fullName))
-        .map((m) => m.id) ?? [];
-
-    const payload = {
-      Task_Name: values.Task_Name,
-      Description: values.Description,
-      ID_Order: selectedOrderId,
-      ID_Status: newStatus.ID_Status,
-      Time_Norm: values.Time_Norm,
-      Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
-      EmployeeIds: selectedIds,
-      attachments: uploadedFilenames,
-      ID_Manager: selectedProject.ID_Manager,
-    };
-
+  
+    console.log("🎯 Выбранные ID исполнителей для задачи:", selectedIds);
+  
+    // Дополнительная проверка данных перед отправкой на сервер
     try {
-      const url = editingTask
-        ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
-        : `${API_URL}/api/tasks`;
-      const method = editingTask ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method,
+      const res = await fetch(`${API_URL}/api/tasks/check-employees`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ EmployeeIdentifiers: selectedIds }), // ✅ ИСПРАВЛЕНО
       });
+      
+  
+      // Читаем тело ответа один раз и сразу обрабатываем его
+      if (!res.ok) {
+        const errorMessage = await res.text();
+        throw new Error(errorMessage);
+      }
+  
+      const data = await res.json(); // Получаем JSON после первой проверки res.ok
+      console.log("Ответ от сервера при проверке сотрудников:", data);
+  
+      if (data.message && data.message.includes("Некоторые сотрудники не найдены")) {
+        messageApi.error(data.message);
+        return;
+      }
+  
+      // Проверка на дублирование названия задачи
+      const trimmedName = String(values.Task_Name).trim().toLowerCase();
+      const isDuplicate = tasks.some(
+        (task) =>
+          task.Task_Name.trim().toLowerCase() === trimmedName &&
+          (!editingTask || task.ID_Task !== editingTask.ID_Task)
+      );
+  
+      if (isDuplicate) {
+        messageApi.error("Задача с таким названием уже существует");
+        return;
+      }
+  
+      // Загружаем прикрепленные файлы
+      const uploadedFilenames: string[] = [];
+      for (const file of selectedFiles) {
+        if (file.originFileObj) {
+          const formData = new FormData();
+          formData.append("file", file.originFileObj);
+          if (editingTask?.ID_Task) {
+            formData.append("taskId", editingTask.ID_Task.toString());
+          }
+  
+          try {
+            const res = await fetch(`${API_URL}/api/upload-task`, {
+              method: "POST",
+              body: formData,
+            });
+  
+            if (res.ok) {
+              const data = await res.json();
+              uploadedFilenames.push(data.filename);
+            } else {
+              messageApi.error(`Ошибка при загрузке файла: ${file.name}`);
+            }
+          } catch (err) {
+            if (err instanceof Error) {
+              messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name} — ${err.message}`);
+            } else {
+              messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name}`);
+            }
+          }
+        } else if (file.url) {
+          uploadedFilenames.push(file.name);
+        }
+      }
+  
+      // Получаем статус задачи "Новая"
+      const newStatus = statusesData.find((s) => s.Status_Name === "Новая");
+      if (!newStatus) {
+        messageApi.error('Не найден статус "Новая"');
+        return;
+      }
+  
+      // Получаем проект по ID
+      const selectedOrderId = Number(values.ID_Order);
+      const selectedProject = projects.find(
+        (p) => Number(p.ID_Order) === selectedOrderId
+      );
+      if (selectedProject && !selectedProject.ID_Manager) {
+        selectedProject.ID_Manager = JSON.parse(localStorage.getItem("user") || "{}")?.id;
+      }
+  
+      if (!selectedProject || !selectedProject.ID_Manager) {
+        console.error("Не удалось определить ID менеджера для выбранного проекта", selectedProject);
+        messageApi.error("Не удалось определить ID менеджера для выбранного проекта");
+        return;
+      }
+  
+      // Формируем payload для отправки на сервер
+      const payload = {
+        Task_Name: values.Task_Name,
+        Description: values.Description,
+        ID_Order: selectedOrderId,
+        ID_Status: newStatus.ID_Status,
+        Time_Norm: values.Time_Norm,
+        Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
+        EmployeeIds: selectedIds, // Список выбранных сотрудников
+        attachments: uploadedFilenames,
+        ID_Manager: selectedProject.ID_Manager,
+      };
+  // 🔍 Проверка на циклические ссылки
+if (isCyclic(payload)) {
+  console.warn("🚨 Обнаружена циклическая ссылка в payload");
+}
 
-      if (!res.ok) throw new Error();
-
-      messageApi.success(editingTask ? "Задача обновлена" : "Задача создана");
-      setIsModalVisible(false);
-      fetchAll();
-    } catch {
-      messageApi.error("Ошибка при сохранении задачи");
+      try {
+        // Если задача редактируется — используем PUT, иначе POST
+        const url = editingTask
+          ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
+          : `${API_URL}/api/tasks`;
+        const method = editingTask ? "PUT" : "POST";
+  
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: stringifyCircularJSON(payload),
+        });
+        
+        if (!res.ok) throw new Error("Ошибка при создании задачи");
+  
+        messageApi.success(editingTask ? "Задача обновлена" : "Задача создана");
+        setIsModalVisible(false);
+        fetchAll(); // Перезагружаем данные
+      } catch (error) {
+        if (error instanceof Error) {
+          messageApi.error("Ошибка при сохранении задачи: " + error.message);
+        } else {
+          messageApi.error("Неизвестная ошибка при сохранении задачи");
+        }
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Ошибка при проверке сотрудников:", error);
+        messageApi.error("Ошибка при проверке сотрудников: " + error.message);
+      } else {
+        console.error("Ошибка при проверке сотрудников:", error);
+        messageApi.error("Неизвестная ошибка при проверке сотрудников");
+      }
     }
   };
-
+  
+  
   const handleTeamChange = (teamId: number) => {
     console.log("Все проекты:", projects); // ✅ ЛОГ 1
     console.log("Фильтрация для команды ID:", teamId); // ✅ ЛОГ 2
@@ -1282,12 +1274,18 @@ const ManagerDashboard: React.FC = () => {
     console.log("Фильтрованные проекты:", activeProjects); // ✅ ЛОГ 3
 
     setSelectedTeamId(teamId);
+    const foundTeam = teams.find((t) => t.ID_Team === teamId);
+    console.log("✅ Члены выбранной команды:", foundTeam?.members);
+
     setSelectedMembers([]);
     setFilteredProjects(activeProjects);
     form.setFieldsValue({ ID_Order: undefined });
 
     const team = teams.find((t) => t.ID_Team === teamId);
-    console.log("Members for selected team:", team?.members);
+    console.log(
+      "Members for selected team:",
+      team?.members?.map((m) => ({ id: m.id, name: m.fullName }))
+    );
   };
 
   const openViewModal = (task: Task) => {
@@ -1422,6 +1420,62 @@ const ManagerDashboard: React.FC = () => {
       </div>
     );
   };
+
+  const renderEmployeeTasks = (task: Task) => {
+    return (
+      <div>
+        {task.Employees.map((employee) => (
+          <div key={employee.id} className="task-card">
+            <h3>{task.Task_Name}</h3>
+            <p>{task.Description}</p>
+            <p>Ответственный: {employee.fullName}</p>
+            <div className="status-container">
+              {/* Кнопка для перемещения статуса задачи */}
+              <button onClick={() => handleTaskDrag(task.ID_Task, employee.id, "новый статус")}>
+                Переместить
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
+  
+  <div>{tasks.map(task => renderEmployeeTasks(task))}</div>
+  const handleTaskDrag = async (taskId: number, employeeId: number, statusName: string) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/update-status`, {
+        method: "PUT",
+        body: JSON.stringify({
+          employeeId,
+          statusName,
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+  
+      if (res.ok) {
+        // Обновление локального состояния задач
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.ID_Task === taskId
+              ? {
+                  ...task,
+                  Employees: task.Employees.map((emp) =>
+                    emp.id === employeeId ? { ...emp, status: statusName } : emp
+                  ),
+                }
+              : task
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Ошибка при изменении статуса задачи:", error);
+    }
+  };
+  
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -1652,8 +1706,8 @@ const ManagerDashboard: React.FC = () => {
                                         >
                                           {visibleTasks.map((task, index) => (
                                             <Draggable
-                                              key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
-                                              draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                              key={`task-${task.ID_Task}`}
+                                              draggableId={`task-${task.ID_Task}`}
                                               index={index}
                                             >
                                               {(providedDraggable) => (
@@ -1684,7 +1738,9 @@ const ManagerDashboard: React.FC = () => {
                                                       }}
                                                     >
                                                       Назначено для:{" "}
-                                                      {task.EmployeeName}
+                                                      {task.Employees.map(
+                                                        (e) => e.fullName
+                                                      ).join(", ")}
                                                     </p>
                                                     <p>
                                                       <i>Проект:</i>{" "}
@@ -1932,31 +1988,28 @@ const ManagerDashboard: React.FC = () => {
                   </Form.Item>
 
                   <Form.Item label="Исполнители">
-                    <Select
-                      mode="multiple"
-                      placeholder="Выберите участников"
-                      value={selectedMembers}
-                      onChange={(vals) => setSelectedMembers(vals)}
-                      disabled={!selectedTeamId}
-                      optionLabelProp="label"
-                    >
-                      {(
-                        teams.find((t) => t.ID_Team === selectedTeamId)
-                          ?.members || []
-                      ).map((member) => (
-                        <Option
-                          key={`member-${member.id}`}
-                          value={member.fullName}
-                          label={member.fullName}
-                        >
-                          {member.fullName}
-                          {member.role
-                            ? ` — ${member.role}`
-                            : " — [должность не указана]"}
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+  <Select
+    mode="multiple"
+    placeholder="Выберите участников"
+    value={selectedMembers}
+    onChange={(vals: number[]) => {
+      console.log("🎯 Выбранные ID исполнителей:", vals);  // ✅ Логируем выбранных сотрудников
+      setSelectedMembers(vals);
+    }}
+    
+    disabled={!selectedTeamId}
+  >
+    {(
+      teams.find((t) => t.ID_Team === selectedTeamId)?.members || []
+    ).map((member, index) => (
+      <Option key={index} value={member.id}>
+        {member.fullName}
+        {member.role ? ` — ${member.role}` : " — [должность не указана]"}
+      </Option>
+    ))}
+  </Select>
+</Form.Item>
+
 
                   <Form.Item
                     name="Task_Name"
@@ -2347,10 +2400,17 @@ const ManagerDashboard: React.FC = () => {
                 open={isConfirmModalVisible}
                 onOk={async () => {
                   if (pendingDragTask) {
-                    await updateTaskStatus(
-                      pendingDragTask.taskId,
-                      pendingDragTask.targetStatusId
+                    const draggedTask = tasks.find(
+                      (t) => t.ID_Task === pendingDragTask.taskId
                     );
+                    if (draggedTask?.EmployeeId != null) {
+                      await updateTaskStatus(
+                        pendingDragTask.taskId,
+                        draggedTask.EmployeeId,
+                        pendingDragTask.targetStatusId
+                      );
+                    }
+
                     setPendingDragTask(null);
                   }
                   setIsConfirmModalVisible(false);
@@ -2384,6 +2444,22 @@ const ManagerDashboard: React.FC = () => {
                 cancelText="Отмена"
               >
                 <p>Вы уверены, что хотите закрыть эту задачу?</p>
+              </Modal>
+              <Modal
+                title="Подтверждение удаления"
+                open={isDeleteConfirmVisible}
+                onOk={() => {
+                  if (selectedTaskId !== null) handleDeleteTask(selectedTaskId);
+                  setIsDeleteConfirmVisible(false);
+                }}
+                onCancel={() => setIsDeleteConfirmVisible(false)}
+                okText="Удалить"
+                cancelText="Отмена"
+              >
+                <p>
+                  Вы уверены, что хотите безвозвратно удалить эту задачу и все
+                  связанные данные?
+                </p>
               </Modal>
             </main>
           </div>

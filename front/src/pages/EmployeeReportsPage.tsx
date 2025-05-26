@@ -91,42 +91,50 @@ const EmployeeReportsPage: React.FC = () => {
   const gridColor =
     appTheme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)";
 
-    const [loading, setLoading] = useState(true);
-    const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
-    const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
-    const [kanbanData, setKanbanData] = useState<KanbanTask[]>([]);
-    const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>([]);
-    const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
-    const [searchText, setSearchText] = useState("");
-    const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "active" | "closed">("all");
-    
-    const applyDateFilter = <T extends DateRecord>(data: T[]) => {
-      if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
-      const [start, end] = dateRange;
-      return data.filter((item) => {
-        const dateStr =
-          item.Task_Date || item.Start_Date || item.End_Date || item.Deadline;
-        if (!dateStr) return false;
-        const date = dayjs(dateStr);
-        return (
-          date.isAfter(start.startOf("day")) && date.isBefore(end.endOf("day"))
-        );
-      });
-    };
+  const [loading, setLoading] = useState(true);
+  const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
+  const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
+  const [kanbanData, setKanbanData] = useState<KanbanTask[]>([]);
+  const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>(
+    []
+  );
+  const [dateRange, setDateRange] = useState<
+    [Dayjs | null, Dayjs | null] | null
+  >(null);
+  const [searchText, setSearchText] = useState("");
+  const [taskStatusFilter, setTaskStatusFilter] = useState<
+    "all" | "active" | "closed"
+  >("all");
 
-    const filterByStatus = <T extends { Status_Name?: string }>(data: T[]): T[] => {
-      if (taskStatusFilter === "all") return data;
-      return data.filter((item) =>
-        taskStatusFilter === "active"
-          ? item.Status_Name !== "Завершена" && item.Status_Name !== "Закрыта"
-          : item.Status_Name === "Завершена" || item.Status_Name === "Закрыта"
+  const applyDateFilter = <T extends DateRecord>(data: T[]) => {
+    if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
+    const [start, end] = dateRange;
+    return data.filter((item) => {
+      const dateStr =
+        item.Task_Date || item.Start_Date || item.End_Date || item.Deadline;
+      if (!dateStr) return false;
+      const date = dayjs(dateStr);
+      return (
+        date.isAfter(start.startOf("day")) && date.isBefore(end.endOf("day"))
       );
-    };
-    
-    const filteredTasksByType = filterByStatus(
-      applyDateFilter(tasksByType) as (TaskByType & { Status_Name?: string })[]
+    });
+  };
+
+  const filterByStatus = <T extends { Status_Name?: string }>(
+    data: T[]
+  ): T[] => {
+    if (taskStatusFilter === "all") return data;
+    return data.filter((item) =>
+      taskStatusFilter === "active"
+        ? item.Status_Name !== "Завершена" && item.Status_Name !== "Закрыта"
+        : item.Status_Name === "Завершена" || item.Status_Name === "Закрыта"
     );
-    
+  };
+
+  const filteredTasksByType = filterByStatus(
+    applyDateFilter(tasksByType) as (TaskByType & { Status_Name?: string })[]
+  );
+
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.email) return;
@@ -162,12 +170,14 @@ const EmployeeReportsPage: React.FC = () => {
   }, [user]);
   const getCellAlignment = (value: unknown): "left" | "center" => {
     if (typeof value === "number") return "center";
-    if (typeof value === "string" && dayjs(value).isValid() && value.length >= 10) return "center";
+    if (
+      typeof value === "string" &&
+      dayjs(value).isValid() &&
+      value.length >= 10
+    )
+      return "center";
     return "left";
   };
-  
-  
-
 
   const buildFilterMenu = (
     setRange: (range: [Dayjs, Dayjs] | null) => void
@@ -274,7 +284,7 @@ const EmployeeReportsPage: React.FC = () => {
       align: "center",
     },
   ];
-  
+
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
       title: "Задача",
@@ -306,7 +316,6 @@ const EmployeeReportsPage: React.FC = () => {
       align: "center",
     },
   ];
-  
 
   const commonOptions = {
     plugins: {
@@ -326,7 +335,6 @@ const EmployeeReportsPage: React.FC = () => {
       },
     },
   };
-  
 
   const taskStatusMenu = (
     <Dropdown
@@ -336,14 +344,15 @@ const EmployeeReportsPage: React.FC = () => {
           { key: "active", label: "Текущие задачи" },
           { key: "closed", label: "Закрытые задачи" },
         ],
-        onClick: ({ key }) => setTaskStatusFilter(key as typeof taskStatusFilter),
+        onClick: ({ key }) =>
+          setTaskStatusFilter(key as typeof taskStatusFilter),
       }}
       placement="bottomRight"
     >
       <Button>Фильтр задач</Button>
     </Dropdown>
   );
-  
+
   const aggregatedTasksByType = filteredTasksByType.reduce(
     (acc: Record<string, number>, item) => {
       acc[item.Task_Type] = (acc[item.Task_Type] || 0) + item.Task_Count;
@@ -351,7 +360,7 @@ const EmployeeReportsPage: React.FC = () => {
     },
     {}
   );
-  
+
   const pieData = {
     labels: Object.keys(aggregatedTasksByType),
     datasets: [
@@ -370,11 +379,13 @@ const EmployeeReportsPage: React.FC = () => {
       },
     ],
   };
-  
+
   const filteredTasksByProject = filterByStatus(
-    applyDateFilter(tasksByProject) as (TaskByProject & { Status_Name?: string })[]
+    applyDateFilter(tasksByProject) as (TaskByProject & {
+      Status_Name?: string;
+    })[]
   );
-  
+
   const aggregatedTasksByProject = filteredTasksByProject.reduce(
     (acc: Record<string, number>, item) => {
       acc[item.Project_Name] = (acc[item.Project_Name] || 0) + item.Task_Count;
@@ -382,7 +393,7 @@ const EmployeeReportsPage: React.FC = () => {
     },
     {}
   );
-  
+
   const barData = {
     labels: Object.keys(aggregatedTasksByProject),
     datasets: [
@@ -394,39 +405,38 @@ const EmployeeReportsPage: React.FC = () => {
       },
     ],
   };
-  
+
   const dateFiltered = applyDateFilter(kanbanData);
 
   // Группируем: { [Project_Name]: { [Deadline]: count } }
   const grouped: Record<string, Record<string, number>> = {};
-  
+
   dateFiltered.forEach((task) => {
     const dateKey = dayjs(task.Deadline).format("YYYY-MM-DD");
     const project = task.Order_Name;
-  
+
     if (!grouped[project]) {
       grouped[project] = {};
     }
-  
+
     grouped[project][dateKey] = (grouped[project][dateKey] || 0) + 1;
   });
-  
+
   // Все уникальные даты (сортировка)
   const allDates = [
     ...new Set(dateFiltered.map((t) => dayjs(t.Deadline).format("YYYY-MM-DD"))),
   ].sort();
-  
+
   // Строим datasets для каждого проекта
   const lineData = {
     labels: allDates,
     datasets: Object.keys(grouped).map((project) => ({
       label: project,
       data: allDates.map((date) => grouped[project][date] || 0),
-      borderColor: "#" + Math.floor(Math.random()*16777215).toString(16), // случайный цвет
+      borderColor: "#" + Math.floor(Math.random() * 16777215).toString(16), // случайный цвет
       fill: false,
     })),
   };
-  
 
   const handleExport = async (format: string) => {
     try {
@@ -479,26 +489,25 @@ const EmployeeReportsPage: React.FC = () => {
     }
   };
 
-  
   const applySearchFilter = <T extends KanbanTask | TimeTrackingEntry>(
     data: T[]
   ) => {
     let filtered = data;
-  
+
     if (taskStatusFilter !== "all" && "Status_Name" in data[0]) {
       filtered = filtered.filter((item: KanbanTask | TimeTrackingEntry) => {
         if ("Status_Name" in item) {
           return taskStatusFilter === "active"
             ? item.Status_Name !== "Завершена" && item.Status_Name !== "Закрыта"
-            : item.Status_Name === "Завершена" || item.Status_Name === "Закрыта";
+            : item.Status_Name === "Завершена" ||
+                item.Status_Name === "Закрыта";
         }
         return true; // Пропустить фильтрацию, если нет Status_Name (например, для TimeTrackingEntry)
       });
-      
     }
-  
+
     if (!searchText.trim()) return filtered;
-  
+
     const lowerSearch = searchText.toLowerCase();
     return filtered.filter((item) =>
       Object.values(item as Record<keyof T, unknown>).some((value) =>
@@ -508,7 +517,6 @@ const EmployeeReportsPage: React.FC = () => {
       )
     );
   };
-  
 
   const tabItems = [
     {
@@ -536,7 +544,6 @@ const EmployeeReportsPage: React.FC = () => {
       ),
     },
   ];
-  
 
   if (loading) return <div>Загрузка данных...</div>;
 
@@ -547,28 +554,30 @@ const EmployeeReportsPage: React.FC = () => {
         <div className="dashboard-body">
           <SidebarEmployee role="employee" />
           <main className="main-content">
-          <h1
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 600,
-                  marginBottom: "24px",
-                }}
-              >Мои отчёты</h1>
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 600,
+                marginBottom: "-2px",
+              }}
+            >
+              Мои отчёты
+            </h1>
             <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "8px",
-    marginBottom: "16px",
-  }}
->
-  <Input
-    placeholder="Поиск по всем данным..."
-    value={searchText}
-    onChange={(e) => setSearchText(e.target.value)}
-    style={{ width: "250px" }}
-  />
-  {taskStatusMenu}
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "8px",
+                margin: "-12px 0",
+              }}
+            >
+              <Input
+                placeholder="Поиск по всем данным..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ width: "250px" }}
+              />
+              {taskStatusMenu}
               <Dropdown
                 menu={{
                   items: [

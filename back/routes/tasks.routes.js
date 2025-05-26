@@ -1,18 +1,17 @@
+// back/routes/tasks.routes.js
+
 const express = require('express');
 const router = express.Router();
 const taskController = require('../controllers/task.controller');
 const { poolConnect, pool, sql } = require('../config/db');
 
-// Лог ID перед выполнением контроллера
+// 🔹 Получение задач сотрудника по ID с логом
 router.get('/employee/:id', (req, res, next) => {
   console.log('Получен запрос на задачи сотрудника с ID:', req.params.id);
   next();
 }, taskController.getTasksByEmployee);
 
-// Получить все задачи с фильтрами: ?employee=2&team=1
-router.get('/', taskController.getAllTasks);
-
-// Поиск задач по имени или описанию
+// 🔹 Поиск задач по ключевым словам (название, описание)
 router.get('/search', async (req, res) => {
   const { q } = req.query;
   try {
@@ -31,23 +30,36 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Получить все задачи с деталями
+// 🔹 Получение всех задач с деталями (включая сотрудников, статусы, команды)
 router.get('/details', taskController.getTasksWithDetails);
-router.delete("/without-employees", taskController.deleteTasksWithoutEmployees);
-// Создать задачу
+
+// 🔹 Удаление задач без сотрудников (для автоматической очистки)
+router.delete('/without-employees', taskController.deleteTasksWithoutEmployees);
+
+// 🔹 Создание новой задачи
 router.post('/', taskController.createTask);
 
-// Обновить задачу
+// 🔹 Обновление задачи по ID
 router.put('/:id', taskController.updateTask);
 
-// Удалить задачу
+// 🔹 Удаление задачи по ID
 router.delete('/:id', taskController.deleteTask);
 
-// Закрыть задачу (установить статус "Завершена")
+// 🔹 Закрытие задачи — смена статуса на "Завершена"
 router.patch('/:id/close', taskController.closeTask);
 
-// Обновить статус задачи для конкретного сотрудника
+// 🔹 Обновление статуса задачи конкретного сотрудника
 router.put('/:taskId/status', taskController.updateEmployeeTaskStatus);
-router.put('/:taskId/update-status', taskController.updateEmployeeTaskStatus);
+router.put('/:taskId/update-status', taskController.updateEmployeeTaskStatus); // Альтернативный URL
+
+// 🔹 Получение всех задач с фильтрами (по сотруднику, по команде)
+router.get('/', taskController.getAllTasks);
+router.patch('/:id/archive', taskController.archiveTask);
+
+
+// Проверка существования сотрудников
+router.post('/check-employees', taskController.checkEmployeesExist);
+
+
 
 module.exports = router;
