@@ -717,3 +717,14 @@
     padding: 4px;
   }
 }
+
+
+/* Светлая тема: переопределение фона у Layout */
+[data-theme="light"] .layout,
+[data-theme="light"] .main-layout,
+[data-theme="light"] .content,
+[data-theme="light"] .page-content,
+[data-theme="light"] .time-tracking-page {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}

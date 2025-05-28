@@ -845,7 +845,7 @@ const EmployeeDashboard = () => {
                     ),
                   },
                   {
-                    label: "Список задач (таблица)",
+                    label: "Журнал моих задач",
                     key: "table",
                     children: (
                       <>

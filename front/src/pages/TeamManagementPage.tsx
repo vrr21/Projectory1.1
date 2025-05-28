@@ -31,7 +31,7 @@ const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
-  id: number;
+  ID_User: number;
   fullName: string;
   email: string;
   role: string;
@@ -84,6 +84,8 @@ const TeamManagementPage: React.FC = () => {
     setConfirmAction(() => action);
     setIsConfirmModalVisible(true);
   };
+
+  const [editMemberForm] = Form.useForm();
 
   const fetchRoles = useCallback(async () => {
     try {
@@ -220,7 +222,7 @@ const TeamManagementPage: React.FC = () => {
     const isInAnotherTeam = teams.some(
       (team) =>
         team.ID_Team !== currentTeamId &&
-        team.members.some((member) => member.id === values.userId)
+        team.members.some((member) => member.ID_User === values.userId)
     );
     if (isInAnotherTeam) {
       const user = users.find((u) => u.id === values.userId);
@@ -406,7 +408,7 @@ const TeamManagementPage: React.FC = () => {
       render: (_, team) => (
         <div>
           {team.members.map((m) => (
-            <div key={`${team.ID_Team}-${m.id}`}>
+            <div key={`${team.ID_Team}-${m.ID_User}`}>
               {m.fullName} ({m.role}) — {m.email}
               <Button
                 type="link"
@@ -416,7 +418,7 @@ const TeamManagementPage: React.FC = () => {
                 onClick={() => {
                   setCurrentTeamId(team.ID_Team);
                   setEditingMember(m);
-                  memberForm.setFieldsValue({ role: m.role });
+                  editMemberForm.setFieldsValue({ role: m.role }); // теперь правильная форма
                   setIsEditMemberModalVisible(true);
                 }}
               >
@@ -426,7 +428,7 @@ const TeamManagementPage: React.FC = () => {
                 type="link"
                 danger
                 size="small"
-                onClick={() => handleDeleteMember(team.ID_Team, m.id)}
+                onClick={() => handleDeleteMember(team.ID_Team, m.ID_User)}
                 icon={<DeleteOutlined />}
                 style={{ marginLeft: 8 }}
               >
@@ -506,7 +508,7 @@ const TeamManagementPage: React.FC = () => {
                 justifyContent: "center",
                 border: "1px solid var(--border-color)",
               }}
-              onClick={() => handleDeleteTeam(team.ID_Team)}
+              onClick={() => handleDeleteTeam(team.ID_Team)} // ✅ исправлено
             >
               Удалить команду
             </Button>
@@ -669,7 +671,9 @@ const TeamManagementPage: React.FC = () => {
                     // Проверка: пользователь уже состоит в другой команде
                     for (const m of members) {
                       const alreadyInTeam = teams.some((team) =>
-                        team.members.some((member) => member.id === m.userId)
+                        team.members.some(
+                          (member) => member.ID_User === values.userId
+                        )
                       );
                       if (alreadyInTeam) {
                         const user = users.find((u) => u.id === m.userId);
@@ -779,7 +783,7 @@ const TeamManagementPage: React.FC = () => {
                                     (user) =>
                                       !teams.some((team) =>
                                         team.members.some(
-                                          (member) => member.id === user.id
+                                          (member) => member.ID_User === user.id
                                         )
                                       )
                                   )
@@ -883,7 +887,7 @@ const TeamManagementPage: React.FC = () => {
                           (user) =>
                             !teams.some((team) =>
                               team.members.some(
-                                (member) => member.id === user.id
+                                (member) => member.ID_User === user.id
                               )
                             )
                         )
@@ -1007,30 +1011,31 @@ const TeamManagementPage: React.FC = () => {
                   ))}
                 </div>
               </Modal>
+              {/* ======== Новый Modal для редактирования участника ======== */}
               <Modal
                 title="Редактирование участника"
                 open={isEditMemberModalVisible}
                 onCancel={() => {
                   setIsEditMemberModalVisible(false);
-                  memberForm.resetFields();
+                  editMemberForm.resetFields();
                 }}
-                onOk={() => memberForm.submit()}
+                onOk={() => editMemberForm.submit()}
                 okText="Сохранить"
                 cancelText="Отмена"
               >
                 <Form
-                  form={memberForm}
+                  form={editMemberForm}
                   layout="vertical"
                   onFinish={async (values) => {
                     if (!editingMember || !currentTeamId) return;
 
                     try {
                       const res = await fetch(
-                        `${API_URL}/api/teams/${currentTeamId}/members/${editingMember.id}`,
+                        `${API_URL}/api/teams/${currentTeamId}/members/${editingMember.ID_User}`,
                         {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ role: values.role }), // только role, как ждёт backend
+                          body: JSON.stringify({ role: values.role }),
                         }
                       );
 

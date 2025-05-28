@@ -252,7 +252,8 @@ const TimeTrackingManager: React.FC = () => {
         <Layout className="main-layout">
           <HeaderManager />
           <Content className="content">
-            <div className="page-content">
+          <div className="page-content time-tracking-page">
+
               <div
                 className="time-tracking-header"
                 style={{

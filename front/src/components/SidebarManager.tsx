@@ -160,18 +160,20 @@ const SidebarManager: React.FC = () => {
             {!collapsed && (
               <div style={{ minWidth: 0 }}>
                 <div
+                  className="team-name"
                   style={{
                     fontSize: 14,
                     fontWeight: 600,
-                    color: "#fff",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                   }}
                 >
+                 Администрирование
+                </div>
+                <div className="team-role" style={{ fontSize: 12 }}>
                   Менеджер Projectory
                 </div>
-                <div style={{ fontSize: 12, color: "#ccc" }}>Администратор</div>
               </div>
             )}
           </div>

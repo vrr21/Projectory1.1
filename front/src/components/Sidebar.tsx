@@ -219,24 +219,25 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
               </Avatar>
               {!collapsed && (
                 <div>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#fff",
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {team ? team.Team_Name : "Пока не в команде"}
-                  </div>
-                  {team?.Role && (
-                    <div style={{ fontSize: 12, color: "#ccc" }}>
-                      Моя роль: {team.Role}
-                    </div>
-                  )}
+                <div
+                  className="team-name"
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {team ? team.Team_Name : "Пока не в команде"}
                 </div>
+                {team?.Role && (
+                  <div className="team-role" style={{ fontSize: 12 }}>
+                    Моя роль: {team.Role}
+                  </div>
+                )}
+              </div>
+              
               )}
             </div>
           </div>

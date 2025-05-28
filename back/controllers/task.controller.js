@@ -467,13 +467,12 @@ exports.getTeamsWithMembers = async (req, res) => {
           ID_Team: row.ID_Team,
           Team_Name: row.Team_Name,
           IsArchived: row.IsArchived,
-          members: [], // ✅ было Members, стало members (с маленькой буквы)
+          members: [], // 👈 исправлено с "Members" на "members"
         });
-        
       }
 
       if (row.ID_User) {
-        teamsMap.get(row.ID_Team).Members.push({
+        teamsMap.get(row.ID_Team).members.push({ // 👈 исправлено с "Members" на "members"
           ID_User: row.ID_User,
           Full_Name: row.Full_Name,
           Avatar: row.Avatar,
@@ -493,6 +492,7 @@ exports.getTeamsWithMembers = async (req, res) => {
     });
   }
 };
+
 
 exports.archiveTask = async (req, res) => {
   const { id } = req.params;
@@ -553,20 +553,18 @@ exports.checkEmployeesExist = async (req, res) => {
 
     const result = await request.query(query);
 
-    // Сопоставление найденных пользователей с исходными идентификаторами
-    const foundIdentifiers = result.recordset.map(user => {
-      return user.ID_User || user.Email || `${user.First_Name} ${user.Last_Name}`;
-    });
-
+    const foundIdentifiers = result.recordset.map(user => user.ID_User); // <-- исправлено
+    
     const notFound = EmployeeIdentifiers.filter(identifier => {
-      return !foundIdentifiers.includes(identifier);
+      return !foundIdentifiers.includes(identifier); // <-- числовое сравнение
     });
-
+    
     if (notFound.length > 0) {
       return res.status(404).json({
         message: `Некоторые сотрудники не найдены: ${notFound.join(', ')}`,
       });
     }
+    
 
     return res.status(200).json({ message: "Все сотрудники существуют" });
   } catch (error) {
@@ -599,7 +597,8 @@ exports.createTask = async (req, res) => {
     // Фильтруем некорректные ID сотрудников
     // Фильтруем некорректные ID сотрудников
    // Фильтрация и валидация идентификаторов сотрудников
-const sanitizedEmployeeIds = EmployeeIds.filter(id => Number.isInteger(id) && id > 0);
+   const sanitizedEmployeeIds = EmployeeIds.map(id => Number(id)).filter(id => Number.isInteger(id) && id > 0);
+
 console.log("Sanitized EmployeeIds: ", sanitizedEmployeeIds);
 
 // Проверка, что список не пуст
