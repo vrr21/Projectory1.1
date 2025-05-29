@@ -23,13 +23,11 @@ import {
   UserOutlined,
   EyeOutlined,
   EditOutlined,
+  ClockCircleOutlined,
   UploadOutlined,
   FilterOutlined,
 } from "@ant-design/icons";
-import { UpOutlined, DownOutlined } from "@ant-design/icons";
-import { PlusOutlined } from "@ant-design/icons";
-import { ClockCircleOutlined } from "@ant-design/icons";
-import { useNavigate } from "react-router-dom";
+
 import { MessageOutlined } from "@ant-design/icons";
 import { InboxOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -48,47 +46,11 @@ import { Dropdown } from "antd";
 import { DownloadOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { DeleteOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
+
 const { Option } = Select;
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function isCyclic(obj: unknown): boolean {
-  const seenObjects = new WeakSet();
-
-  function detect(value: unknown): boolean {
-    if (value && typeof value === "object") {
-      if (seenObjects.has(value)) {
-        return true;
-      }
-      seenObjects.add(value);
-      for (const key in value as Record<string, unknown>) {
-        if (
-          Object.prototype.hasOwnProperty.call(value, key) &&
-          detect((value as Record<string, unknown>)[key])
-        ) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  return detect(obj);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function stringifyCircularJSON(obj: unknown): string {
-  const seen = new WeakSet();
-  return JSON.stringify(obj, function (key, value) {
-    if (typeof value === "object" && value !== null) {
-      if (seen.has(value)) return;
-      seen.add(value);
-    }
-    return value;
-  });
-}
-
 
 interface Comment {
   id: number;
@@ -145,24 +107,9 @@ interface Project {
   ID_Order: number;
   Order_Name: string;
   ID_Team: number;
-  ID_Manager: number;
-  IsArchived?: boolean;
-  Deadline?: string | null;
+  IsArchived?: boolean; // добавлено
+  Deadline?: string | null; // добавлено
 }
-interface RawMember {
-  ID_User: number;
-  First_Name: string;
-  Last_Name: string;
-  Role?: string;
-  Avatar?: string;
-}
-
-interface RawTeam {
-  ID_Team: number;
-  Team_Name: string;
-  members: RawMember[];
-}
-
 
 const statuses = ["Новая", "В работе", "Завершена", "Выполнена"];
 
@@ -171,48 +118,6 @@ const ManagerDashboard: React.FC = () => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [statusesData, setStatusesData] = useState<Status[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [teamsRes, projectsRes, statusesRes, tasksRes] = await Promise.all([
-          fetch(`${API_URL}/api/teams`),
-          fetch(`${API_URL}/api/projects`),
-          fetch(`${API_URL}/api/statuses`),
-          fetch(`${API_URL}/api/tasks`),
-        ]);
-  
-        const [teamsData, projectsData, statusesData, tasksData] = await Promise.all([
-          teamsRes.json(),
-          projectsRes.json(),
-          statusesRes.json(),
-          tasksRes.json(),
-        ]);
-  
-        const processedTeams = (teamsData as RawTeam[]).map((team) => ({
-          ...team,
-          members: team.members.map((m) => ({
-            id: m.ID_User,
-            fullName: `${m.First_Name} ${m.Last_Name}`,
-            role: m.Role,
-            avatar: m.Avatar,
-          })),
-        }));
-        
-  
-        setTeams(processedTeams);
-        setProjects(projectsData);
-        setStatusesData(statusesData);
-        setTasks(tasksData);
-      } catch (error) {
-        console.error("Ошибка при загрузке данных:", error);
-        messageApi.error("Ошибка при загрузке данных");
-      }
-    };
-  
-    fetchData();
-  }, []);
-  
-  
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -222,7 +127,7 @@ const ManagerDashboard: React.FC = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
-  const [selectedMembers, setSelectedMembers] = useState<number[]>([]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [expandedStatuses, setExpandedStatuses] = useState<string[]>([]);
@@ -231,8 +136,7 @@ const ManagerDashboard: React.FC = () => {
     targetStatusId: number;
     targetStatusName: string;
   } | null>(null);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
+  const navigate = useNavigate();
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [confirmCloseVisible, setConfirmCloseVisible] = useState(false);
@@ -245,38 +149,10 @@ const ManagerDashboard: React.FC = () => {
     const selectedProject = filteredProjects.find(
       (p) => p.ID_Order === orderId
     );
-
-    console.log("Выбранный проект:", selectedProject); // ✅ ЛОГ ДЛЯ ОТЛАДКИ
-
     setProjectDeadline(
       selectedProject?.Deadline ? dayjs(selectedProject.Deadline) : null
     );
   };
-
-  const renderEmployees = (
-    employees: { id: number; fullName: string; avatar?: string | null }[]
-  ) => {
-    if (!employees?.length) return "—";
-    return (
-      <Avatar.Group max={{ count: 3 }}>
-        {employees.map((emp) => (
-          <Tooltip key={emp.id} title={emp.fullName}>
-            <Avatar
-              src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
-              style={{
-                backgroundColor: emp.avatar ? "transparent" : "#777",
-                cursor: "pointer",
-              }}
-              onClick={() => navigate(`/employee/${emp.id}`)}
-            >
-              {!emp.avatar && getInitials(emp.fullName)}
-            </Avatar>
-          </Tooltip>
-        ))}
-      </Avatar.Group>
-    );
-  };
-  const navigate = useNavigate();
 
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
@@ -393,7 +269,6 @@ const ManagerDashboard: React.FC = () => {
       setSelectedTaskId(null);
     }
   };
-  const [isDeleteConfirmVisible, setIsDeleteConfirmVisible] = useState(false);
 
   const [newComment, setNewComment] = useState("");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -452,11 +327,7 @@ const ManagerDashboard: React.FC = () => {
       setIsCommentsModalVisible(true);
     } catch (err) {
       console.error(err);
-      if (err instanceof Error) {
-        messageApi.error(err.message);
-      } else {
-        messageApi.error("Ошибка при загрузке комментариев");
-      }
+      messageApi.error("Ошибка при загрузке комментариев");
     }
   };
 
@@ -564,32 +435,27 @@ const ManagerDashboard: React.FC = () => {
       </Select>
 
       <Select
-        value="По дате"
+        allowClear
+        showSearch
+        placeholder="Фильтр по сотруднику"
         style={{ width: "100%", marginBottom: 8 }}
-        dropdownRender={() => (
-          <div style={{ padding: 8 }}>
-            <Button
-              icon={<UpOutlined />}
-              type={sortOrder === "asc" ? "primary" : "default"}
-              onClick={() => setSortOrder("asc")}
-              size="small"
-              style={{ width: "100%", marginBottom: 4 }}
-            >
-              По возрастанию
-            </Button>
-            <Button
-              icon={<DownOutlined />}
-              type={sortOrder === "desc" ? "primary" : "default"}
-              onClick={() => setSortOrder("desc")}
-              size="small"
-              style={{ width: "100%" }}
-            >
-              По убыванию
-            </Button>
-          </div>
-        )}
+        onChange={(val) => setFilterEmployee(val)}
+        value={filterEmployee ?? undefined}
+        optionFilterProp="children"
       >
-        <Option value="По дате">По дате</Option>
+        {[
+          ...new Set(
+            tasks.flatMap(
+              (task) => task.Employees?.map((emp) => emp.fullName) || []
+            )
+          ),
+        ]
+          .sort()
+          .map((name) => (
+            <Option key={name} value={name}>
+              {name}
+            </Option>
+          ))}
       </Select>
 
       <Button
@@ -672,7 +538,9 @@ const ManagerDashboard: React.FC = () => {
       dataIndex: "Time_Norm",
       key: "Time_Norm",
       align: "center",
-      render: (text: number) => <div style={{ textAlign: "left" }}>{text}</div>,
+      render: (text: number) => (
+        <div style={{ textAlign: "center" }}>{text}</div>
+      ),
     },
     {
       title: "Дедлайн",
@@ -680,32 +548,25 @@ const ManagerDashboard: React.FC = () => {
       key: "Deadline",
       align: "center",
       render: (date: string) => (
-        <div style={{ textAlign: "left" }}>
-          {date ? dayjs(date).format("YYYY-MM-DD HH:mm") : "—"}
+        <div style={{ textAlign: "center" }}>
+          {date ? dayjs(date).format("DD.MM.YYYY HH:mm") : "—"}
         </div>
       ),
     },
     {
-      title: "Сотрудники",
-      key: "Employees",
+      title: "Сотрудник",
+      dataIndex: "EmployeeName",
+      key: "EmployeeName",
       align: "center",
-      render: (_: unknown, task: Task) => (
-        <div style={{ textAlign: "left" }}>
-          {task.Employees.map((emp, idx) => (
-            <span key={emp.id}>
-              <a
-                href={`/employee/${emp.id}`}
-                style={{ color: "inherit", textDecoration: "underline" }}
-              >
-                {emp.fullName}
-              </a>
-              {idx < task.Employees.length - 1 && ", "}
-            </span>
-          ))}
-        </div>
+      render: (_: string, record: Task) => (
+        <span
+          style={{ fontStyle: "italic", color: "#bbb", cursor: "pointer" }}
+          onClick={() => navigate(`/employee/${record.EmployeeId}`)}
+        >
+          {record.EmployeeName}
+        </span>
       ),
     },
-
     {
       title: "Статус",
       dataIndex: "Status_Name",
@@ -716,44 +577,30 @@ const ManagerDashboard: React.FC = () => {
       ),
       onFilter: (value, record) =>
         typeof value === "string" && record.Status_Name === value,
-      render: (_: unknown, task: Task) => (
-        <div style={{ textAlign: "left" }}>
-          {task.Status_Name}
-          {task.Status_Name === "Завершена" && task.AutoCompleted && (
-            <span style={{ color: "orange", marginLeft: 6 }}>(Просрочено)</span>
-          )}
-        </div>
+      render: (text: string) => (
+        <div style={{ textAlign: "center" }}>{text}</div>
       ),
     },
-
     {
       title: "Действия",
       key: "actions",
       align: "center",
       render: (_: unknown, task: Task) => (
-        <div className="task-actions" style={{ textAlign: "left" }}>
+        <div
+          className="task-actions"
+          style={{ display: "flex", justifyContent: "center", gap: 8 }}
+        >
           {showArchive ? (
             <Tooltip title="Удалить задачу">
               <Button
-                icon={
-                  <DeleteOutlined
-                    style={{ display: "flex", justifyContent: "center" }}
-                  />
-                }
+                icon={<DeleteOutlined />}
                 danger
-                onClick={() => {
-                  setSelectedTaskId(task.ID_Task);
-                  setIsDeleteConfirmVisible(true);
-                }}
+                onClick={() => handleDeleteTask(task.ID_Task)}
                 size="small"
                 style={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
                   backgroundColor: "transparent",
                   border: "none",
                   color: "inherit",
-                  padding: 0,
                 }}
               />
             </Tooltip>
@@ -765,11 +612,9 @@ const ManagerDashboard: React.FC = () => {
                   onClick={() => showModal(task)}
                   size="small"
                   style={{
-                    marginRight: 8,
                     backgroundColor: "transparent",
                     border: "none",
                     color: "inherit",
-                    padding: 0,
                   }}
                 />
               </Tooltip>
@@ -783,7 +628,6 @@ const ManagerDashboard: React.FC = () => {
                     backgroundColor: "transparent",
                     border: "none",
                     color: "inherit",
-                    padding: 0,
                   }}
                 />
               </Tooltip>
@@ -802,70 +646,81 @@ const ManagerDashboard: React.FC = () => {
         fetch(`${API_URL}/api/statuses`),
         fetch(`${API_URL}/api/projects`),
       ]);
-
-      const [rawTasks, teamsData, statusesDataRaw, projectsData] =
+      const [tasksData, teamsData, statusesDataRaw, projectsData] =
         await Promise.all([
           resTasks.json(),
           resTeams.json(),
           resStatuses.json(),
           resProjects.json(),
         ]);
-
-      type RawEmployee = {
-        ID_Employee?: number;
-        id?: number;
-        Full_Name?: string;
-        fullName?: string;
-        Avatar?: string | null;
-        avatar?: string | null;
-      };
-
-      type RawTask = Omit<Task, "Employees"> & {
-        Employees?: RawEmployee[];
-      };
-
-      const normalizedTasks: Task[] = (rawTasks as RawTask[]).map((task) => {
-        const employees: Task["Employees"] = (task.Employees || []).map((emp) => ({
-          id: emp.ID_Employee ?? emp.id ?? 0,
-          fullName: emp.Full_Name ?? emp.fullName ?? "Без имени",
-          avatar: emp.Avatar ?? emp.avatar ?? null,
-        }));
-      
-        return {
-          ...task,
-          ID_Task: Number(task.ID_Task),
-          Employees: employees.length ? employees : [], // ✅ Сохраняем пустой массив, если нет
-          EmployeeId: employees[0]?.id ?? null,
-          EmployeeName: employees[0]?.fullName ?? "",
-          EmployeeAvatar: employees[0]?.avatar ?? null,
-        };
-      });
-      
-
-      setTasks(
-        normalizedTasks.map((task) => {
-          if (!task.Employees?.length && task.EmployeeId && task.EmployeeName) {
-            return {
-              ...task,
-              Employees: [
-                {
-                  id: task.EmployeeId,
-                  fullName: task.EmployeeName,
-                  avatar: task.EmployeeAvatar ?? null,
-                },
-              ],
-            };
-          }
-          return task;
-        })
+      console.log(
+        "Fetched raw teams with members:",
+        JSON.stringify(teamsData, null, 2)
       );
 
-      setTeams(teamsData.filter((team: Team) => !team.IsArchived));
+      const completedStatusId = statusesDataRaw.find(
+        (s: Status) => s.Status_Name === "Завершена"
+      )?.ID_Status;
+
+      const updatedTasks: Task[] = [];
+      for (const task of tasksData) {
+        const team = teamsData.find(
+          (team: Team) => team.Team_Name === task.Team_Name
+        );
+        const allMembersRemoved =
+          !team ||
+          !team.members.some((member: TeamMember) =>
+            task.Employees.some((emp: { id: number }) => emp.id === member.id)
+          );
+        const isInProgress =
+          task.Status_Name === "Новая" || task.Status_Name === "В работе";
+
+        if (allMembersRemoved && isInProgress && completedStatusId) {
+          try {
+            const res = await fetch(`${API_URL}/api/tasks/${task.ID_Task}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ ID_Status: completedStatusId }),
+            });
+
+            if (res.ok) {
+              updatedTasks.push({
+                ...task,
+                Status_Name: "Завершена",
+                AutoCompleted: true,
+              });
+              continue;
+            }
+          } catch (err) {
+            console.error(
+              `Ошибка при авто-завершении задачи ID ${task.ID_Task}:`,
+              err
+            );
+          }
+        }
+
+        updatedTasks.push(task);
+      }
+      console.log("Fetched tasks from API:", tasksData);
+      console.log("Updated tasks after auto-complete check:", updatedTasks);
+      const expandedTasks = updatedTasks.flatMap((task) =>
+        task.Employees.map((emp) => ({
+          ...task,
+          EmployeeId: emp.id,
+          EmployeeName: emp.fullName,
+          EmployeeAvatar: emp.avatar,
+        }))
+      );
+
+      setTasks(expandedTasks);
+
+      const activeTeams = teamsData.filter((team: Team) => !team.IsArchived);
+      setTeams(activeTeams);
 
       setStatusesData(statusesDataRaw);
       setProjects(projectsData);
     } catch (err) {
-      console.error("Ошибка при fetchAll:", err);
+      console.error(err);
       messageApi.error("Ошибка при загрузке данных");
     }
   }, [messageApi]);
@@ -911,24 +766,24 @@ const ManagerDashboard: React.FC = () => {
 
     autoUpdateOverdueTasks();
   }, [tasks, statusesData, fetchAll]);
-
   const filteredTasks = useMemo(() => {
-    const oneWeekAgo = dayjs().subtract(7, "day");
-
-    const filtered = tasks.filter((task) => {
-      const dateToCompare = task.Status_Updated_At
+    return tasks.filter((task) => {
+      const isArchivedStatus = ["Завершена", "Выполнена"].includes(
+        task.Status_Name
+      );
+      const statusUpdatedAt = task.Status_Updated_At
         ? dayjs(task.Status_Updated_At)
-        : task.Deadline
-        ? dayjs(task.Deadline)
         : null;
+      const oneWeekAgo = dayjs().subtract(7, "day");
 
-      const isOlderThanWeek =
-        dateToCompare && dateToCompare.isBefore(oneWeekAgo);
+      const shouldBeArchived =
+        isArchivedStatus &&
+        statusUpdatedAt &&
+        statusUpdatedAt.isBefore(oneWeekAgo);
+      const isInArchiveView = showArchive;
+      const isVisible = isInArchiveView ? shouldBeArchived : !shouldBeArchived;
 
-      const isVisible = showArchive
-        ? ["Завершена", "Выполнена"].includes(task.Status_Name)
-        : !["Завершена", "Выполнена"].includes(task.Status_Name) ||
-          !isOlderThanWeek;
+      if (!isVisible) return false;
 
       const matchesTeam =
         !filterTeam ||
@@ -948,23 +803,7 @@ const ManagerDashboard: React.FC = () => {
           emp.fullName.toLowerCase().includes(query)
         );
 
-      return (
-        isVisible &&
-        matchesTeam &&
-        matchesProject &&
-        matchesEmployee &&
-        matchesSearch
-      );
-    });
-    console.log(
-      "🔍 После фильтрации:",
-      filtered.map((t) => t.ID_Task)
-    );
-
-    return filtered.sort((a, b) => {
-      const dateA = dayjs(a.Status_Updated_At || a.Deadline || "").valueOf();
-      const dateB = dayjs(b.Status_Updated_At || b.Deadline || "").valueOf();
-      return sortOrder === "asc" ? dateA - dateB : dateB - dateA;
+      return matchesTeam && matchesProject && matchesEmployee && matchesSearch;
     });
   }, [
     tasks,
@@ -974,7 +813,6 @@ const ManagerDashboard: React.FC = () => {
     teams,
     searchQuery,
     showArchive,
-    sortOrder,
   ]);
 
   const filteredGroupedMap: Record<string, Task[]> = useMemo(() => {
@@ -986,16 +824,6 @@ const ManagerDashboard: React.FC = () => {
       map[task.Status_Name].push(task);
     });
     return map;
-  }, [filteredTasks]);
-
-  const collapsedTasks = useMemo(() => {
-    const taskMap = new Map<number, Task>();
-    for (const task of filteredTasks) {
-      if (!taskMap.has(task.ID_Task)) {
-        taskMap.set(task.ID_Task, task);
-      }
-    }
-    return Array.from(taskMap.values());
   }, [filteredTasks]);
 
   const handleDragEnd = async (result: DropResult) => {
@@ -1042,31 +870,25 @@ const ManagerDashboard: React.FC = () => {
       });
       setIsConfirmModalVisible(true);
     } else {
-      if (!task.EmployeeId) {
-        messageApi.error("Не удалось определить сотрудника для задачи");
-        return;
-      }
-      await updateTaskStatus(
-        task.ID_Task,
-        task.EmployeeId,
-        statusObj.ID_Status
-      );
+      await updateTaskStatus(taskId, statusObj.ID_Status);
     }
   };
 
-  const updateTaskStatus = async (
-    taskId: number,
-    employeeId: number,
-    statusId: number
-  ) => {
+  const updateTaskStatus = async (taskId: number, statusId: number) => {
     const updatedAt = new Date().toISOString();
+
+    const task = tasks.find((t) => t.ID_Task === taskId); // Добавлено получение задачи
+    if (!task) {
+      console.error("Задача не найдена для обновления статуса");
+      return;
+    }
 
     try {
       await fetch(`${API_URL}/api/tasks/${taskId}/update-status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          employeeId,
+          employeeId: task.EmployeeId, // Теперь task определён
           statusName: statusesData.find((s) => s.ID_Status === statusId)
             ?.Status_Name,
         }),
@@ -1074,7 +896,7 @@ const ManagerDashboard: React.FC = () => {
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.ID_Task === taskId && t.EmployeeId === employeeId
+          t.ID_Task === taskId
             ? {
                 ...t,
                 Status_Name:
@@ -1115,12 +937,10 @@ const ManagerDashboard: React.FC = () => {
       );
 
       // Фильтруем только активные команды (Status !== "Архив")
-      const activeTeams = editingTask
-        ? teams
-        : teams.filter((t) => t.Status !== "Архив");
+      const activeTeams = teams.filter((t) => t.Status !== "Архив");
       setTeams(activeTeams);
 
-      setSelectedMembers(task.Employees.map((e) => e.id));
+      setSelectedMembers(task.Employees.map((e) => e.fullName));
 
       form.setFieldsValue({
         Task_Name: task.Task_Name,
@@ -1161,35 +981,13 @@ const ManagerDashboard: React.FC = () => {
     Time_Norm: number;
     Deadline?: dayjs.Dayjs;
   }) => {
-    console.log("🐞 selectedMembers:", selectedMembers); // ← ВОТ СЮДА
-  
-    const selectedIds: number[] = Array.isArray(selectedMembers)
-      ? selectedMembers
-          .map((id) => Number(id))
-          .filter((id): id is number => !isNaN(id) && id > 0)
-      : [];
-  
-    if (selectedIds.length === 0) {
-      messageApi.error("Не выбраны сотрудники для задачи");
+    if (values.Deadline && dayjs(values.Deadline).isBefore(dayjs(), "day")) {
+      messageApi.error("Дедлайн не может быть назначен прошедшей датой!");
       return;
     }
-  
-  
-    // ✅ Проверка на дублирование задачи
-    const trimmedName = values.Task_Name.trim().toLowerCase();
-    const isDuplicate = tasks.some(
-      (task) =>
-        task.Task_Name.trim().toLowerCase() === trimmedName &&
-        (!editingTask || task.ID_Task !== editingTask.ID_Task)
-    );
-  
-    if (isDuplicate) {
-      messageApi.error("Задача с таким названием уже существует");
-      return;
-    }
-  
-    // ✅ Загрузка прикреплённых файлов
+
     const uploadedFilenames: string[] = [];
+
     for (const file of selectedFiles) {
       if (file.originFileObj) {
         const formData = new FormData();
@@ -1197,122 +995,88 @@ const ManagerDashboard: React.FC = () => {
         if (editingTask?.ID_Task) {
           formData.append("taskId", editingTask.ID_Task.toString());
         }
-  
+
         try {
           const res = await fetch(`${API_URL}/api/upload-task`, {
             method: "POST",
             body: formData,
           });
-  
+
           if (res.ok) {
             const data = await res.json();
             uploadedFilenames.push(data.filename);
           } else {
             messageApi.error(`Ошибка при загрузке файла: ${file.name}`);
           }
-        } catch (err) {
-          const msg =
-            err instanceof Error ? err.message : "Сетевая ошибка при загрузке";
-          messageApi.error(`Ошибка при загрузке файла: ${file.name} — ${msg}`);
+        } catch {
+          messageApi.error(`Сетевая ошибка при загрузке файла: ${file.name}`);
         }
       } else if (file.url) {
         uploadedFilenames.push(file.name);
       }
     }
-  
+
     const newStatus = statusesData.find((s) => s.Status_Name === "Новая");
     if (!newStatus) {
       messageApi.error('Не найден статус "Новая"');
       return;
     }
-  
-    const selectedOrderId = Number(values.ID_Order);
-    const selectedProject = projects.find(
-      (p) => Number(p.ID_Order) === selectedOrderId
-    );
-  
-    if (selectedProject && !selectedProject.ID_Manager) {
-      selectedProject.ID_Manager = JSON.parse(
-        localStorage.getItem("user") || "{}"
-      )?.id;
-    }
-  
-    if (!selectedProject || !selectedProject.ID_Manager) {
-      messageApi.error("Не удалось определить ID менеджера проекта");
-      return;
-    }
+
     const payload = {
-      Task_Name: values.Task_Name,
-      Description: values.Description,
-      ID_Order: selectedOrderId,
+      ...values,
       ID_Status: newStatus.ID_Status,
-      Time_Norm: values.Time_Norm,
+      Employee_Names: selectedMembers,
       Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
-      EmployeeIds: selectedIds,
       attachments: uploadedFilenames,
-      ID_Manager: selectedProject?.ID_Manager ?? null, // только число, не объект!
     };
-    
-  
+
     try {
       const url = editingTask
         ? `${API_URL}/api/tasks/${editingTask.ID_Task}`
         : `${API_URL}/api/tasks`;
       const method = editingTask ? "PUT" : "POST";
-    
-      console.log("📦 Финальный payload перед отправкой:", payload); // ✅ ВНЕ fetch
-    
-      const response = await fetch(url, {
+
+      const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload), // ❗ без stringifyCircularJSON
+        body: JSON.stringify(payload),
       });
-    
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Ошибка при создании задачи: ${errorText}`);
-      }
-    
+
+      if (!res.ok) throw new Error();
+
       messageApi.success(editingTask ? "Задача обновлена" : "Задача создана");
       setIsModalVisible(false);
-      fetchAll(); // Перезагрузка данных
-    } catch (error) {
-      if (error instanceof Error) {
-        messageApi.error("Ошибка при сохранении задачи: " + error.message);
-      } else {
-        messageApi.error("Неизвестная ошибка при сохранении задачи");
+
+      console.log("fetchAll called after creation or update"); // Добавлено сюда
+      if (!editingTask) {
+        const createdTask = await res.json();
+        setTasks((prev) => [
+          ...prev,
+          { ...createdTask, Employees: createdTask.Employees || [] },
+        ]);
       }
+
+      fetchAll(); // Существующий вызов
+    } catch {
+      messageApi.error("Ошибка при сохранении задачи");
     }
-    
   };
-  
 
   const handleTeamChange = (teamId: number) => {
-    console.log("Все проекты:", projects); // ✅ ЛОГ 1
-    console.log("Фильтрация для команды ID:", teamId); // ✅ ЛОГ 2
-
+    setSelectedTeamId(teamId);
+    setSelectedMembers([]);
     const activeProjects = projects.filter(
       (proj) =>
         proj.ID_Team === teamId &&
         !proj.IsArchived &&
         (!proj.Deadline || dayjs(proj.Deadline).isAfter(dayjs()))
     );
-
-    console.log("Фильтрованные проекты:", activeProjects); // ✅ ЛОГ 3
-
-    setSelectedTeamId(teamId);
-    const foundTeam = teams.find((t) => t.ID_Team === teamId);
-    console.log("✅ Члены выбранной команды:", foundTeam?.members);
-
-    setSelectedMembers([]);
     setFilteredProjects(activeProjects);
     form.setFieldsValue({ ID_Order: undefined });
 
+    // 👉 Добавлено для отладки списка участников
     const team = teams.find((t) => t.ID_Team === teamId);
-    console.log(
-      "Members for selected team:",
-      team?.members?.map((m) => ({ id: m.id, name: m.fullName }))
-    );
+    console.log("Members for selected team:", team?.members);
   };
 
   const openViewModal = (task: Task) => {
@@ -1362,154 +1126,6 @@ const ManagerDashboard: React.FC = () => {
     }
   };
 
-  const renderDeadlineBox = (task: Task) => {
-    const deadline = task.Deadline ? dayjs(task.Deadline) : null;
-    const now = dayjs();
-
-    // 🔴 1. Завершена (автоматически или вручную)
-    if (task.Status_Name === "Завершена") {
-      return (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: "13px",
-            color: task.AutoCompleted ? "red" : "#aaa",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <ClockCircleOutlined />
-          {task.AutoCompleted ? "Срок истёк" : "Завершено"}
-        </div>
-      );
-    }
-
-    // ✅ 2. Выполнена (перетащена вручную)
-    if (task.Status_Name === "Выполнена") {
-      return (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: "13px",
-            color: "#aaa",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <ClockCircleOutlined />
-          Выполнено
-        </div>
-      );
-    }
-
-    // ⚪ 3. Без срока
-    if (!deadline) {
-      return (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: "13px",
-            color: "#aaa",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <ClockCircleOutlined />
-          Дедлайн: без срока
-        </div>
-      );
-    }
-
-    // ⏰ 4. Срок есть — считаем цвет
-    const isExpired = deadline.isBefore(now);
-    const isUrgent = deadline.diff(now, "hour") <= 24;
-
-    let color = "#52c41a"; // 🟢 по умолчанию
-    if (isExpired) color = "red"; // 🔴 просрочено
-    else if (isUrgent) color = "#faad14"; // 🟡 приближается
-
-    return (
-      <div
-        style={{
-          marginTop: 8,
-          fontSize: "13px",
-          color,
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <ClockCircleOutlined />
-        Дедлайн: {deadline.format("YYYY-MM-DD HH:mm")}
-      </div>
-    );
-  };
-
-  const renderEmployeeTasks = (task: Task) => {
-    return (
-      <div>
-        {task.Employees.map((employee) => (
-          <div key={employee.id} className="task-card">
-            <h3>{task.Task_Name}</h3>
-            <p>{task.Description}</p>
-            <p>Ответственный: {employee.fullName}</p>
-            <div className="status-container">
-              {/* Кнопка для перемещения статуса задачи */}
-              <button
-                onClick={() =>
-                  handleTaskDrag(task.ID_Task, employee.id, "новый статус")
-                }
-              >
-                Переместить
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  <div>{tasks.map((task) => renderEmployeeTasks(task))}</div>;
-  const handleTaskDrag = async (
-    taskId: number,
-    employeeId: number,
-    statusName: string
-  ) => {
-    try {
-      const res = await fetch(`/api/tasks/${taskId}/update-status`, {
-        method: "PUT",
-        body: JSON.stringify({
-          employeeId,
-          statusName,
-        }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (res.ok) {
-        // Обновление локального состояния задач
-        setTasks((prevTasks) =>
-          prevTasks.map((task) =>
-            task.ID_Task === taskId
-              ? {
-                  ...task,
-                  Employees: task.Employees.map((emp) =>
-                    emp.id === employeeId ? { ...emp, status: statusName } : emp
-                  ),
-                }
-              : task
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Ошибка при изменении статуса задачи:", error);
-    }
-  };
-
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
@@ -1549,7 +1165,6 @@ const ManagerDashboard: React.FC = () => {
                             backgroundColor: "transparent",
                             borderBottom: "none",
                             boxShadow: "none",
-                            marginBottom: "16px", // ✅ ВОТ ЭТА СТРОКА — ДОБАВЬ ЕЁ
                           }}
                         >
                           <div
@@ -1564,9 +1179,8 @@ const ManagerDashboard: React.FC = () => {
                             <Button
                               className="add-task-button"
                               onClick={() => showModal()}
-                              icon={<PlusOutlined />}
                             >
-                              Добавить задачу
+                              ➕ Добавить задачу
                             </Button>
 
                             <div
@@ -1610,18 +1224,9 @@ const ManagerDashboard: React.FC = () => {
                                 menu={{
                                   onClick: ({ key }) => handleExport(key),
                                   items: [
-                                    {
-                                      key: "word",
-                                      label: "Экспорт в Word (.docx)",
-                                    },
-                                    {
-                                      key: "excel",
-                                      label: "Экспорт в Excel (.xlsx)",
-                                    },
-                                    {
-                                      key: "pdf",
-                                      label: "Экспорт в PDF (.pdf)",
-                                    },
+                                    { key: "word", label: "Экспорт в Word" },
+                                    { key: "excel", label: "Экспорт в Excel" },
+                                    { key: "pdf", label: "Экспорт в PDF" },
                                   ],
                                 }}
                                 placement="bottomRight"
@@ -1645,213 +1250,392 @@ const ManagerDashboard: React.FC = () => {
                           <DragDropContext onDragEnd={handleDragEnd}>
                             <div
                               style={{
-                                maxHeight: "calc(100vh - 250px)",
-                                overflowY: "auto",
-                                overflowX: "auto",
+                                display: "grid",
+                                gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
+                                gap: "16px",
                               }}
                             >
-                              {/* Заголовки статусов */}
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
-                                  gap: "16px",
-                                  marginBottom: "12px",
-                                  paddingInline: "4px",
-                                }}
-                              >
-                                {statuses.map((status) => (
-                                  <div
-                                    key={`status-title-${status}`}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      position: "relative",
-                                      backgroundColor: "var(--card-bg-color)",
-                                      padding: "10px 12px",
-                                      borderRadius: "8px",
-                                      boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
-                                      textTransform: "uppercase",
-                                      fontSize: "15px",
-                                      fontWeight: 400,
-                                      color: "var(--text-color)",
-
-                                      minHeight: "40px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        left: 0,
-                                        top: 0,
-                                        bottom: 0,
-                                        width: "5px",
-                                        borderTopLeftRadius: "8px",
-                                        borderBottomLeftRadius: "8px",
-                                        backgroundColor: "#00bcd4",
-                                      }}
-                                    />
-                                    {status.toUpperCase()}
-                                  </div>
-                                ))}
-                              </div>
+                              {statuses.map((status) => (
+                                <div
+                                  key={`header-${status}`}
+                                  className="kanban-status-header"
+                                  style={{
+                                    position: "sticky",
+                                    top: 0,
+                                    zIndex: 10,
+                                    // ✅ Удалено: border: '1px solid #444',
+                                  }}
+                                >
+                                  {status}
+                                </div>
+                              ))}
 
                               {/* Колонки с задачами */}
-                              <div
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: `repeat(${statuses.length}, minmax(300px, 1fr))`,
-                                  gap: "16px",
-                                  paddingInline: "4px",
-                                }}
-                              >
-                                {statuses.map((status) => {
-                                  const tasksForStatus =
-                                    filteredGroupedMap[status] || [];
-                                  const isExpanded =
-                                    expandedStatuses.includes(status);
-                                  const visibleTasks = isExpanded
-                                    ? tasksForStatus
-                                    : tasksForStatus.slice(0, 5);
+                              {statuses.map((status) => {
+                                const tasksForStatus =
+                                  filteredGroupedMap[status] || [];
+                                const isExpanded =
+                                  expandedStatuses.includes(status);
+                                const visibleTasks = isExpanded
+                                  ? tasksForStatus
+                                  : tasksForStatus.slice(0, 5);
 
-                                  return (
-                                    <Droppable
-                                      key={status}
-                                      droppableId={status}
-                                    >
-                                      {(provided) => (
-                                        <div
-                                          ref={provided.innerRef}
-                                          {...provided.droppableProps}
-                                          style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: "16px",
-                                            minWidth: "300px",
-                                            backgroundColor:
-                                              "var(--card-bg-color)",
-                                            borderRadius: "10px",
-                                            padding: "1rem",
-                                            boxShadow:
-                                              "0 4px 12px rgba(0, 0, 0, 0.2)",
-                                          }}
-                                        >
-                                          {visibleTasks.map((task, index) => (
-                                            <Draggable
-                                              key={`task-${task.ID_Task}`}
-                                              draggableId={`task-${task.ID_Task}`}
-                                              index={index}
-                                            >
-                                              {(providedDraggable) => (
-                                                <div
-                                                  className="kanban-task"
-                                                  ref={
-                                                    providedDraggable.innerRef
-                                                  }
-                                                  {...providedDraggable.draggableProps}
-                                                  {...providedDraggable.dragHandleProps}
-                                                >
-                                                  <div className="kanban-task-content">
-                                                    <strong>
-                                                      {task.Task_Name}
-                                                    </strong>
-                                                    <p>{task.Description}</p>
-                                                    <p
+                                return (
+                                  <Droppable key={status} droppableId={status}>
+                                    {(provided) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.droppableProps}
+                                        style={{
+                                          display: "flex",
+                                          flexDirection: "column",
+                                          gap: "16px",
+                                          minWidth: "300px",
+                                          backgroundColor:
+                                            "var(--card-bg-color)", // ✅ поддержка тем
+                                          borderRadius: "10px",
+                                          padding: "1rem",
+                                          boxShadow:
+                                            "0 4px 12px rgba(0, 0, 0, 0.2)", // Оставляем универсальной
+                                        }}
+                                      >
+                                        {visibleTasks.map((task, index) => (
+                                          <Draggable
+                                            key={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                            draggableId={`task-${task.ID_Task}-emp-${task.EmployeeId}`}
+                                            index={index}
+                                          >
+                                            {(providedDraggable) => (
+                                              <div
+                                                className="kanban-task"
+                                                ref={providedDraggable.innerRef}
+                                                {...providedDraggable.draggableProps}
+                                                {...providedDraggable.dragHandleProps}
+                                              >
+                                                <div className="kanban-task-content">
+                                                  <strong>
+                                                    {task.Task_Name}
+                                                  </strong>
+                                                  <p>{task.Description}</p>
+
+                                                  <p>
+                                                    <i>
+                                                      Модуль задачи назначен:
+                                                    </i>{" "}
+                                                    {task.EmployeeName}
+                                                  </p>
+
+                                                  <p>
+                                                    <i>Проект:</i>{" "}
+                                                    {task.Order_Name}
+                                                  </p>
+
+                                                  {task.Employees &&
+                                                    task.Employees.length >
+                                                      0 && (
+                                                      <>
+                                                        <div
+                                                          className="task-assignees-row"
+                                                          style={{
+                                                            display: "flex",
+                                                            justifyContent:
+                                                              "space-between",
+                                                            alignItems:
+                                                              "center",
+                                                            marginTop: "10px",
+                                                          }}
+                                                        >
+                                                          <span
+                                                            style={{
+                                                              fontStyle:
+                                                                "italic",
+                                                              fontSize: "13px",
+                                                              color: "#bbb",
+                                                            }}
+                                                          >
+                                                            Задача назначена
+                                                            {task.Employees
+                                                              .length > 1
+                                                              ? " также:"
+                                                              : ":"}
+                                                          </span>
+                                                          <div className="kanban-avatars">
+                                                            {task.Employees.map(
+                                                              (emp, index) => (
+                                                                <Tooltip
+                                                                  key={emp.id}
+                                                                  title={
+                                                                    emp.fullName
+                                                                  }
+                                                                >
+                                                                  <Avatar
+                                                                    src={
+                                                                      emp.avatar &&
+                                                                      emp.avatar !==
+                                                                        "null"
+                                                                        ? `${API_URL}/uploads/${encodeURIComponent(
+                                                                            emp.avatar
+                                                                          )}`
+                                                                        : undefined
+                                                                    }
+                                                                    size={32}
+                                                                    style={{
+                                                                      marginLeft:
+                                                                        index ===
+                                                                        0
+                                                                          ? 0
+                                                                          : -10,
+                                                                      zIndex:
+                                                                        100 -
+                                                                        index,
+                                                                      border:
+                                                                        "2px solid #1f1f1f",
+                                                                      cursor:
+                                                                        "pointer",
+                                                                      backgroundColor:
+                                                                        !emp.avatar ||
+                                                                        emp.avatar ===
+                                                                          "null"
+                                                                          ? "#777"
+                                                                          : "transparent",
+                                                                    }}
+                                                                    onClick={() =>
+                                                                      navigate(
+                                                                        `/employee/${emp.id}`
+                                                                      )
+                                                                    }
+                                                                  >
+                                                                    {!emp.avatar ||
+                                                                    emp.avatar ===
+                                                                      "null"
+                                                                      ? emp.fullName
+                                                                          .split(
+                                                                            " "
+                                                                          )
+                                                                          .map(
+                                                                            (
+                                                                              n
+                                                                            ) =>
+                                                                              n[0]
+                                                                          )
+                                                                          .slice(
+                                                                            0,
+                                                                            2
+                                                                          )
+                                                                          .join(
+                                                                            ""
+                                                                          )
+                                                                          .toUpperCase()
+                                                                      : null}
+                                                                  </Avatar>
+                                                                </Tooltip>
+                                                              )
+                                                            )}
+                                                          </div>
+                                                        </div>
+
+                                                        <div
+                                                          style={{
+                                                            marginTop: "10px",
+                                                          }}
+                                                        >
+                                                          <p
+                                                            style={{
+                                                              display: "flex",
+                                                              alignItems:
+                                                                "center",
+                                                              gap: "6px",
+                                                              fontSize: "13px",
+                                                              fontStyle:
+                                                                "italic",
+                                                              fontWeight: 500,
+                                                              color: "#bbb",
+                                                            }}
+                                                          >
+                                                            Дедлайн:
+                                                            <span
+                                                              style={{
+                                                                color:
+                                                                  task.Deadline
+                                                                    ? dayjs(
+                                                                        task.Deadline
+                                                                      ).isBefore(
+                                                                        dayjs()
+                                                                      )
+                                                                      ? "#e05252" // тёмно-красный
+                                                                      : dayjs(
+                                                                          task.Deadline
+                                                                        ).diff(
+                                                                          dayjs(),
+                                                                          "hour"
+                                                                        ) <= 24
+                                                                      ? "#d4af37" // тёмно-жёлтый
+                                                                      : "#3cb371" // тёмно-зелёный
+                                                                    : "#999", // приглушённо-серый
+                                                                fontWeight:
+                                                                  "bold",
+                                                              }}
+                                                            >
+                                                              {task.Deadline
+                                                                ? dayjs(
+                                                                    task.Deadline
+                                                                  ).format(
+                                                                    "DD.MM.YYYY HH:mm"
+                                                                  )
+                                                                : "Не задан"}
+                                                            </span>
+                                                          </p>
+                                                        </div>
+                                                      </>
+                                                    )}
+
+                                                  <div className="task-footer">
+                                                    <Button
+                                                      type="text"
+                                                      icon={<EyeOutlined />}
+                                                      onClick={() =>
+                                                        openViewModal(task)
+                                                      }
                                                       style={{
-                                                        fontWeight: "bold",
-                                                        fontStyle: "italic",
-                                                        fontSize: "14px",
-                                                        textDecoration:
-                                                          "underline",
-                                                        textDecorationColor:
-                                                          "#00bcd4",
-                                                        display: "inline-flex",
-                                                        alignItems: "center",
+                                                        padding: 0,
+                                                        height: "auto",
+                                                        marginRight: 8,
                                                       }}
-                                                    >
-                                                      Назначено для:{" "}
-                                                      {task.Employees.map(
-                                                        (e) => e.fullName
-                                                      ).join(", ")}
-                                                    </p>
-                                                    <p>
-                                                      <i>Проект:</i>{" "}
-                                                      {task.Order_Name}
-                                                    </p>
-
-                                                    <div className="kanban-avatars">
-                                                      {renderEmployees(
-                                                        task.Employees
-                                                      )}
-                                                    </div>
-
-                                                    {/* ✅ ВСТАВЛЕН БЛОК С ДЕДЛАЙНОМ */}
-                                                    {renderDeadlineBox(task)}
-
-                                                    <div className="task-footer">
-                                                      <Button
-                                                        type="text"
-                                                        icon={<EyeOutlined />}
-                                                        onClick={() =>
-                                                          openViewModal(task)
-                                                        }
-                                                        style={{
-                                                          padding: 0,
-                                                          height: "auto",
-                                                          marginRight: 8,
-                                                        }}
-                                                      />
-                                                      <Button
-                                                        type="text"
-                                                        icon={
-                                                          <MessageOutlined />
-                                                        }
-                                                        onClick={() =>
-                                                          openCommentsModal(
-                                                            task.ID_Task
-                                                          )
-                                                        }
-                                                        style={{
-                                                          padding: 0,
-                                                          height: "auto",
-                                                        }}
-                                                      />
-                                                    </div>
+                                                    />
+                                                    <Button
+                                                      type="text"
+                                                      icon={<MessageOutlined />}
+                                                      onClick={() =>
+                                                        openCommentsModal(
+                                                          task.ID_Task
+                                                        )
+                                                      }
+                                                      style={{
+                                                        padding: 0,
+                                                        height: "auto",
+                                                      }}
+                                                    />
+                                                    {task.Status_Name ===
+                                                      "Завершена" &&
+                                                    task.AutoCompleted ? (
+                                                      <div className="deadline-box expired">
+                                                        <ClockCircleOutlined
+                                                          style={{
+                                                            marginRight: 6,
+                                                          }}
+                                                        />
+                                                        Срок истёк
+                                                      </div>
+                                                    ) : task.Status_Name ===
+                                                      "Завершена" ? (
+                                                      <div className="deadline-box completed">
+                                                        <ClockCircleOutlined
+                                                          style={{
+                                                            marginRight: 6,
+                                                          }}
+                                                        />
+                                                        Завершена
+                                                      </div>
+                                                    ) : task.Status_Name ===
+                                                      "Выполнена" ? (
+                                                      <div className="deadline-box completed">
+                                                        <ClockCircleOutlined
+                                                          style={{
+                                                            marginRight: 6,
+                                                          }}
+                                                        />
+                                                        Выполнено
+                                                      </div>
+                                                    ) : task.Deadline ? (
+                                                      <div
+                                                        className={`deadline-box ${
+                                                          dayjs(
+                                                            task.Deadline
+                                                          ).isBefore(dayjs())
+                                                            ? "expired"
+                                                            : dayjs(
+                                                                task.Deadline
+                                                              ).diff(
+                                                                dayjs(),
+                                                                "hour"
+                                                              ) <= 24
+                                                            ? "warning"
+                                                            : "safe"
+                                                        }`}
+                                                      >
+                                                        <ClockCircleOutlined
+                                                          style={{
+                                                            marginRight: 6,
+                                                          }}
+                                                        />
+                                                        {dayjs(
+                                                          task.Deadline
+                                                        ).diff(dayjs(), "day") >
+                                                        0
+                                                          ? `Осталось ${dayjs(
+                                                              task.Deadline
+                                                            ).diff(
+                                                              dayjs(),
+                                                              "day"
+                                                            )} дн`
+                                                          : dayjs(
+                                                              task.Deadline
+                                                            ).diff(
+                                                              dayjs(),
+                                                              "hour"
+                                                            ) > 0
+                                                          ? `Осталось ${dayjs(
+                                                              task.Deadline
+                                                            ).diff(
+                                                              dayjs(),
+                                                              "hour"
+                                                            )} ч`
+                                                          : "Срок истёк"}
+                                                      </div>
+                                                    ) : (
+                                                      <div className="deadline-box undefined">
+                                                        <ClockCircleOutlined
+                                                          style={{
+                                                            marginRight: 6,
+                                                          }}
+                                                        />
+                                                        Без срока
+                                                      </div>
+                                                    )}
                                                   </div>
                                                 </div>
-                                              )}
-                                            </Draggable>
-                                          ))}
-
-                                          {tasksForStatus.length > 5 &&
-                                            !isExpanded && (
-                                              <Button
-                                                type="link"
-                                                onClick={() =>
-                                                  setExpandedStatuses([
-                                                    ...expandedStatuses,
-                                                    status,
-                                                  ])
-                                                }
-                                                style={{
-                                                  alignSelf: "center",
-                                                  marginTop: 8,
-                                                  color: "#00bcd4",
-                                                }}
-                                              >
-                                                Смотреть далее (
-                                                {tasksForStatus.length - 5} ещё)
-                                              </Button>
+                                              </div>
                                             )}
+                                          </Draggable>
+                                        ))}
 
-                                          {provided.placeholder}
-                                        </div>
-                                      )}
-                                    </Droppable>
-                                  );
-                                })}
-                              </div>
+                                        {tasksForStatus.length > 5 &&
+                                          !isExpanded && (
+                                            <Button
+                                              type="link"
+                                              onClick={() =>
+                                                setExpandedStatuses([
+                                                  ...expandedStatuses,
+                                                  status,
+                                                ])
+                                              }
+                                              style={{
+                                                alignSelf: "center",
+                                                marginTop: 8,
+                                                color: "#00bcd4",
+                                              }}
+                                            >
+                                              Смотреть далее (
+                                              {tasksForStatus.length - 5} ещё)
+                                            </Button>
+                                          )}
+
+                                        {provided.placeholder}
+                                      </div>
+                                    )}
+                                  </Droppable>
+                                );
+                              })}
                             </div>
                           </DragDropContext>
                         </div>
@@ -1885,9 +1669,8 @@ const ManagerDashboard: React.FC = () => {
                               <Button
                                 className="add-task-button"
                                 onClick={() => showModal()}
-                                icon={<PlusOutlined />}
                               >
-                                Добавить задачу
+                                ➕ Добавить задачу
                               </Button>
 
                               <div
@@ -1931,18 +1714,12 @@ const ManagerDashboard: React.FC = () => {
                                   menu={{
                                     onClick: ({ key }) => handleExport(key),
                                     items: [
-                                      {
-                                        key: "word",
-                                        label: "Экспорт в Word (.docx)",
-                                      },
+                                      { key: "word", label: "Экспорт в Word" },
                                       {
                                         key: "excel",
-                                        label: "Экспорт в Excel (.xlsx)",
+                                        label: "Экспорт в Excel",
                                       },
-                                      {
-                                        key: "pdf",
-                                        label: "Экспорт в PDF (.pdf)",
-                                      },
+                                      { key: "pdf", label: "Экспорт в PDF" },
                                     ],
                                   }}
                                   placement="bottomRight"
@@ -1961,7 +1738,28 @@ const ManagerDashboard: React.FC = () => {
                           </h2>
 
                           <Table
-                            dataSource={collapsedTasks}
+                            dataSource={tasks.filter((task) => {
+                              const query = searchQuery.toLowerCase();
+                              const isArchived =
+                                task.Status_Name === "Завершена";
+                              const matchesArchiveFilter = showArchive
+                                ? isArchived
+                                : !isArchived;
+                              const matchesSearch =
+                                !query ||
+                                task.Task_Name?.toLowerCase().includes(query) ||
+                                task.Description?.toLowerCase().includes(
+                                  query
+                                ) ||
+                                task.Order_Name?.toLowerCase().includes(
+                                  query
+                                ) ||
+                                task.Employees.some((emp) =>
+                                  emp?.fullName?.toLowerCase().includes(query)
+                                );
+
+                              return matchesArchiveFilter && matchesSearch;
+                            })}
                             columns={tableColumns}
                             rowKey="ID_Task"
                             pagination={{ pageSize: 10 }}
@@ -2025,23 +1823,25 @@ const ManagerDashboard: React.FC = () => {
                       mode="multiple"
                       placeholder="Выберите участников"
                       value={selectedMembers}
-                      onChange={(vals: number[]) => {
-                        console.log("🎯 Выбранные ID исполнителей:", vals); // ✅ Логируем выбранных сотрудников
-                        setSelectedMembers(vals);
-                      }}
+                      onChange={setSelectedMembers}
                       disabled={!selectedTeamId}
                     >
-                      {(
-                        teams.find((t) => t.ID_Team === selectedTeamId)
-                          ?.members || []
-                      ).map((member, index) => (
-                        <Option key={index} value={member.id}>
-                          {member.fullName}
-                          {member.role
-                            ? ` — ${member.role}`
-                            : " — [должность не указана]"}
-                        </Option>
-                      ))}
+                      {teams
+                        .find((t) => t.ID_Team === selectedTeamId)
+                        ?.members.map((member) => {
+                          console.log("Rendering member option:", member); // Лог для проверки содержимого
+                          return (
+                            <Option
+                              key={`member-${member.id}`}
+                              value={member.fullName}
+                            >
+                              {member.fullName}
+                              {member.role
+                                ? ` — ${member.role}`
+                                : " — [должность не указана]"}
+                            </Option>
+                          );
+                        })}
                     </Select>
                   </Form.Item>
 
@@ -2434,17 +2234,10 @@ const ManagerDashboard: React.FC = () => {
                 open={isConfirmModalVisible}
                 onOk={async () => {
                   if (pendingDragTask) {
-                    const draggedTask = tasks.find(
-                      (t) => t.ID_Task === pendingDragTask.taskId
+                    await updateTaskStatus(
+                      pendingDragTask.taskId,
+                      pendingDragTask.targetStatusId
                     );
-                    if (draggedTask?.EmployeeId != null) {
-                      await updateTaskStatus(
-                        pendingDragTask.taskId,
-                        draggedTask.EmployeeId,
-                        pendingDragTask.targetStatusId
-                      );
-                    }
-
                     setPendingDragTask(null);
                   }
                   setIsConfirmModalVisible(false);
@@ -2478,22 +2271,6 @@ const ManagerDashboard: React.FC = () => {
                 cancelText="Отмена"
               >
                 <p>Вы уверены, что хотите закрыть эту задачу?</p>
-              </Modal>
-              <Modal
-                title="Подтверждение удаления"
-                open={isDeleteConfirmVisible}
-                onOk={() => {
-                  if (selectedTaskId !== null) handleDeleteTask(selectedTaskId);
-                  setIsDeleteConfirmVisible(false);
-                }}
-                onCancel={() => setIsDeleteConfirmVisible(false)}
-                okText="Удалить"
-                cancelText="Отмена"
-              >
-                <p>
-                  Вы уверены, что хотите безвозвратно удалить эту задачу и все
-                  связанные данные?
-                </p>
               </Modal>
             </main>
           </div>

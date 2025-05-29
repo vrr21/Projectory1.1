@@ -276,7 +276,6 @@ const EmployeeDashboard = () => {
           (task) => task.Status_Name === status
         );
       });
-      
 
       setColumns(personalizedGrouped);
     } catch (error) {
@@ -766,8 +765,8 @@ const EmployeeDashboard = () => {
                                         )
                                         .map((task, index) => (
                                           <Draggable
-                                            key={`task-${task.ID_Task}`}
-                                            draggableId={`task-${task.ID_Task}`}
+                                            key={`task-${task.ID_Task}-${index}`}
+                                            draggableId={`task-${task.ID_Task}-${index}`}
                                             index={index}
                                           >
                                             {(providedDraggable) => (
@@ -797,16 +796,90 @@ const EmployeeDashboard = () => {
                                                     {task.Order_Name}
                                                   </p>
 
-                                                  {/* Аватарки сотрудников */}
-                                                  <div className="kanban-avatars">
-                                                    {renderEmployees(
-                                                      task.Employees
-                                                    )}
+                                                  <div
+                                                    className="task-assignees-row"
+                                                    style={{
+                                                      display: "flex",
+                                                      justifyContent:
+                                                        "space-between",
+                                                      alignItems: "center",
+                                                      marginTop: "10px",
+                                                    }}
+                                                  >
+                                                    <span
+                                                      style={{
+                                                        fontStyle: "italic",
+                                                        fontSize: "13px",
+                                                        color: "#bbb",
+                                                      }}
+                                                    >
+                                                      Задача назначена:
+                                                    </span>
+                                                    <div
+                                                      className="kanban-avatars"
+                                                      style={{
+                                                        display: "flex",
+                                                        gap: "6px",
+                                                      }}
+                                                    >
+                                                      {task.Employees.map(
+                                                        (emp, empIndex) => (
+                                                          <Tooltip
+                                                            key={`emp-${emp.id}-${empIndex}`}
+                                                            title={
+                                                              emp.fullName ||
+                                                              "—"
+                                                            }
+                                                          >
+                                                            <Avatar
+                                                              src={
+                                                                emp.avatar &&
+                                                                emp.avatar !==
+                                                                  "null"
+                                                                  ? `${API_URL}/uploads/${encodeURIComponent(
+                                                                      emp.avatar
+                                                                    )}`
+                                                                  : undefined
+                                                              }
+                                                              size={32}
+                                                              style={{
+                                                                border:
+                                                                  "2px solid #1f1f1f",
+                                                                cursor:
+                                                                  "pointer",
+                                                                backgroundColor:
+                                                                  !emp.avatar ||
+                                                                  emp.avatar ===
+                                                                    "null"
+                                                                    ? "#777"
+                                                                    : "transparent",
+                                                              }}
+                                                            >
+                                                              {!emp.avatar ||
+                                                              emp.avatar ===
+                                                                "null"
+                                                                ? (
+                                                                    emp.fullName ||
+                                                                    ""
+                                                                  )
+                                                                    .split(" ")
+                                                                    .map(
+                                                                      (n) =>
+                                                                        n[0]
+                                                                    )
+                                                                    .slice(0, 2)
+                                                                    .join("")
+                                                                    .toUpperCase()
+                                                                : null}
+                                                            </Avatar>
+                                                          </Tooltip>
+                                                        )
+                                                      )}
+                                                    </div>
                                                   </div>
 
                                                   {renderDeadlineBox(task)}
 
-                                                  {/* Кнопки просмотров и комментариев — отдельно ниже */}
                                                   <div className="task-footer">
                                                     <Button
                                                       type="text"
@@ -845,7 +918,7 @@ const EmployeeDashboard = () => {
                     ),
                   },
                   {
-                    label: "Журнал моих задач",
+                    label: "Список задач (таблица)",
                     key: "table",
                     children: (
                       <>
@@ -942,26 +1015,25 @@ const EmployeeDashboard = () => {
                       <strong>Сотрудники:</strong>
                     </p>
                     <div className="kanban-avatars">
-                    {viewingTask?.Employees?.map((emp) => (
-  <Tooltip key={emp.id} title={emp.fullName || "—"}>
-    <Avatar
-      src={
-        emp.avatar
-          ? `${API_URL}/uploads/${emp.avatar}`
-          : undefined
-      }
-      style={{
-        backgroundColor: emp.avatar
-          ? "transparent"
-          : "#777",
-        marginRight: 4,
-      }}
-    >
-      {!emp.avatar && getInitials(emp.fullName || "")}
-    </Avatar>
-  </Tooltip>
-))}
-
+                      {viewingTask?.Employees?.map((emp) => (
+                        <Tooltip key={emp.id} title={emp.fullName || "—"}>
+                          <Avatar
+                            src={
+                              emp.avatar
+                                ? `${API_URL}/uploads/${emp.avatar}`
+                                : undefined
+                            }
+                            style={{
+                              backgroundColor: emp.avatar
+                                ? "transparent"
+                                : "#777",
+                              marginRight: 4,
+                            }}
+                          >
+                            {!emp.avatar && getInitials(emp.fullName || "")}
+                          </Avatar>
+                        </Tooltip>
+                      ))}
                     </div>
 
                     <p

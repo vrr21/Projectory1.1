@@ -46,7 +46,7 @@ interface Team {
 interface FormValues {
   Order_Name: string;
   Type_Name: string;
-  End_Date: string;
+  End_Date: dayjs.Dayjs;
   Status: string;
   Team_Name: string;
 }
@@ -83,7 +83,13 @@ const ProjectManagementPage: React.FC = () => {
 
   const fetchProjects = useCallback(async (): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/api/projects`);
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/api/projects`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
       if (!response.ok) throw new Error("Ошибка при загрузке проектов");
       const data: Project[] = await response.json();
 
@@ -130,8 +136,10 @@ const ProjectManagementPage: React.FC = () => {
     if (project) {
       form.setFieldsValue({
         ...project,
+        End_Date: dayjs(project.End_Date), // ⬅️ Преобразуем дату в dayjs
         Team_Name: project.Team_Name || "",
       });
+      
     } else {
       form.resetFields();
     }
@@ -203,11 +211,16 @@ const ProjectManagementPage: React.FC = () => {
         : `${API_URL}/api/projects`;
       const method = editingProject ? "PUT" : "POST";
 
+      const token = localStorage.getItem("token");
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
+      
 
       if (!response.ok) throw new Error("Ошибка при сохранении проекта");
       messageApi.success(editingProject ? "Проект обновлён" : "Проект создан");

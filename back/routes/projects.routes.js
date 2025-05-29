@@ -36,8 +36,11 @@ router.get('/', async (req, res) => {
 });
 
 // 📤 Создать проект
-router.post('/', async (req, res) => {
+// 📤 Создать проект
+router.post('/', verifyToken, async (req, res) => {
   const { Order_Name, Type_Name, Creation_Date, End_Date, Status, ID_Team } = req.body;
+  const ID_Manager = req.body.ID_Manager || req.user?.id; // 👈 Назначаем менеджера по токену
+
   try {
     await poolConnect;
 
@@ -62,9 +65,10 @@ router.post('/', async (req, res) => {
       .input('End_Date', sql.Date, End_Date || null)
       .input('Status', sql.NVarChar, Status)
       .input('ID_Team', sql.Int, ID_Team)
+      .input('ID_Manager', sql.Int, ID_Manager)
       .query(`
-        INSERT INTO Orders (Order_Name, ID_ProjectType, Creation_Date, End_Date, Status, ID_Team)
-        VALUES (@Order_Name, @ID_ProjectType, @Creation_Date, @End_Date, @Status, @ID_Team)
+        INSERT INTO Orders (Order_Name, ID_ProjectType, Creation_Date, End_Date, Status, ID_Team, ID_Manager)
+        VALUES (@Order_Name, @ID_ProjectType, @Creation_Date, @End_Date, @Status, @ID_Team, @ID_Manager)
       `);
 
     res.status(201).json({ message: 'Проект успешно создан' });
@@ -73,6 +77,7 @@ router.post('/', async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при создании проекта' });
   }
 });
+
 
 // ✏️ Обновить проект
 router.put('/:id', async (req, res) => {

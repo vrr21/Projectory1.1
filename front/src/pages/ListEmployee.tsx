@@ -20,10 +20,12 @@ import {
 import type { ColumnsType } from "antd/es/table";
 import SidebarManager from "../components/SidebarManager";
 import HeaderManager from "../components/HeaderManager";
-import "../styles/pages/ManagerDashboard.css";
+import "../styles/pages/ListEmployee.css";
+
 import { theme } from "antd";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
+import { Radio } from "antd";
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -41,6 +43,7 @@ interface User {
   Projects?: string;
   Tasks?: string;
   Archived?: boolean;
+  ID_Role: number; // убрано "?"
 }
 
 const isNumericOrDateOrDash = (value: string | number | undefined): boolean => {
@@ -58,7 +61,8 @@ const ListEmployee: React.FC = () => {
   const [employees, setEmployees] = useState<User[]>([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
-  const [form] = Form.useForm<User>();
+  const [form] = Form.useForm<Partial<User> & { ID_Role: number }>();
+
   const [messageApi, contextHolder] = message.useMessage();
   const [searchTerm, setSearchTerm] = useState("");
   const [showArchive, setShowArchive] = useState(false);
@@ -82,49 +86,51 @@ const ListEmployee: React.FC = () => {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  const handleSave = async (values: Partial<User>) => {
+  const handleSave = async (values: Partial<User> & { ID_Role: number }) => {
     try {
       // Проверка: email уже существует?
-      if (!editingEmployee && employees.some(emp => emp.Email === values.Email)) {
+      if (
+        !editingEmployee &&
+        employees.some((emp) => emp.Email === values.Email)
+      ) {
         messageApi.error("Пользователь с таким email уже существует");
         return;
       }
-  
+
       // Проверка: пароль существует?
       if (
         values.Password &&
-        employees.some(emp => emp.Password === values.Password)
+        employees.some((emp) => emp.Password === values.Password)
       ) {
         messageApi.error("Пароль уже используется другим сотрудником");
         return;
       }
-  
+
       // Проверка: длина и состав пароля
       if (
         values.Password &&
-        (!/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password))
+        !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password)
       ) {
         messageApi.error(
           "Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру"
         );
         return;
       }
-      
-  
+
       if (!editingEmployee) {
         const res = await fetch(`${API_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),
         });
-  
+
         if (!res.ok) throw new Error("Ошибка при создании пользователя");
         messageApi.success("Сотрудник создан");
       } else {
         if (!values.Password) {
           delete values.Password;
         }
-  
+
         const res = await fetch(
           `${API_URL}/api/users/${editingEmployee.ID_User}`,
           {
@@ -133,11 +139,11 @@ const ListEmployee: React.FC = () => {
             body: JSON.stringify(values),
           }
         );
-  
+
         if (!res.ok) throw new Error("Ошибка при обновлении данных");
         messageApi.success("Сотрудник обновлён");
       }
-  
+
       fetchEmployees();
       setIsModalVisible(false);
       setEditingEmployee(null);
@@ -146,7 +152,6 @@ const ListEmployee: React.FC = () => {
       messageApi.error((err as Error).message);
     }
   };
-  
 
   const handleArchive = async (id: number, archive: boolean) => {
     try {
@@ -387,8 +392,12 @@ const ListEmployee: React.FC = () => {
               onClick={() => {
                 setEditingEmployee(record);
                 setIsModalVisible(true);
-                form.setFieldsValue(record);
+                form.setFieldsValue({
+                  ...record,
+                  ID_Role: record.ID_Role || 2, // по умолчанию сотрудник, если нет роли
+                });
               }}
+              
               icon={<EditOutlined />}
             ></Button>
             <Button
@@ -501,140 +510,123 @@ const ListEmployee: React.FC = () => {
               okText="Сохранить"
               cancelText="Отмена"
             >
-              <Form form={form} layout="vertical" onFinish={handleSave}>
-                <Form.Item
-                  name="First_Name"
-                  label="Имя"
-                  rules={[{ required: true, message: "Введите имя" }]}
-                >
-                  <Input />
-                </Form.Item>
+<Form form={form} layout="vertical" onFinish={handleSave}>
+  <Form.Item
+    name="First_Name"
+    label="Имя"
+    rules={[{ required: true, message: "Введите имя" }]}
+  >
+    <Input />
+  </Form.Item>
 
-                <Form.Item
-                  name="Last_Name"
-                  label="Фамилия"
-                  rules={[{ required: true, message: "Введите фамилию" }]}
-                >
-                  <Input />
-                </Form.Item>
+  <Form.Item
+    name="Last_Name"
+    label="Фамилия"
+    rules={[{ required: true, message: "Введите фамилию" }]}
+  >
+    <Input />
+  </Form.Item>
 
-                <Form.Item
-                  name="Email"
-                  label="Email"
-                  rules={[
-                    { required: true, message: "Введите email" },
-                    { type: "email", message: "Некорректный email!" },
-                    {
-                      validator: (_, value) => {
-                        if (!value) return Promise.resolve();
-                        const allowedDomains = [
-                          "gmail.com",
-                          "outlook.com",
-                          "hotmail.com",
-                          "yahoo.com",
-                          "icloud.com",
-                          "me.com",
-                          "mail.ru",
-                          "yandex.ru",
-                          "yandex.com",
-                          "protonmail.com",
-                          "zoho.com",
-                          "gmx.com",
-                        ];
-                        const domain = value.split("@")[1];
-                        return allowedDomains.includes(domain)
-                          ? Promise.resolve()
-                          : Promise.reject(
-                              new Error(
-                                "Разрешены только домены: " +
-                                  allowedDomains.join(", ")
-                              )
-                            );
-                      },
-                    },
-                  ]}
-                >
-                  <Input />
-                </Form.Item>
+  <Form.Item
+    name="Email"
+    label="Email"
+    rules={[
+      { required: true, message: "Введите email" },
+      { type: "email", message: "Некорректный email!" },
+      {
+        validator: (_, value) => {
+          if (!value) return Promise.resolve();
+          const allowedDomains = [
+            "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
+            "icloud.com", "me.com", "mail.ru", "yandex.ru", "yandex.com",
+            "protonmail.com", "zoho.com", "gmx.com",
+          ];
+          const domain = value.split("@")[1];
+          return allowedDomains.includes(domain)
+            ? Promise.resolve()
+            : Promise.reject(
+                new Error("Разрешены только домены: " + allowedDomains.join(", "))
+              );
+        },
+      },
+    ]}
+  >
+    <Input />
+  </Form.Item>
 
-                <Form.Item
-                  name="Phone"
-                  label="Телефон"
-                  rules={[
-                    { required: true, message: "Введите номер телефона" },
-                    {
-                      validator: (_, value) =>
-                        value && value.length >= 10
-                          ? Promise.resolve()
-                          : Promise.reject(
-                              new Error("Некорректный номер телефона")
-                            ),
-                    },
-                  ]}
-                >
-                  <PhoneInput
-                    country={"by"}
-                    enableSearch
-                    onlyCountries={["ru", "by"]}
-                    inputProps={{
-                      name: "Phone",
-                      required: true,
-                      autoComplete: "off",
-                      style: { width: "100%", paddingLeft: "48px" },
-                    }}
-                    dropdownStyle={{
-                      backgroundColor: "#f5f5f5",
-                      color: "#000",
-                      border: "1px solid #ccc",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
-                    }}
-                    searchStyle={{
-                      backgroundColor: "#f5f5f5",
-                      color: "#000",
-                      border: "1px solid #ccc",
-                    }}
-                    buttonStyle={{
-                      backgroundColor: "rgba(255, 255, 255, 0.15)",
-                      borderRight: "1px solid #444",
-                    }}
-                  />
-                </Form.Item>
+  <Form.Item
+    name="Phone"
+    label="Телефон"
+    rules={[
+      { required: true, message: "Введите номер телефона" },
+      {
+        validator: (_, value) =>
+          value && value.length >= 10
+            ? Promise.resolve()
+            : Promise.reject(new Error("Некорректный номер телефона")),
+      },
+    ]}
+  >
+    <PhoneInput
+      country={"by"}
+      enableSearch
+      onlyCountries={["ru", "by"]}
+      inputProps={{
+        name: "Phone",
+        required: true,
+        autoComplete: "off",
+        style: { width: "100%", paddingLeft: "48px" },
+      }}
+      containerClass="custom-phone-container"
+      inputClass="custom-phone-input"
+      buttonClass="custom-phone-button"
+      dropdownClass="custom-phone-dropdown"
+      searchClass="custom-phone-search"
+    />
+  </Form.Item>
 
-                <Form.Item
-                  name="Password"
-                  label="Пароль"
-                  rules={[
-                    ...(editingEmployee
-                      ? []
-                      : [{ required: true, message: "Введите пароль" }]),
-                    {
-                      validator: (_, value) => {
-                        if (!value && editingEmployee) return Promise.resolve();
-                        if (!value || value.length < 8) {
-                          return Promise.reject(
-                            new Error("Пароль должен быть не менее 8 символов")
-                          );
-                        }
-                        if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
-                          return Promise.reject(
-                            new Error(
-                              "Пароль должен содержать как минимум одну букву и одну цифру"
-                            )
-                          );
-                        }
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}
-                  tooltip={
-                    editingEmployee
-                      ? "Оставьте пустым, чтобы не менять пароль"
-                      : undefined
-                  }
-                >
-                  <Input.Password autoComplete="new-password" />
-                </Form.Item>
-              </Form>
+  <Form.Item
+    name="Password"
+    label="Пароль"
+    rules={[
+      ...(editingEmployee
+        ? []
+        : [{ required: true, message: "Введите пароль" }]),
+      {
+        validator: (_, value) => {
+          if (!value && editingEmployee) return Promise.resolve();
+          if (!value || value.length < 8) {
+            return Promise.reject(
+              new Error("Пароль должен быть не менее 8 символов")
+            );
+          }
+          if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+            return Promise.reject(
+              new Error("Пароль должен содержать как минимум одну букву и одну цифру")
+            );
+          }
+          return Promise.resolve();
+        },
+      },
+    ]}
+    tooltip={editingEmployee ? "Оставьте пустым, чтобы не менять пароль" : undefined}
+  >
+    <Input.Password autoComplete="new-password" />
+  </Form.Item>
+
+  <Form.Item
+    name="ID_Role"
+    label="Роль"
+    initialValue={2} // Сотрудник по умолчанию
+  >
+    <Radio.Group className="custom-radio-group">
+      <Radio value={2}>Сотрудник</Radio>
+      <Radio value={1}>Менеджер</Radio>
+    </Radio.Group>
+  </Form.Item>
+</Form>
+
+
             </Modal>
 
             <Modal

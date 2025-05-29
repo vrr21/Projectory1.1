@@ -1,7 +1,9 @@
 const db = require("../config/db");
 const { notifyProjectAssignment } = require('../services/notification.service');
+const authMiddleware = require('../middleware/authMiddleware');
 
 
+// Получение всех проектов с ID_Manager
 // Получение всех проектов с ID_Manager
 exports.getAllProjects = async (req, res) => {
   try {
@@ -9,18 +11,19 @@ exports.getAllProjects = async (req, res) => {
       .request()
       .query(`
         SELECT 
-          o.ID_Order, 
-          o.Order_Name, 
-          pt.Type_Name, 
-          o.Creation_Date, 
-          o.End_Date,
-          o.Status,
-          o.ID_Team,
-          t.Team_Name,
-          o.ID_Manager  -- ОБЯЗАТЕЛЬНО ДОЛЖЕН БЫТЬ ЗДЕСЬ
-        FROM Orders o
-        JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
-        JOIN Teams t ON o.ID_Team = t.ID_Team
+  o.ID_Order, 
+  o.Order_Name, 
+  pt.Type_Name, 
+  o.Creation_Date, 
+  o.End_Date,
+  o.Status,
+  ISNULL(o.ID_Team, 0) AS ID_Team,
+  ISNULL(t.Team_Name, 'Нет команды') AS Team_Name,
+  ISNULL(o.ID_Manager, 0) AS ID_Manager
+FROM Orders o
+LEFT JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
+LEFT JOIN Teams t ON o.ID_Team = t.ID_Team;
+
       `);
 
     res.json(result.recordset); // Возвращает все поля
@@ -31,9 +34,9 @@ exports.getAllProjects = async (req, res) => {
 };
 
 
-// Создание проекта
 exports.createProject = async (req, res) => {
-  const { Order_Name, Type_Name, Creation_Date, End_Date, ID_Manager } = req.body;
+  const { Order_Name, Type_Name, Creation_Date, End_Date } = req.body;
+  const ID_Manager = req.body.ID_Manager || req.user?.id; // 👈 Автоматическое назначение менеджера
 
   try {
     const typeResult = await db.pool
@@ -54,7 +57,7 @@ exports.createProject = async (req, res) => {
       .input("Creation_Date", db.sql.Date, Creation_Date)
       .input("End_Date", db.sql.Date, End_Date)
       .input("Status", db.sql.NVarChar, "Новая")
-      .input("ID_Manager", db.sql.Int, ID_Manager || 1) // ✅ Принимает ID_Manager или 1 по умолчанию
+      .input("ID_Manager", db.sql.Int, ID_Manager)
       .query(`
         INSERT INTO Orders (Order_Name, ID_ProjectType, Creation_Date, End_Date, Status, ID_Manager)
         VALUES (@Order_Name, @ID_ProjectType, @Creation_Date, @End_Date, @Status, @ID_Manager)
@@ -66,6 +69,7 @@ exports.createProject = async (req, res) => {
     res.status(500).json({ error: "Ошибка при создании проекта" });
   }
 };
+
 
 // Закрытие проекта
 exports.closeProject = async (req, res) => {

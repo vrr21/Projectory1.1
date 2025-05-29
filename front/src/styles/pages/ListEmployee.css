@@ -1,10 +1,9 @@
-/* styles/pages/ManagerDashboard.css */
 .layout {
   min-height: 100vh;
 }
 
 .main-layout {
-  background: #141414;
+  background-color: var(--bg-color);
 }
 
 .content {
@@ -13,6 +12,76 @@
 
 .page-content {
   padding: 24px;
-  background: #1f1f1f;
+  background-color: var(--card-bg-color);
   border-radius: 8px;
+  color: var(--text-color);
+  transition: background-color var(--transition-time), color var(--transition-time);
+}
+
+/* Телефонный ввод */
+.custom-phone-container {
+  width: 100%;
+}
+
+.custom-phone-input {
+  width: 100% !important;
+  height: 40px !important;
+  padding-left: 48px !important;
+  border-radius: 6px !important;
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+.custom-phone-button {
+  background-color: transparent !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+.custom-phone-dropdown {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+.custom-phone-search {
+  background-color: var(--input-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
+}
+
+
+/* Адаптивные стили для Radio без кнопок */
+.custom-radio-group {
+  display: flex;
+  gap: 32px;
+}
+
+.custom-radio-group .ant-radio-wrapper {
+  display: flex;
+  align-items: center;
+  font-size: 16px;
+  color: var(--text-color);
+  transition: color var(--transition-time);
+}
+
+.custom-radio-group .ant-radio-inner {
+  width: 16px;
+  height: 16px;
+  background-color: var(--input-bg-color);
+  border: 2px solid var(--border-color);
+  transition: background-color var(--transition-time), border-color var(--transition-time);
+}
+
+.custom-radio-group .ant-radio-checked .ant-radio-inner {
+  border-color: #006f7a !important;
+  background-color: #006f7a !important;
+}
+
+.custom-radio-group .ant-radio-inner::after {
+  background-color: var(--card-bg-color);
 }
