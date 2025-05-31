@@ -185,3 +185,30 @@ exports.assignEmployeeToProject = async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при назначении сотрудников' });
   }
 };
+
+// project.controller.js
+exports.getProjectsByTeam = async (req, res) => {
+  const { teamId } = req.query;
+
+  if (!teamId) {
+    return res.status(400).json({ message: 'Не передан параметр teamId' });
+  }
+
+  try {
+    await db.poolConnect;
+
+    const result = await db.pool
+      .request()
+      .input('TeamID', db.sql.Int, parseInt(teamId, 10))
+      .query(`
+        SELECT o.ID_Order, o.Order_Name
+        FROM Orders o
+        WHERE o.ID_Team = @TeamID
+      `);
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error('Ошибка при получении проектов по команде:', error);
+    res.status(500).json({ message: 'Ошибка при получении проектов по команде' });
+  }
+};

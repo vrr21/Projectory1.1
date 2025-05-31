@@ -1,5 +1,31 @@
 const { pool, sql, poolConnect } = require('../config/db');
 
+
+exports.getProjects = async (req, res) => {
+  const { teamId } = req.query;
+
+  try {
+    await poolConnect;
+    const request = pool.request();
+
+    if (!teamId) {
+      return res.status(400).json({ message: 'Не передан параметр teamId' });
+    }
+
+    request.input('TeamID', sql.Int, parseInt(teamId, 10));
+    const result = await request.query(`
+      SELECT ID_Order, Order_Name
+      FROM Orders
+      WHERE ID_Team = @TeamID
+    `);
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error('🔥 Ошибка при получении проектов:', error);
+    res.status(500).json({ message: 'Ошибка при получении проектов', error: error.message });
+  }
+};
+
 // 🔹 Получение задач с фильтрацией
 exports.getAllTasks = async (req, res) => {
   const { employee, team } = req.query;
@@ -465,4 +491,5 @@ module.exports = {
   updateEmployeeTaskStatus: exports.updateEmployeeTaskStatus,
   deleteAllArchivedTasks: exports.deleteAllArchivedTasks,
   updateTask: exports.updateTask,
+  getProjects: exports.getProjects 
 };

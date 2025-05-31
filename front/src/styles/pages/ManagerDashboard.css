@@ -36,7 +36,7 @@ body.sidebar-collapsed .dashboard-body {
 
 
 .kanban-column {
-  background-color: #333 !important;
+  background-color: #2a2a2a !important;
   padding: 1.5rem 1rem;
   border-radius: 8px;
   width: 320px;
@@ -47,6 +47,7 @@ body.sidebar-collapsed .dashboard-body {
   flex-direction: column;
   transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
 }
+
 
 .kanban-column h3 {
   background-color: #333 !important;
@@ -654,3 +655,12 @@ body.sidebar-collapsed .dashboard-body {
 }
 
 
+.kanban-avatars > div {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.kanban-avatars > div img {
+  display: block;
+}

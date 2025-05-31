@@ -244,5 +244,10 @@ router.post('/assign', verifyToken, async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при назначении сотрудников' });
   }
 });
+// projects.routes.js
+router.get('/by-team', async (req, res) => {
+  const projectController = require('../controllers/project.controller');
+  return projectController.getProjectsByTeam(req, res);
+});
 
 module.exports = router;

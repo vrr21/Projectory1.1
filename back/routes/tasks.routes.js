@@ -34,6 +34,9 @@ router.get('/search', async (req, res) => {
 // 🔹 Получить все задачи с деталями
 router.get('/details', taskController.getTasksWithDetails);
 
+// 🔹 Получить проекты по команде
+router.get('/projects', taskController.getProjects);
+
 // 🔹 Создать задачу
 router.post('/', taskController.createTask);
 
@@ -48,11 +51,8 @@ router.patch('/:id/close', taskController.closeTask);
 
 // 🔹 Обновить статус задачи для конкретного сотрудника
 router.put('/:taskId/status', taskController.updateEmployeeTaskStatus);
-router.put('/:taskId/update-status', taskController.updateEmployeeTaskStatus);
 
 // 🔹 Удалить все архивные задачи
 router.delete('/archive/all', taskController.deleteAllArchivedTasks);
-router.put('/tasks/:id', taskController.updateTask);
-
 
 module.exports = router;

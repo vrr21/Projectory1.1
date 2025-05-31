@@ -1,6 +1,6 @@
 // back/controllers/employees.controller.js
 
-const { pool, poolConnect, sql } = require('../config/db');
+const { pool, poolConnect, sql } = require("../config/db");
 
 // Получить всех сотрудников (кроме менеджеров)
 exports.getAllEmployees = async (req, res) => {
@@ -28,27 +28,26 @@ exports.getAllEmployees = async (req, res) => {
     `);
     res.json(result.recordset);
   } catch (err) {
-    console.error('Ошибка при получении сотрудников:', err);
-    res.status(500).json({ message: 'Ошибка при получении сотрудников' });
+    console.error("Ошибка при получении сотрудников:", err);
+    res.status(500).json({ message: "Ошибка при получении сотрудников" });
   }
 };
-
 
 // Поиск данных сотрудника (используется в поиске в шапке)
 exports.fullSearchEmployeeData = async (req, res) => {
   const { q, employeeEmail } = req.query;
 
   if (!q || !employeeEmail) {
-    return res.status(400).json({ message: 'Параметры поиска обязательны' });
+    return res.status(400).json({ message: "Параметры поиска обязательны" });
   }
 
   try {
     await poolConnect;
 
-    const result = await pool.request()
-      .input('query', sql.NVarChar(255), `%${q}%`)
-      .input('email', sql.NVarChar(255), employeeEmail)
-      .query(`
+    const result = await pool
+      .request()
+      .input("query", sql.NVarChar(255), `%${q}%`)
+      .input("email", sql.NVarChar(255), employeeEmail).query(`
         -- Поиск задач
         SELECT
           T.ID_Task AS id,
@@ -87,8 +86,8 @@ exports.fullSearchEmployeeData = async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    console.error('Ошибка поиска данных сотрудника:', error);
-    res.status(500).json({ message: 'Ошибка поиска данных сотрудника' });
+    console.error("Ошибка поиска данных сотрудника:", error);
+    res.status(500).json({ message: "Ошибка поиска данных сотрудника" });
   }
 };
 
@@ -97,17 +96,17 @@ exports.updateEmployeeProfile = async (req, res) => {
   const { id, firstName, lastName, phone } = req.body;
 
   if (!id || !firstName || !lastName) {
-    return res.status(400).json({ message: 'Некорректные данные' });
+    return res.status(400).json({ message: "Некорректные данные" });
   }
 
   try {
     await poolConnect;
-    await pool.request()
-      .input('id', sql.Int, id)
-      .input('firstName', sql.NVarChar(255), firstName)
-      .input('lastName', sql.NVarChar(255), lastName)
-      .input('phone', sql.NVarChar(50), phone || null)
-      .query(`
+    await pool
+      .request()
+      .input("id", sql.Int, id)
+      .input("firstName", sql.NVarChar(255), firstName)
+      .input("lastName", sql.NVarChar(255), lastName)
+      .input("phone", sql.NVarChar(50), phone || null).query(`
         UPDATE Users
         SET First_Name = @firstName,
             Last_Name = @lastName,
@@ -115,21 +114,20 @@ exports.updateEmployeeProfile = async (req, res) => {
         WHERE ID_User = @id
       `);
 
-    res.json({ message: 'Профиль успешно обновлён' });
+    res.json({ message: "Профиль успешно обновлён" });
   } catch (error) {
-    console.error('Ошибка при обновлении профиля:', error);
-    res.status(500).json({ message: 'Ошибка при обновлении профиля' });
+    console.error("Ошибка при обновлении профиля:", error);
+    res.status(500).json({ message: "Ошибка при обновлении профиля" });
   }
 };
 
-
-const path = require('path');
-const multer = require('multer');
+const path = require("path");
+const multer = require("multer");
 
 // Настройка хранилища
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads'));
+    cb(null, path.join(__dirname, "../uploads"));
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
@@ -142,10 +140,10 @@ const upload = multer({ storage });
 
 // Контроллер для загрузки аватара
 exports.uploadAvatar = [
-  upload.single('avatar'),
+  upload.single("avatar"),
   async (req, res) => {
     if (!req.file) {
-      return res.status(400).json({ message: 'Файл не загружен' });
+      return res.status(400).json({ message: "Файл не загружен" });
     }
 
     const { userId } = req.body;
@@ -153,10 +151,10 @@ exports.uploadAvatar = [
 
     try {
       await poolConnect;
-      await pool.request()
-        .input('userId', sql.Int, userId)
-        .input('avatar', sql.NVarChar(255), filename)
-        .query(`
+      await pool
+        .request()
+        .input("userId", sql.Int, userId)
+        .input("avatar", sql.NVarChar(255), filename).query(`
           UPDATE Users
           SET Avatar = @avatar
           WHERE ID_User = @userId
@@ -164,8 +162,8 @@ exports.uploadAvatar = [
 
       res.json({ filename });
     } catch (error) {
-      console.error('Ошибка при сохранении аватара:', error);
-      res.status(500).json({ message: 'Ошибка при сохранении аватара' });
+      console.error("Ошибка при сохранении аватара:", error);
+      res.status(500).json({ message: "Ошибка при сохранении аватара" });
     }
   },
 ];
@@ -190,11 +188,15 @@ exports.getExtendedEmployeeList = async (req, res) => {
 
     res.json(result.recordset);
   } catch (error) {
-    console.error('Ошибка при получении расширенного списка сотрудников:', error);
-    res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
+    console.error(
+      "Ошибка при получении расширенного списка сотрудников:",
+      error
+    );
+    res
+      .status(500)
+      .json({ message: "Ошибка сервера при получении сотрудников" });
   }
 };
-
 
 exports.getAllEmployeesFull = async (req, res) => {
   try {
@@ -221,11 +223,12 @@ exports.getAllEmployeesFull = async (req, res) => {
     `);
     res.json(result.recordset);
   } catch (err) {
-    console.error('Ошибка при получении сотрудников (full):', err);
-    res.status(500).json({ message: 'Ошибка при получении сотрудников (full)' });
+    console.error("Ошибка при получении сотрудников (full):", err);
+    res
+      .status(500)
+      .json({ message: "Ошибка при получении сотрудников (full)" });
   }
 };
-
 
 exports.getAllEmployeesExtended = async (req, res) => {
   try {
@@ -282,11 +285,15 @@ exports.getAllEmployeesExtended = async (req, res) => {
 
     res.json(result.recordset);
   } catch (err) {
-    console.error('Ошибка при получении расширенной информации о сотрудниках:', err);
-    res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
+    console.error(
+      "Ошибка при получении расширенной информации о сотрудниках:",
+      err
+    );
+    res
+      .status(500)
+      .json({ message: "Ошибка сервера при получении сотрудников" });
   }
 };
-
 
 // back/controllers/employees.controller.js
 // Получить профиль сотрудника по ID
@@ -296,9 +303,7 @@ exports.getEmployeeById = async (req, res) => {
   try {
     await poolConnect;
 
-    const result = await pool.request()
-      .input('id', sql.Int, id)
-      .query(`
+    const result = await pool.request().input("id", sql.Int, id).query(`
         SELECT 
           U.ID_User,
           U.First_Name,
@@ -341,13 +346,15 @@ exports.getEmployeeById = async (req, res) => {
       `);
 
     if (result.recordset.length === 0) {
-      return res.status(404).json({ message: 'Профиль сотрудника не найден' });
+      return res.status(404).json({ message: "Профиль сотрудника не найден" });
     }
 
     res.json(result.recordset[0]);
   } catch (error) {
-    console.error('Ошибка при получении профиля сотрудника:', error);
-    res.status(500).json({ message: 'Ошибка сервера при получении профиля сотрудника' });
+    console.error("Ошибка при получении профиля сотрудника:", error);
+    res
+      .status(500)
+      .json({ message: "Ошибка сервера при получении профиля сотрудника" });
   }
 };
 
@@ -355,13 +362,12 @@ exports.getTasksByEmployee = async (req, res) => {
   const employeeId = parseInt(req.params.id, 10);
 
   if (isNaN(employeeId)) {
-    return res.status(400).json({ message: 'Некорректный ID сотрудника' });
+    return res.status(400).json({ message: "Некорректный ID сотрудника" });
   }
 
   try {
     await poolConnect;
-    const result = await pool.request()
-      .input('employeeId', sql.Int, employeeId)
+    const result = await pool.request().input("employeeId", sql.Int, employeeId)
       .query(`
         SELECT T.ID_Task, T.Task_Name, S.Status_Name AS Status
         FROM Tasks T
@@ -372,7 +378,45 @@ exports.getTasksByEmployee = async (req, res) => {
 
     res.json(result.recordset);
   } catch (err) {
-    console.error('Ошибка при получении задач сотрудника:', err);
-    res.status(500).json({ message: 'Ошибка при получении задач сотрудника' });
+    console.error("Ошибка при получении задач сотрудника:", err);
+    res.status(500).json({ message: "Ошибка при получении задач сотрудника" });
+  }
+};
+
+exports.getEmployeesByTeam = async (req, res) => {
+  const { teamId } = req.query;
+  if (!teamId) {
+    return res.status(400).json({ message: 'Не указан ID команды' });
+  }
+
+  try {
+    await poolConnect;
+    const result = await pool.request()
+      .input('teamId', sql.Int, teamId)
+      .query(`
+        SELECT 
+          u.ID_User AS ID_Employee,
+          u.First_Name,
+          u.Last_Name,
+          u.Avatar,
+          tm.Role AS Position  -- 🟢 БЕРЕМ РОЛЬ ИЗ TeamMembers!
+        FROM Users u
+        JOIN TeamMembers tm ON u.ID_User = tm.ID_User
+        WHERE tm.ID_Team = @teamId
+      `);
+
+    const formattedEmployees = result.recordset.map(emp => ({
+      ID_Employee: emp.ID_Employee,
+      First_Name: emp.First_Name,
+      Last_Name: emp.Last_Name,
+      Full_Name: `${emp.First_Name} ${emp.Last_Name}`,
+      Position: emp.Position ?? "Без должности",
+      Avatar: emp.Avatar ?? null
+    }));
+
+    res.json(formattedEmployees);
+  } catch (error) {
+    console.error('Ошибка при получении сотрудников команды:', error);
+    res.status(500).json({ message: 'Ошибка при получении сотрудников команды' });
   }
 };
