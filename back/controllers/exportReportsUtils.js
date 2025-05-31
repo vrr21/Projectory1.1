@@ -1,13 +1,21 @@
 const ExcelJS = require('exceljs');
-const PDFDocument = require('pdfkit');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, VerticalAlign, AlignmentType } = require('docx');
-const { poolConnect, pool } = require('../config/db');
-const stream = require('stream');
-const fs = require('fs');
-const path = require('path');
-const getStream = require('get-stream');
 const puppeteer = require('puppeteer');
+const {
+  Document,
+  Packer,
+  Paragraph,
+  Table,
+  TableRow,
+  TableCell,
+  TextRun,
+  WidthType,
+  VerticalAlign,
+  AlignmentType,
+  PageOrientation
+} = require('docx');
+const { poolConnect, pool } = require('../config/db');
 
+// Хелпер форматирования значений
 function formatValue(value) {
   if (value instanceof Date) {
     return new Date(value).toLocaleString('ru-RU');
@@ -32,8 +40,7 @@ const headerTranslations = {
   'End_Date': 'Дата завершения',
 };
 
-
-// Get data from views
+// Получение данных
 async function getDataFromViews() {
   await poolConnect;
   const views = [
@@ -55,7 +62,7 @@ async function getDataFromViews() {
   return results;
 }
 
-// Export to Word
+// Экспорт в Word
 async function exportReportsToWord(res) {
   try {
     const data = await getDataFromViews();
@@ -97,12 +104,11 @@ async function exportReportsToWord(res) {
           const dataRow = new TableRow({
             children: headers.map(h => {
               const value = formatValue(row[h]);
-              const isCenter = /^\d+$/.test(value.trim()) || /^\d{1,2}\.\d{1,2}\.\d{4}, \d{2}:\d{2}:\d{2}$/.test(value.trim());
               return new TableCell({
                 shading: { fill: rowIndex % 2 === 0 ? 'D3D3D3' : 'FFFFFF' },
                 children: [new Paragraph({
                   children: [new TextRun({ text: value, size: 24 })],
-                  alignment: isCenter ? AlignmentType.CENTER : AlignmentType.LEFT,
+                  alignment: /^\d+$/.test(value) ? AlignmentType.CENTER : AlignmentType.LEFT,
                 })],
                 verticalAlign: VerticalAlign.CENTER,
                 width: { size: 100 / headers.length, type: WidthType.PERCENTAGE },
@@ -129,20 +135,26 @@ async function exportReportsToWord(res) {
       tableCounter++;
     }
 
-    const doc = new Document({ sections: [{ children: sections }] });
-    const buffer = await Packer.toBuffer(doc);
+    const doc = new Document({
+      sections: [{
+        properties: {
+          page: { size: { orientation: PageOrientation.LANDSCAPE } }
+        },
+        children: sections
+      }]
+    });
 
+    const buffer = await Packer.toBuffer(doc);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', 'attachment; filename="reports.docx"');
     res.send(buffer);
-
   } catch (error) {
     console.error(error);
     res.status(500).send('Ошибка при создании Word отчёта');
   }
 }
 
-
+// Экспорт в Excel
 async function exportReportsToExcel(res) {
   try {
     const data = await getDataFromViews();
@@ -150,57 +162,53 @@ async function exportReportsToExcel(res) {
 
     for (const [title, rows] of Object.entries(data)) {
       const worksheet = workbook.addWorksheet(title);
+      worksheet.pageSetup.orientation = 'landscape';
 
       if (rows.length > 0) {
         const headers = Object.keys(rows[0]);
-        const columnWidth = 20;
-
         worksheet.columns = headers.map(key => ({
           key,
-          width: columnWidth,
+          width: 20
         }));
 
-        // Add Table Title Row
         const titleRow = worksheet.addRow([`Таблица – ${title}`]);
         titleRow.eachCell(cell => {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
           cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
         });
         worksheet.mergeCells(`A${titleRow.number}:${String.fromCharCode(65 + headers.length - 1)}${titleRow.number}`);
 
-        // Add Header Row
-        const headerRow = worksheet.addRow(headers.map(key => headerTranslations[key] || key));
+        const headerRow = worksheet.addRow(headers.map(h => headerTranslations[h] || h));
         headerRow.eachCell(cell => {
           cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
           cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-          cell.border = {
-            top: { style: 'thin' },
-            left: { style: 'thin' },
-            bottom: { style: 'thin' },
-            right: { style: 'thin' },
-          };
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
         });
 
-        // Add Data Rows with alternating colors
         rows.forEach((row, rowIndex) => {
           const rowData = headers.map(h => formatValue(row[h]));
           const dataRow = worksheet.addRow(rowData);
+          dataRow.height = 20;
           dataRow.eachCell(cell => {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: rowIndex % 2 === 0 ? 'FFD3D3D3' : 'FFFFFFFF' }, // Grey or White
-            };
-            cell.alignment = { horizontal: /^\d+$/.test(cell.value) ? 'center' : 'left', vertical: 'middle' };
-            cell.border = {
-              top: { style: 'thin' },
-              left: { style: 'thin' },
-              bottom: { style: 'thin' },
-              right: { style: 'thin' },
-            };
+            cell.alignment = { horizontal: /^\d+$/.test(cell.value) ? 'center' : 'left', vertical: 'middle', wrapText: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowIndex % 2 === 0 ? 'FFD3D3D3' : 'FFFFFFFF' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
           });
+        });
+
+        // Автоширина колонок
+        worksheet.columns.forEach(column => {
+          let maxLength = 10;
+          column.eachCell({ includeEmpty: true }, cell => {
+            const cellValue = cell.value ? cell.value.toString() : '';
+            const lines = cellValue.split('\n');
+            lines.forEach(line => {
+              maxLength = Math.max(maxLength, line.length);
+            });
+          });
+          column.width = maxLength + 5;
         });
       } else {
         worksheet.addRow(['Нет данных']);
@@ -217,6 +225,7 @@ async function exportReportsToExcel(res) {
   }
 }
 
+// Экспорт в PDF
 async function exportReportsToPdf(res) {
   try {
     const data = await getDataFromViews();
@@ -225,6 +234,7 @@ async function exportReportsToPdf(res) {
       <head>
         <meta charset="UTF-8">
         <style>
+          @page { size: A4 landscape; }
           body { font-family: 'Times New Roman', serif; padding: 20px; }
           h1 { text-align: center; margin-bottom: 40px; }
           h2 { margin-top: 40px; }
@@ -248,7 +258,7 @@ async function exportReportsToPdf(res) {
                 ${rows.map((row, rowIndex) => `
                   <tr>${Object.keys(row).map(h => {
                     const value = formatValue(row[h]);
-                    const cellClass = /^\d+$/.test(value.trim()) ? 'center' : '';
+                    const cellClass = /^\d+$/.test(value) ? 'center' : '';
                     return `<td class="${cellClass}">${value}</td>`;
                   }).join('')}</tr>
                 `).join('')}
@@ -263,7 +273,7 @@ async function exportReportsToPdf(res) {
     const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+    const pdfBuffer = await page.pdf({ format: 'A4', landscape: true, printBackground: true });
     await browser.close();
 
     res.setHeader('Content-Type', 'application/pdf');

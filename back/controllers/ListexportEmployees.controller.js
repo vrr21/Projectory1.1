@@ -1,6 +1,16 @@
 const ExcelJS = require('exceljs');
 const puppeteer = require('puppeteer');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, VerticalAlign } = require('docx');
+const {
+  Document,
+  Packer,
+  Paragraph,
+  Table,
+  TableRow,
+  TableCell,
+  TextRun,
+  VerticalAlign,
+  PageOrientation
+} = require('docx');
 const { poolConnect, sql, pool } = require('../config/db');
 
 function formatDate(date) {
@@ -19,24 +29,18 @@ async function getEmployeesData() {
       U.Phone,
       ISNULL(U.Avatar, '–') AS Avatar,
       U.Archived,
-
-      -- Роли
       ISNULL((
         SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
         FROM TeamMembers TM
         JOIN Teams T ON TM.ID_Team = T.ID_Team
         WHERE TM.ID_User = U.ID_User
       ), '–') AS Roles,
-
-      -- Команды
       ISNULL((
         SELECT STRING_AGG(T.Team_Name, ', ')
         FROM TeamMembers TM
         JOIN Teams T ON TM.ID_Team = T.ID_Team
         WHERE TM.ID_User = U.ID_User
       ), '–') AS Teams,
-
-      -- Проекты
       ISNULL((
         SELECT STRING_AGG(O.Order_Name, ', ')
         FROM Orders O
@@ -47,15 +51,12 @@ async function getEmployeesData() {
           WHERE T.ID_Team = O.ID_Team AND TM.ID_User = U.ID_User
         )
       ), '–') AS Projects,
-
-      -- Задачи
       ISNULL((
         SELECT STRING_AGG(TK.Task_Name, ', ')
         FROM Assignment A
         JOIN Tasks TK ON A.ID_Task = TK.ID_Task
         WHERE A.ID_Employee = U.ID_User
       ), '–') AS Tasks
-
     FROM Users U
   `);
   return result.recordset;
@@ -79,7 +80,7 @@ async function exportEmployeesToExcel(res) {
   headerRow.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
     cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-    cell.alignment = { horizontal: 'center' };
+    cell.alignment = { horizontal: 'center', wrapText: true };
     cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
 
@@ -100,18 +101,21 @@ async function exportEmployeesToExcel(res) {
         pattern: 'solid',
         fgColor: { argb: idx % 2 === 0 ? 'FFD3D3D3' : 'FFFFFFFF' }
       };
-      cell.alignment = { vertical: 'middle' };
+      cell.alignment = { vertical: 'middle', wrapText: true };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
   });
 
+  // Автоматически подгоняем ширину колонок под текст
   sheet.columns.forEach(col => {
-    let max = 10;
+    let maxLength = 0;
     col.eachCell({ includeEmpty: true }, cell => {
-      const val = cell.value?.toString() || '';
-      max = Math.max(max, val.length + 2);
+      const cellValue = cell.value ? cell.value.toString() : '';
+      cellValue.split('\n').forEach(line => {
+        maxLength = Math.max(maxLength, line.length);
+      });
     });
-    col.width = max;
+    col.width = maxLength + 5; // запас для переносов строк
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -129,10 +133,11 @@ async function exportEmployeesToPDF(res) {
       <head>
         <meta charset="UTF-8" />
         <style>
+          @page { size: A4 landscape; }  /* Альбомная ориентация */
           body { font-family: 'Times New Roman', serif; padding: 20px; }
           h1 { text-align: center; margin-bottom: 30px; }
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          th, td { border: 1px solid #000; padding: 6px; }
+          th, td { border: 1px solid #000; padding: 6px; word-wrap: break-word; }
           th { background-color: #333; color: #fff; }
           tr:nth-child(even) { background-color: #D3D3D3; }
         </style>
@@ -167,7 +172,7 @@ async function exportEmployeesToPDF(res) {
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
   await page.setContent(html, { waitUntil: 'networkidle0' });
-  const pdf = await page.pdf({ format: 'A4', printBackground: true });
+  const pdf = await page.pdf({ format: 'A4', landscape: true, printBackground: true });
   await browser.close();
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -206,6 +211,9 @@ async function exportEmployeesToWord(res) {
 
   const doc = new Document({
     sections: [{
+      properties: {
+        page: { size: { orientation: PageOrientation.LANDSCAPE } } // Альбомная ориентация
+      },
       children: [
         new Paragraph({
           children: [new TextRun({ text: 'Список сотрудников', bold: true, size: 28 })],

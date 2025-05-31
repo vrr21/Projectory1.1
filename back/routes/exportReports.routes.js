@@ -1,10 +1,8 @@
-// routes/exportReports.routes.js
 const express = require('express');
 const router = express.Router();
 const exportReportsController = require('../controllers/exportReports.controller');
-const authMiddleware = require('../middleware/authMiddleware');
 
-router.get('/reports', authMiddleware, exportReportsController.exportReportsHandler);
-
+// Исправляем метод GET на POST
+router.post('/', exportReportsController.exportReportsHandler);
 
 module.exports = router;

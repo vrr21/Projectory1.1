@@ -439,9 +439,9 @@ const ManagerReportsPage: React.FC = () => {
       label: "Журнал задач на проекты",
       children: (
         <Table
-          columns={kanbanColumns}
+          columns={kanbanColumns} // ✅ ИСПРАВИЛ
           dataSource={applySearchFilter(applyDateFilter(kanbanData))}
-          rowKey="ID_Task"
+          rowKey={(record, index) => `${record.ID_Task}_${index}`}
           pagination={{ pageSize: 10 }}
         />
       ),
@@ -459,6 +459,7 @@ const ManagerReportsPage: React.FC = () => {
       ),
     },
   ];
+  
 
   const handleExport = async (format: string) => {
     try {
@@ -466,31 +467,38 @@ const ManagerReportsPage: React.FC = () => {
         console.error("Email пользователя не найден");
         return;
       }
-
+  
       const token = localStorage.getItem("token");
       if (!token) {
         console.error("Токен авторизации отсутствует");
         return;
       }
-
-      const params = new URLSearchParams({
-        format,
-        email: user.email, // ✅ Вставляем email менеджера в URL
+  
+      // Для фильтрации можно собрать данные (например, kanbanData) и отдать на бэкенд
+      // Здесь отправляем все данные, либо отфильтрованные, как пример:
+      const filteredData = {
+        tasksByProjectType: applyDateFilter(tasksByProjectType),
+        tasksByEmployee: applyDateFilter(tasksByEmployee),
+        tasksByProject: applyDateFilter(tasksByProject),
+        kanbanData: applyDateFilter(kanbanData),
+        timeTrackingData: applyDateFilter(timeTrackingData),
+      };
+  
+      const res = await fetch(`${API_URL}/api/export/reports?format=${format}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(filteredData),
       });
-
-      const res = await fetch(
-        `${API_URL}/api/export/reports?${params.toString()}`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
-
+  
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(errorText || "Ошибка при экспорте отчётов");
+      }
+  
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -498,7 +506,7 @@ const ManagerReportsPage: React.FC = () => {
       link.setAttribute(
         "download",
         `reports.${
-          format === "word" ? "docx" : format === "excel" ? "xlsx" : format
+          format === "word" ? "docx" : format === "excel" ? "xlsx" : "pdf"
         }`
       );
       document.body.appendChild(link);
@@ -508,6 +516,7 @@ const ManagerReportsPage: React.FC = () => {
       console.error("Ошибка при экспорте:", error);
     }
   };
+  
 
   if (loading) return <div>Загрузка данных...</div>;
   return (

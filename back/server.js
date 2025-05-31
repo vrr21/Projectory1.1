@@ -42,18 +42,20 @@ app.use('/api', require('./routes/timeTracking'));
 app.use('/api', require('./routes/notifications'));
 app.use('/api/roles', require('./routes/roles'));
 
-// Export Routes
+// ✅ Export Routes
 app.use('/api/export/employees', require('./routes/ListexportEmployees.routes'));
-app.use('/api/export', require('./routes/exportEmployeeReports.routes'));
-app.use('/api/export', require('./routes/exportProjects.routes'));
-app.use('/api/export', require('./routes/exportTeams.routes'));
-app.use('/api/export', require('./routes/exportTasks.routes'));
-app.use('/api/export', require('./routes/exportReports.routes'));
+app.use('/api/export/reports/employees', require('./routes/exportEmployeeReports.routes'));
+app.use('/api/export/projects', require('./routes/exportProjects.routes'));
+app.use('/api/export/teams', require('./routes/exportTeams.routes'));
+app.use('/api/export/tasks', require('./routes/exportTasks.routes'));
+app.use('/api/export/reports', require('./routes/exportReports.routes'));
+app.use('/api/export/teams/custom', require('./routes/exportTeams.routes'));
+app.use('/api/export/projects-teams-employee', require('./routes/exportProjectsTeamsEmployee.routes'));
 
-// Test
+// Тестовый эндпоинт
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
 
-// Start
+// Запуск сервера
 app.listen(PORT, () => {
   console.log(`✅ Сервер запущен на порту: http://localhost:${PORT}`);
 });

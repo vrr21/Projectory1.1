@@ -1,7 +1,19 @@
 const ExcelJS = require('exceljs');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, VerticalAlign, AlignmentType } = require('docx');
+const {
+  Document,
+  Packer,
+  Paragraph,
+  Table,
+  TableRow,
+  TableCell,
+  TextRun,
+  WidthType,
+  VerticalAlign,
+  AlignmentType,
+  PageOrientation
+} = require('docx');
 const puppeteer = require('puppeteer');
-const { poolConnect, pool } = require('../config/db');
+const { poolConnect, pool, sql } = require('../config/db');
 
 function formatValue(value) {
   if (value instanceof Date) {
@@ -26,12 +38,19 @@ const headerTranslations = {
 async function getDataFromViews(email) {
   await poolConnect;
 
-  const kanbanQuery = `SELECT Task_Name, Description, Status_Name, Order_Name, Team_Name, Deadline FROM KanbanBoardView`;
-  const timeTrackingQuery = `SELECT Task_Name, Hours_Spent, Start_Date, End_Date FROM EmployeeTimeTrackingReport`;
-  
+  const kanbanQuery = `
+    SELECT Task_Name, Description, Status_Name, Order_Name, Team_Name, Deadline 
+    FROM KanbanBoardView 
+    WHERE UserEmail = @Email
+  `;
+  const timeTrackingQuery = `
+    SELECT Task_Name, Hours_Spent, Start_Date, End_Date 
+    FROM EmployeeTimeTrackingReport 
+    WHERE UserEmail = @Email
+  `;
 
   const request = pool.request();
-  request.input('Email', email);
+  request.input('Email', sql.NVarChar, email);
 
   const kanbanResult = await request.query(kanbanQuery);
   const timeTrackingResult = await request.query(timeTrackingQuery);
@@ -49,7 +68,7 @@ async function exportEmployeeReportsToWord(res, email) {
 
     const sections = [
       new Paragraph({
-        children: [new TextRun({ text: 'Мои Отчёты', bold: true, size: 28 })],
+        children: [new TextRun({ text: 'Мои Отчёты', bold: true, size: 28 })],  // ✅ Заголовок без email
         spacing: { after: 560 },
         alignment: AlignmentType.CENTER,
       }),
@@ -69,7 +88,10 @@ async function exportEmployeeReportsToWord(res, email) {
         const headerRow = new TableRow({
           children: headers.map(h => new TableCell({
             shading: { fill: '333333' },
-            children: [new Paragraph({ children: [new TextRun({ text: headerTranslations[h] || h, bold: true, color: 'FFFFFF', size: 24 })] })],
+            children: [new Paragraph({
+              children: [new TextRun({ text: headerTranslations[h] || h, bold: true, color: 'FFFFFF', size: 24 })],
+              alignment: AlignmentType.CENTER,
+            })],
             verticalAlign: VerticalAlign.CENTER,
           })),
         });
@@ -87,7 +109,12 @@ async function exportEmployeeReportsToWord(res, email) {
           tableRows.push(dataRow);
         });
       } else {
-        tableRows.push(new TableRow({ children: [new TableCell({ children: [new Paragraph('Нет данных')], verticalAlign: VerticalAlign.CENTER })] }));
+        tableRows.push(new TableRow({
+          children: [new TableCell({
+            children: [new Paragraph('Нет данных')],
+            verticalAlign: VerticalAlign.CENTER,
+          })],
+        }));
       }
 
       sections.push(new Table({ rows: tableRows, width: { size: 100, type: WidthType.PERCENTAGE } }));
@@ -110,18 +137,57 @@ async function exportEmployeeReportsToWord(res, email) {
 async function exportEmployeeReportsToExcel(res, email) {
   try {
     const data = await getDataFromViews(email);
-
     const workbook = new ExcelJS.Workbook();
 
     for (const [title, rows] of Object.entries(data)) {
       const worksheet = workbook.addWorksheet(title);
+      worksheet.pageSetup.orientation = 'landscape';
+
       if (rows.length > 0) {
         const headers = Object.keys(rows[0]);
         worksheet.columns = headers.map(key => ({ key, width: 20 }));
-        worksheet.addRow(headers.map(h => headerTranslations[h] || h));
 
-        rows.forEach(row => {
-          worksheet.addRow(headers.map(h => formatValue(row[h])));
+        // Заголовок таблицы
+        const titleRow = worksheet.addRow([`Таблица – ${title}`]);
+        titleRow.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
+          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+          cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+        });
+        worksheet.mergeCells(`A${titleRow.number}:${String.fromCharCode(65 + headers.length - 1)}${titleRow.number}`);
+
+        // Заголовки колонок
+        const headerRow = worksheet.addRow(headers.map(h => headerTranslations[h] || h));
+        headerRow.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
+          cell.font = { color: { argb: 'FFFFFFFF' }, bold: true, size: 12 };
+          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+        });
+
+        // Данные
+        rows.forEach((row, rowIndex) => {
+          const rowData = headers.map(h => formatValue(row[h]));
+          const dataRow = worksheet.addRow(rowData);
+          dataRow.height = 30; // Можно регулировать по необходимости
+          dataRow.eachCell(cell => {
+            cell.alignment = { horizontal: /^\d+$/.test(cell.value) ? 'center' : 'left', vertical: 'middle', wrapText: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowIndex % 2 === 0 ? 'FFD3D3D3' : 'FFFFFFFF' } };
+            cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+          });
+        });
+
+        // Автоширина колонок
+        worksheet.columns.forEach(column => {
+          let maxLength = 10;
+          column.eachCell({ includeEmpty: true }, cell => {
+            const cellValue = cell.value ? cell.value.toString() : '';
+            const lines = cellValue.split('\n');
+            lines.forEach(line => {
+              maxLength = Math.max(maxLength, line.length);
+            });
+          });
+          column.width = maxLength + 5;
         });
       } else {
         worksheet.addRow(['Нет данных']);
@@ -138,6 +204,7 @@ async function exportEmployeeReportsToExcel(res, email) {
   }
 }
 
+
 // PDF Export
 async function exportEmployeeReportsToPdf(res, email) {
   try {
@@ -148,25 +215,37 @@ async function exportEmployeeReportsToPdf(res, email) {
       <head>
         <meta charset="UTF-8">
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1, h2 { text-align: center; }
+          @page { size: A4 landscape; }
+          body { font-family: 'Times New Roman', serif; padding: 20px; }
+          h1 { text-align: center; margin-bottom: 40px; }
+          h2 { margin-top: 40px; }
           table { width: 100%; border-collapse: collapse; margin-top: 10px; }
           th, td { border: 1px solid #000; padding: 5px; }
-          th { background-color: #333; color: #fff; }
+          th { background-color: #333333; color: white; }
+          tr:nth-child(even) { background-color: #D3D3D3; }
+          .center { text-align: center; }
         </style>
       </head>
       <body>
-        <h1>Мои Отчёты</h1>
+        <h1>Мои Отчёты</h1>  <!-- ✅ Заголовок без email -->
         ${Object.entries(data).map(([title, rows], index) => `
           <h2>Таблица ${index + 1} – ${title}</h2>
-          <table>
-            <thead>
-              <tr>${rows.length > 0 ? Object.keys(rows[0]).map(h => `<th>${headerTranslations[h] || h}</th>`).join('') : '<th>Нет данных</th>'}</tr>
-            </thead>
-            <tbody>
-              ${rows.length > 0 ? rows.map(r => `<tr>${Object.values(r).map(v => `<td>${formatValue(v)}</td>`).join('')}</tr>`).join('') : ''}
-            </tbody>
-          </table>
+          ${rows.length > 0 ? `
+            <table>
+              <thead>
+                <tr>${Object.keys(rows[0]).map(h => `<th>${headerTranslations[h] || h}</th>`).join('')}</tr>
+              </thead>
+              <tbody>
+                ${rows.map((row, rowIndex) => `
+                  <tr>${Object.keys(row).map(h => {
+                    const value = formatValue(row[h]);
+                    const cellClass = /^\d+$/.test(value) ? 'center' : '';
+                    return `<td class="${cellClass}">${value}</td>`;
+                  }).join('')}</tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : '<p>Нет данных</p>'}
         `).join('')}
       </body>
       </html>
@@ -175,7 +254,7 @@ async function exportEmployeeReportsToPdf(res, email) {
     const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
     await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-    const pdfBuffer = await page.pdf({ format: 'A4' });
+    const pdfBuffer = await page.pdf({ format: 'A4', landscape: true, printBackground: true });
     await browser.close();
 
     res.setHeader('Content-Type', 'application/pdf');

@@ -1,6 +1,5 @@
 const jwt = require('jsonwebtoken');
 
-// Middleware для проверки JWT токена
 function authMiddleware(req, res, next) {
   const authHeader = req.headers['authorization'];
 
@@ -10,13 +9,15 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: 'Токен не найден' });
+  // ✅ Добавляем защиту от пустых или невалидных токенов
+  if (!token || token === 'null' || token === 'undefined' || token.trim() === '') {
+    return res.status(401).json({ message: 'Токен отсутствует или повреждён' });
   }
+  
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // здесь содержатся поля payload (например, id, email)
+    req.user = decoded;
     next();
   } catch (error) {
     console.error('Ошибка при проверке токена:', error.message);

@@ -80,7 +80,10 @@ interface Task {
   Status_Updated_At?: string;
   EmployeeId?: number; // Добавлено
   EmployeeName?: string; // Добавлено
-  EmployeeAvatar?: string | null; // Добавлено
+  EmployeeAvatar?: string | null;
+  ID_Manager?: number;
+  Is_Deleted?: number;
+  Created_At?: string;
 }
 
 interface Team {
@@ -110,8 +113,6 @@ interface Project {
   IsArchived?: boolean; // добавлено
   Deadline?: string | null; // добавлено
 }
-
-const statuses = ["Новая", "В работе", "Завершена", "Выполнена"];
 
 const ManagerDashboard: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -153,6 +154,20 @@ const ManagerDashboard: React.FC = () => {
       selectedProject?.Deadline ? dayjs(selectedProject.Deadline) : null
     );
   };
+  const fixedStatusOrder = ["Новая", "В работе", "Завершена", "Выполнена"];
+
+  const statuses = useMemo(() => {
+    const dynamicStatuses = statusesData
+      .map((status: Status) => status.Status_Name.trim())
+      .filter(
+        (name: string, idx: number, arr: string[]) =>
+          arr.indexOf(name) === idx && fixedStatusOrder.includes(name)
+      );
+
+    return fixedStatusOrder.filter((status) =>
+      dynamicStatuses.includes(status)
+    );
+  }, [statusesData]);
 
   const [selectedFiles, setSelectedFiles] = useState<UploadFile<File>[]>([]);
   const [filterTeam, setFilterTeam] = useState<number | null>(null);
@@ -515,8 +530,6 @@ const ManagerDashboard: React.FC = () => {
       filters: Array.from(new Set(tasks.map((task) => task.Order_Name))).map(
         (name) => ({ text: name, value: name })
       ),
-      onFilter: (value, record) =>
-        typeof value === "string" && record.Order_Name === value,
       render: (text: string) => <div style={{ textAlign: "left" }}>{text}</div>,
     },
     {
@@ -673,7 +686,8 @@ const ManagerDashboard: React.FC = () => {
             task.Employees.some((emp: { id: number }) => emp.id === member.id)
           );
         const isInProgress =
-          task.Status_Name === "Новая" || task.Status_Name === "В работе";
+          task.Status_Name?.trim().toLowerCase() === "новая" ||
+          task.Status_Name?.trim().toLowerCase() === "в работе";
 
         if (allMembersRemoved && isInProgress && completedStatusId) {
           try {
@@ -766,44 +780,65 @@ const ManagerDashboard: React.FC = () => {
 
     autoUpdateOverdueTasks();
   }, [tasks, statusesData, fetchAll]);
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
+      // 1️⃣ Исключаем удалённые задачи
+      if (task.Is_Deleted) return false;
+  
+      // 2️⃣ Проверяем корректность статуса архивности
       const isArchivedStatus = ["Завершена", "Выполнена"].includes(
         task.Status_Name
       );
+  
+      // 3️⃣ Определяем дату последнего изменения статуса
       const statusUpdatedAt = task.Status_Updated_At
         ? dayjs(task.Status_Updated_At)
         : null;
+  
+      // 4️⃣ Рассчитываем дату недельной давности
       const oneWeekAgo = dayjs().subtract(7, "day");
-
+  
+      // 5️⃣ Проверяем условие архивности
       const shouldBeArchived =
         isArchivedStatus &&
         statusUpdatedAt &&
         statusUpdatedAt.isBefore(oneWeekAgo);
-      const isInArchiveView = showArchive;
-      const isVisible = isInArchiveView ? shouldBeArchived : !shouldBeArchived;
-
+  
+      // 6️⃣ Проверяем, нужно ли показывать задачу в архиве
+      const isVisible = showArchive ? shouldBeArchived : !shouldBeArchived;
       if (!isVisible) return false;
-
+  
+      // 7️⃣ Фильтрация по команде
       const matchesTeam =
         !filterTeam ||
         teams.find((t) => t.Team_Name === task.Team_Name)?.ID_Team ===
           filterTeam;
+  
+      // 8️⃣ Фильтрация по проекту
       const matchesProject = !filterProject || task.ID_Order === filterProject;
+  
+      // 9️⃣ Фильтрация по сотруднику
       const matchesEmployee =
         !filterEmployee ||
-        task.Employees.some((emp) => emp.fullName === filterEmployee);
+        (task.Employees &&
+          task.Employees.some((emp) => emp.fullName === filterEmployee));
+  
+      // 🔟 Фильтрация по поисковому запросу
       const query = searchQuery.trim().toLowerCase();
       const matchesSearch =
         !query ||
         task.Task_Name.toLowerCase().includes(query) ||
         task.Description.toLowerCase().includes(query) ||
         task.Order_Name.toLowerCase().includes(query) ||
-        task.Employees.some((emp) =>
-          emp.fullName.toLowerCase().includes(query)
-        );
-
-      return matchesTeam && matchesProject && matchesEmployee && matchesSearch;
+        (task.Employees &&
+          task.Employees.some((emp) =>
+            emp.fullName.toLowerCase().includes(query)
+          ));
+  
+      return (
+        matchesTeam && matchesProject && matchesEmployee && matchesSearch
+      );
     });
   }, [
     tasks,
@@ -814,17 +849,35 @@ const ManagerDashboard: React.FC = () => {
     searchQuery,
     showArchive,
   ]);
+  
 
   const filteredGroupedMap: Record<string, Task[]> = useMemo(() => {
     const map: Record<string, Task[]> = {};
     filteredTasks.forEach((task) => {
-      if (!map[task.Status_Name]) {
-        map[task.Status_Name] = [];
+      const isArchivedStatus = ["Завершена", "Выполнена"].includes(
+        task.Status_Name
+      );
+      const statusUpdatedAt = task.Status_Updated_At
+        ? dayjs(task.Status_Updated_At)
+        : null;
+      const oneWeekAgo = dayjs().subtract(7, "day");
+      const shouldBeArchived =
+        isArchivedStatus &&
+        statusUpdatedAt &&
+        statusUpdatedAt.isBefore(oneWeekAgo);
+
+      const isVisible = showArchive ? shouldBeArchived : !shouldBeArchived;
+      if (!isVisible) return;
+
+      const statusName = task.Status_Name?.trim();
+      if (!statusName) return;
+      if (!map[statusName]) {
+        map[statusName] = [];
       }
-      map[task.Status_Name].push(task);
+      map[statusName].push(task);
     });
     return map;
-  }, [filteredTasks]);
+  }, [filteredTasks, showArchive]);
 
   const handleDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -875,42 +928,57 @@ const ManagerDashboard: React.FC = () => {
   };
 
   const updateTaskStatus = async (taskId: number, statusId: number) => {
-    const updatedAt = new Date().toISOString();
-
-    const task = tasks.find((t) => t.ID_Task === taskId); // Добавлено получение задачи
+    const task = tasks.find((t) => t.ID_Task === taskId);
     if (!task) {
-      console.error("Задача не найдена для обновления статуса");
+      console.error("Задача не найдена:", taskId);
       return;
     }
 
+    const updatedTask = {
+      Task_Name: task.Task_Name || "Без названия",
+      Description: task.Description || "Без описания",
+      Time_Norm: task.Time_Norm ?? 1,
+      ID_Order: task.ID_Order || 1,
+      Deadline: task.Deadline
+        ? new Date(task.Deadline).toISOString()
+        : new Date().toISOString(),
+      ID_Status: statusId,
+    };
+
+    console.log("Отправляем данные задачи:", updatedTask);
+
     try {
-      await fetch(`${API_URL}/api/tasks/${taskId}/update-status`, {
+      const response = await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          employeeId: task.EmployeeId, // Теперь task определён
-          statusName: statusesData.find((s) => s.ID_Status === statusId)
-            ?.Status_Name,
-        }),
+        body: JSON.stringify(updatedTask),
       });
 
-      setTasks((prev) =>
-        prev.map((t) =>
-          t.ID_Task === taskId
-            ? {
-                ...t,
-                Status_Name:
-                  statusesData.find((s) => s.ID_Status === statusId)
-                    ?.Status_Name || t.Status_Name,
-                Status_Updated_At: updatedAt,
-              }
-            : t
-        )
-      );
+      const responseText = await response.text();
+      console.log("Ответ сервера:", responseText);
 
-      fetchAll();
-    } catch {
-      messageApi.error("Ошибка при изменении статуса");
+      if (!response.ok) {
+        console.error("Ошибка от сервера:", response.status, responseText);
+        throw new Error(`Ошибка ${response.status}: ${responseText}`);
+      }
+
+      // Перезапрашиваем список задач после успешного обновления
+      const tasksResponse = await fetch(`${API_URL}/api/tasks`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      });
+
+      if (!tasksResponse.ok) {
+        console.error("Ошибка при загрузке задач:", tasksResponse.status);
+        throw new Error(
+          `Ошибка ${tasksResponse.status}: ${await tasksResponse.text()}`
+        );
+      }
+
+      const tasksData = await tasksResponse.json();
+      setTasks(tasksData);
+    } catch (error) {
+      console.error("Ошибка при обновлении задачи:", error);
     }
   };
 
@@ -1738,28 +1806,7 @@ const ManagerDashboard: React.FC = () => {
                           </h2>
 
                           <Table
-                            dataSource={tasks.filter((task) => {
-                              const query = searchQuery.toLowerCase();
-                              const isArchived =
-                                task.Status_Name === "Завершена";
-                              const matchesArchiveFilter = showArchive
-                                ? isArchived
-                                : !isArchived;
-                              const matchesSearch =
-                                !query ||
-                                task.Task_Name?.toLowerCase().includes(query) ||
-                                task.Description?.toLowerCase().includes(
-                                  query
-                                ) ||
-                                task.Order_Name?.toLowerCase().includes(
-                                  query
-                                ) ||
-                                task.Employees.some((emp) =>
-                                  emp?.fullName?.toLowerCase().includes(query)
-                                );
-
-                              return matchesArchiveFilter && matchesSearch;
-                            })}
+                            dataSource={filteredTasks}
                             columns={tableColumns}
                             rowKey="ID_Task"
                             pagination={{ pageSize: 10 }}
@@ -1832,13 +1879,10 @@ const ManagerDashboard: React.FC = () => {
                           console.log("Rendering member option:", member); // Лог для проверки содержимого
                           return (
                             <Option
-                              key={`member-${member.id}`}
+                              key={`member-${member.id || crypto.randomUUID()}`}
                               value={member.fullName}
                             >
                               {member.fullName}
-                              {member.role
-                                ? ` — ${member.role}`
-                                : " — [должность не указана]"}
                             </Option>
                           );
                         })}

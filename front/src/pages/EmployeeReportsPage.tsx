@@ -458,7 +458,7 @@ const EmployeeReportsPage: React.FC = () => {
       });
 
       const res = await fetch(
-        `${API_URL}/api/export/employee-reports?${params.toString()}`,
+     `${API_URL}/api/export/reports/employees?${params.toString()}`,
         {
           method: "GET",
           credentials: "include", // оставляем, если у вас есть cookie

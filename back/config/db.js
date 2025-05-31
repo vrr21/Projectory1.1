@@ -3,16 +3,16 @@ require('dotenv').config();
 
 // Чтение данных из переменных окружения
 const config = {
-  user: process.env.DB_USER,  // Пользователь базы данных
-  password: process.env.DB_PASSWORD,  // Пароль базы данных
-  server: process.env.DB_HOST,  // Хост базы данных
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  server: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT, 10),  // Парсинг порта как целое число
-  database: process.env.DB_NAME,  // Имя базы данных
+  database: process.env.DB_NAME,
   options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',  // Использование шифрования для соединений
-    trustServerCertificate: true,  // Для работы с самоподписанными сертификатами (если используется SSL)
+    encrypt: false,  // Отключение шифрования для локальных соединений (для безопасности используйте true, если используете SSL)
+    trustServerCertificate: true, // Для работы с self-signed сертификатами
   },
-  requestTimeout: 60000,  // Увеличен с 15000 до 60000 мс
+  requestTimeout: 60000, // Увеличен с 15000 до 60000 мс
   pool: {
     max: 10,
     min: 0,

@@ -289,16 +289,20 @@ const ProjectManagementPage: React.FC = () => {
       const res = await fetch(
         `${API_URL}/api/export/projects?format=${format}`,
         {
-          headers: { Authorization: `Bearer ${token}` },
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ data: filteredProjects }),
         }
       );
-
+  
       if (!res.ok) {
         const errorText = await res.text();
-        console.error("Ошибка экспорта:", errorText);
         throw new Error(errorText || "Ошибка при экспорте");
       }
-
+  
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -307,22 +311,19 @@ const ProjectManagementPage: React.FC = () => {
       if (format === "excel") extension = "xlsx";
       else if (format === "word") extension = "docx";
       else if (format === "pdf") extension = "pdf";
-
       link.setAttribute("download", `projects_export.${extension}`);
-
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error: unknown) {
       if (error instanceof Error) {
-        console.error("Ошибка экспорта:", error.message);
-        messageApi.error(error.message);
+        messageApi.error(error.message || "Ошибка при экспорте");
       } else {
         messageApi.error("Произошла неизвестная ошибка.");
       }
     }
   };
-
+  
   // Фильтр проектов по поисковому запросу и состоянию архива
   const filteredProjects = projects.filter((project) => {
     const combinedFields = `${project.Order_Name} ${project.Type_Name} ${

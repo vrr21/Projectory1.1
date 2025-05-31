@@ -131,19 +131,29 @@ const MyCommandsEmployee: React.FC = () => {
     }
   }, []);
 
+  
   const exportHandler = async (
     type: "teams" | "projects",
     format: "xlsx" | "pdf" | "docx"
   ) => {
     try {
       const endpoint = type === "teams" ? "teams" : "projects";
-      const res = await fetch(
-        `${API_URL}/api/export/${endpoint}?format=${
-          format === "xlsx" ? "excel" : format
-        }`
-      );
-      if (!res.ok) throw new Error();
-
+      const dataToSend = type === "teams" ? teams : projects;
+  
+      const res = await fetch(`${API_URL}/api/export/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          format: format === "xlsx" ? "excel" : format,
+          ...(type === "projects"
+            ? { projects: dataToSend, userId: currentUser?.ID_User }
+            : { teams: dataToSend }),
+        }),
+           
+      });
+      
+      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
+  
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -152,10 +162,12 @@ const MyCommandsEmployee: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch {
+    } catch (error) {
+      console.error("Ошибка при экспорте:", error);
       messageApi.error("Ошибка экспорта данных");
     }
   };
+  
 
   const teamColumns: ColumnsType<Team> = [
     {

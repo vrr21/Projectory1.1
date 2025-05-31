@@ -56,6 +56,7 @@ interface Task {
   EmployeeId: number; // <- Важно
   EmployeeName: string;
   EmployeeAvatar?: string | null;
+  Status_Updated_At?: string;
 }
 
 interface CommentType {
@@ -72,6 +73,12 @@ const statuses = ["Новая", "В работе", "Завершена", "Вып
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
+  
+  const [archivedTasks, setArchivedTasks] = useState<Record<string, Task[]>>({
+    Завершена: [],
+    Выполнена: [],
+  });
+
   const [messageApi, contextHolder] = message.useMessage();
   const [activeTab, setActiveTab] = useState("kanban");
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
@@ -82,6 +89,8 @@ const EmployeeDashboard = () => {
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const [pendingDrag, setPendingDrag] = useState<DropResult | null>(null);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+  const [showArchive, setShowArchive] = useState(false);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
     // Добавляем или убираем класс для изменения отступов при сворачивании сайдбара
@@ -108,6 +117,9 @@ const EmployeeDashboard = () => {
         task.Order_Name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [columns, searchQuery]);
+  const displayedTasks: Record<string, Task[]> = useMemo(() => {
+    return showArchive ? archivedTasks : columns;
+  }, [showArchive, columns, archivedTasks]);
 
   const startEditingComment = (comment: CommentType) => {
     setEditingCommentId(comment.ID_Comment);
@@ -270,11 +282,40 @@ const EmployeeDashboard = () => {
       const url = `${API_URL}/api/tasks?employee=${user.id}`;
       const response = await fetch(url);
       const data: Task[] = await response.json();
+
       const personalizedGrouped: Record<string, Task[]> = {};
+      const oneWeekAgo = dayjs().subtract(7, "day");
+      const archived = {
+        Завершена: data.filter(
+          (t) =>
+            t.Status_Name === "Завершена" &&
+            t.Status_Updated_At &&
+            dayjs(t.Status_Updated_At).isBefore(oneWeekAgo)
+        ),
+        Выполнена: data.filter(
+          (t) =>
+            t.Status_Name === "Выполнена" &&
+            t.Status_Updated_At &&
+            dayjs(t.Status_Updated_At).isBefore(oneWeekAgo)
+        ),
+      };
+
+      setArchivedTasks(archived);
+
       statuses.forEach((status) => {
-        personalizedGrouped[status] = data.filter(
-          (task) => task.Status_Name === status
-        );
+        personalizedGrouped[status] = data.filter((task) => {
+          const statusDate = task.Status_Updated_At
+            ? dayjs(task.Status_Updated_At)
+            : null;
+
+          const isCompleted =
+            (task.Status_Name === "Завершена" ||
+              task.Status_Name === "Выполнена") &&
+            statusDate &&
+            statusDate.isBefore(oneWeekAgo);
+
+          return task.Status_Name === status && !isCompleted; // исключаем архив
+        });
       });
 
       setColumns(personalizedGrouped);
@@ -654,6 +695,11 @@ const EmployeeDashboard = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: "250px" }}
                           />
+                          <Button onClick={() => setShowArchive(!showArchive)}>
+                            {showArchive
+                              ? "Показать текущие задачи"
+                              : "Показать архив"}
+                          </Button>
 
                           <Dropdown
                             menu={{
@@ -708,7 +754,6 @@ const EmployeeDashboard = () => {
                                     fontSize: "15px",
                                     fontWeight: 400,
                                     color: "var(--text-color)",
-
                                     justifyContent: "center",
                                     position: "relative",
                                     minHeight: "40px",
@@ -759,11 +804,7 @@ const EmployeeDashboard = () => {
                                           "0 4px 12px rgba(0, 0, 0, 0.2)",
                                       }}
                                     >
-                                      {filteredTasks
-                                        .filter(
-                                          (task) => task.Status_Name === status
-                                        )
-                                        .map((task, index) => (
+{displayedTasks[status]?.map((task, index) => (
                                           <Draggable
                                             key={`task-${task.ID_Task}-${index}`}
                                             draggableId={`task-${task.ID_Task}-${index}`}
@@ -795,7 +836,6 @@ const EmployeeDashboard = () => {
                                                     <i>Проект:</i>{" "}
                                                     {task.Order_Name}
                                                   </p>
-
                                                   <div
                                                     className="task-assignees-row"
                                                     style={{
@@ -941,6 +981,12 @@ const EmployeeDashboard = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: 200 }}
                           />
+                          <Button onClick={() => setShowArchive(!showArchive)}>
+                            {showArchive
+                              ? "Показать текущие задачи"
+                              : "Показать архив"}
+                          </Button>
+
                           <Dropdown
                             menu={{
                               onClick: ({ key }) => handleExport(key),

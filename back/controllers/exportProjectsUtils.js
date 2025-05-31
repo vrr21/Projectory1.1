@@ -1,17 +1,40 @@
 const ExcelJS = require('exceljs');
 const puppeteer = require('puppeteer');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, VerticalAlign } = require('docx');
+const { 
+  Document, 
+  Packer, 
+  Paragraph, 
+  Table, 
+  TableRow, 
+  TableCell, 
+  TextRun, 
+  VerticalAlign, 
+  AlignmentType, 
+  PageOrientation 
+} = require('docx');
 const { poolConnect, sql, pool } = require('../config/db');
 
-async function getProjectsData() {
+async function getProjectsData(userId) {
   await poolConnect;
   const request = pool.request();
-  const result = await request.query(`
+
+  let query = `
     SELECT o.Order_Name, pt.Type_Name, o.Creation_Date, o.End_Date, o.Status, t.Team_Name
     FROM Orders o
     LEFT JOIN ProjectTypes pt ON o.ID_ProjectType = pt.ID_ProjectType
     LEFT JOIN Teams t ON o.ID_Team = t.ID_Team
-  `);
+  `;
+
+  if (userId) {
+    query += `
+      WHERE o.ID_Team IN (
+        SELECT ID_Team FROM TeamMembers WHERE ID_User = @userId
+      )
+    `;
+    request.input('userId', sql.Int, userId);
+  }
+
+  const result = await request.query(query);
   return result.recordset;
 }
 
@@ -22,23 +45,23 @@ function formatDate(date) {
 }
 
 // ✅ Экспорт в Excel
-async function exportProjectsToExcel(res) {
-  const data = await getProjectsData();
+async function exportProjectsToExcel(res, userId) {
+  const data = await getProjectsData(userId);
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Projects');
 
-  // Заголовок таблицы
+  sheet.pageSetup.orientation = 'landscape';
+
   const titleRow = sheet.addRow(['Таблица 1.1 – Список проектов']);
   titleRow.font = { bold: true, size: 12 };
   titleRow.alignment = { horizontal: 'left', vertical: 'middle' };
   sheet.mergeCells(`A${titleRow.number}:F${titleRow.number}`);
 
-  // Заголовки столбцов
   const headerRow = sheet.addRow(['Название проекта', 'Тип проекта', 'Дата создания', 'Дата окончания', 'Статус', 'Команда']);
   headerRow.eachCell(cell => {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF333333' } };
     cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
-    cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
     cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
   });
 
@@ -53,7 +76,7 @@ async function exportProjectsToExcel(res) {
     ]);
     dataRow.eachCell(cell => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowIndex % 2 === 0 ? 'FFD3D3D3' : 'FFFFFFFF' } };
-      cell.alignment = { horizontal: /^\d+$/.test(cell.value) ? 'center' : 'left', vertical: 'middle' };
+      cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
       cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
     });
   });
@@ -62,9 +85,12 @@ async function exportProjectsToExcel(res) {
     let maxLength = 10;
     column.eachCell({ includeEmpty: true }, cell => {
       const cellValue = cell.value ? cell.value.toString() : '';
-      maxLength = Math.max(maxLength, cellValue.length + 2);
+      const lines = cellValue.split('\n');
+      lines.forEach(line => {
+        maxLength = Math.max(maxLength, line.length);
+      });
     });
-    column.width = maxLength;
+    column.width = maxLength + 5;
   });
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -74,13 +100,14 @@ async function exportProjectsToExcel(res) {
 }
 
 // ✅ Экспорт в PDF
-async function exportProjectsToPDF(res) {
-  const data = await getProjectsData();
+async function exportProjectsToPDF(res, userId) {
+  const data = await getProjectsData(userId);
   const htmlContent = `
     <html>
     <head>
       <meta charset="UTF-8">
       <style>
+        @page { size: A4 landscape; }
         body { font-family: 'Times New Roman', serif; padding: 20px; }
         h1 { text-align: center; margin-bottom: 40px; }
         table { width: 100%; border-collapse: collapse; }
@@ -122,7 +149,11 @@ async function exportProjectsToPDF(res) {
   const browser = await puppeteer.launch({ headless: "new" });
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-  const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+  const pdfBuffer = await page.pdf({
+    format: 'A4',
+    landscape: true,
+    printBackground: true
+  });
   await browser.close();
 
   res.setHeader('Content-Type', 'application/pdf');
@@ -130,44 +161,67 @@ async function exportProjectsToPDF(res) {
   res.send(pdfBuffer);
 }
 
-// ✅ Экспорт в Word
-async function exportProjectsToWord(res) {
-  const data = await getProjectsData();
-
+async function exportProjectsToWord(res, userId) {
+  const exportData = await getProjectsData(userId);
   const headerRow = new TableRow({
     children: ['Название проекта', 'Тип проекта', 'Дата создания', 'Дата окончания', 'Статус', 'Команда'].map(text =>
       new TableCell({
         shading: { fill: '333333' },
-        children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: 'FFFFFF' })] })],
+        children: [new Paragraph({
+          children: [new TextRun({ text, bold: true, color: 'FFFFFF' })]
+        })],
         verticalAlign: VerticalAlign.CENTER,
       })
     )
   });
 
-  const dataRows = data.map((row, rowIndex) => new TableRow({
-    children: [
-      row.Order_Name,
-      row.Type_Name,
-      formatDate(row.Creation_Date),
-      formatDate(row.End_Date),
-      row.Status,
-      row.Team_Name || '—'
-    ].map(value => new TableCell({
-      shading: { fill: rowIndex % 2 === 0 ? 'D3D3D3' : 'FFFFFF' },
-      children: [new Paragraph(value)],
-      verticalAlign: VerticalAlign.CENTER,
-    }))
-  }));
+  const dataRows = exportData.map((row, rowIndex) =>
+    new TableRow({
+      children: [
+        row.Order_Name,
+        row.Type_Name,
+        formatDate(row.Creation_Date),
+        formatDate(row.End_Date),
+        row.Status,
+        row.Team_Name || '—'
+      ].map(value =>
+        new TableCell({
+          shading: { fill: rowIndex % 2 === 0 ? 'D3D3D3' : 'FFFFFF' },
+          children: [new Paragraph(value)],
+          verticalAlign: VerticalAlign.CENTER,
+        })
+      )
+    })
+  );
 
-  const table = new Table({ rows: [headerRow, ...dataRows] });
+  const table = new Table({
+    rows: [headerRow, ...dataRows]
+  });
 
   const doc = new Document({
     sections: [{
+      properties: {
+        page: {
+          size: {
+            orientation: PageOrientation.LANDSCAPE,
+            width: 16838,
+            height: 11906
+          },
+          margin: {
+            top: 720,
+            right: 720,
+            bottom: 720,
+            left: 720
+          }
+        }
+      },
       children: [
         new Paragraph({
-          children: [new TextRun({ text: 'Список проектов', bold: true, size: 28 })],
-          alignment: 'center',
-          spacing: { after: 560 },
+          children: [
+            new TextRun({ text: 'Список проектов', bold: true, size: 28 })
+          ],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 560 }
         }),
         table
       ]
@@ -175,6 +229,7 @@ async function exportProjectsToWord(res) {
   });
 
   const buffer = await Packer.toBuffer(doc);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
   res.setHeader('Content-Disposition', 'attachment; filename="projects.docx"');
   res.send(buffer);
 }

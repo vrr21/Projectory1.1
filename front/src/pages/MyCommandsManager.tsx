@@ -121,9 +121,9 @@ const MyCommandsManager: React.FC = () => {
     <Dropdown
       menu={{
         items: [
-          { key: 'docx', label: 'Экспорт в Word (.docx)', onClick: () => exportHandler('docx') },
-          { key: 'xlsx', label: 'Экспорт в Excel (.xlsx)', onClick: () => exportHandler('xlsx') },
-          { key: 'pdf', label: 'Экспорт в PDF (.pdf)', onClick: () => exportHandler('pdf') },
+          { key: 'docx', label: 'Экспорт в Word (.docx)', onClick: () => exportHandler('teams', 'docx')},
+          { key: 'xlsx', label: 'Экспорт в Excel (.xlsx)', onClick: () => exportHandler('teams', 'xlsx')},
+          { key: 'pdf', label: 'Экспорт в PDF (.pdf)', onClick: () => exportHandler('teams', 'pdf')},
         ],
       }}
     >
@@ -131,38 +131,35 @@ const MyCommandsManager: React.FC = () => {
     </Dropdown>
   );
 
-  const exportHandler = async (format: 'xlsx' | 'pdf' | 'docx') => {
+  const exportHandler = async (
+    type: "teams",
+    format: "xlsx" | "pdf" | "docx"
+  ) => {
     try {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const userEmail = currentUser?.email;
-
-      const res = await fetch(`${API_URL}/api/export/teams/custom`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const res = await fetch(`${API_URL}/api/export/${type}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          format: format === 'xlsx' ? 'excel' : format,
-          teams,
-          userEmail,
+          format: format === "xlsx" ? "excel" : format,
+          teams,  // всегда только команды
         }),
       });
-
-      if (!res.ok) throw new Error();
-
+      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
+  
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `teams.${format}`;
+      link.download = `${type}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch {
-      messageApi.error('Ошибка экспорта данных');
+    } catch (error) {
+      console.error("Ошибка при экспорте:", error);
+      messageApi.error("Ошибка экспорта данных");
     }
   };
-
+  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       {contextHolder}
