@@ -37,9 +37,9 @@ const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface Employee {
-  id: number;
-  fullName: string;
-  avatar?: string | null;
+  ID_Employee: number;
+  Full_Name?: string;
+  Avatar?: string;
 }
 
 interface Task {
@@ -53,10 +53,6 @@ interface Task {
   Deadline?: string | null;
   Employees: Employee[];
   attachments?: string[];
-  EmployeeId: number; // <- Важно
-  EmployeeName: string;
-  EmployeeAvatar?: string | null;
-  Status_Updated_At?: string;
 }
 
 interface CommentType {
@@ -73,12 +69,6 @@ const statuses = ["Новая", "В работе", "Завершена", "Вып
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [columns, setColumns] = useState<Record<string, Task[]>>({});
-  
-  const [archivedTasks, setArchivedTasks] = useState<Record<string, Task[]>>({
-    Завершена: [],
-    Выполнена: [],
-  });
-
   const [messageApi, contextHolder] = message.useMessage();
   const [activeTab, setActiveTab] = useState("kanban");
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
@@ -89,8 +79,6 @@ const EmployeeDashboard = () => {
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const [pendingDrag, setPendingDrag] = useState<DropResult | null>(null);
   const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
-  const [showArchive, setShowArchive] = useState(false);
-
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   useEffect(() => {
     // Добавляем или убираем класс для изменения отступов при сворачивании сайдбара
@@ -99,27 +87,25 @@ const EmployeeDashboard = () => {
     } else {
       document.body.classList.remove("sidebar-collapsed");
     }
-
+  
     // Возвращаем отступы в нормальное состояние при монтировании компонента
     return () => document.body.classList.remove("sidebar-collapsed");
+  
   }, [sidebarCollapsed]);
-
+  
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Только потом объявлять filteredTasks
   const filteredTasks = useMemo(() => {
-    const allTasks = Object.values(columns).flat();
-    if (!Array.isArray(allTasks)) return [];
-    return allTasks.filter(
-      (task) =>
-        task.Task_Name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.Description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        task.Order_Name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    return Object.values(columns)
+      .flat()
+      .filter(
+        (task) =>
+          task.Task_Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.Description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          task.Order_Name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
   }, [columns, searchQuery]);
-  const displayedTasks: Record<string, Task[]> = useMemo(() => {
-    return showArchive ? archivedTasks : columns;
-  }, [showArchive, columns, archivedTasks]);
 
   const startEditingComment = (comment: CommentType) => {
     setEditingCommentId(comment.ID_Comment);
@@ -276,64 +262,32 @@ const EmployeeDashboard = () => {
   };
 
   const fetchTasks = useCallback(async () => {
-    if (!user?.id) return;
-
     try {
-      const url = `${API_URL}/api/tasks?employee=${user.id}`;
+      const url = `${API_URL}/api/tasks?employee=${user?.id}`;
+
       const response = await fetch(url);
       const data: Task[] = await response.json();
 
-      const personalizedGrouped: Record<string, Task[]> = {};
-      const oneWeekAgo = dayjs().subtract(7, "day");
-      const archived = {
-        Завершена: data.filter(
-          (t) =>
-            t.Status_Name === "Завершена" &&
-            t.Status_Updated_At &&
-            dayjs(t.Status_Updated_At).isBefore(oneWeekAgo)
-        ),
-        Выполнена: data.filter(
-          (t) =>
-            t.Status_Name === "Выполнена" &&
-            t.Status_Updated_At &&
-            dayjs(t.Status_Updated_At).isBefore(oneWeekAgo)
-        ),
-      };
-
-      setArchivedTasks(archived);
-
+      const grouped: Record<string, Task[]> = {};
       statuses.forEach((status) => {
-        personalizedGrouped[status] = data.filter((task) => {
-          const statusDate = task.Status_Updated_At
-            ? dayjs(task.Status_Updated_At)
-            : null;
-
-          const isCompleted =
-            (task.Status_Name === "Завершена" ||
-              task.Status_Name === "Выполнена") &&
-            statusDate &&
-            statusDate.isBefore(oneWeekAgo);
-
-          return task.Status_Name === status && !isCompleted; // исключаем архив
-        });
+        grouped[status] = data.filter((task) => task.Status_Name === status);
       });
-
-      setColumns(personalizedGrouped);
-    } catch (error) {
-      console.error("Ошибка загрузки задач:", error);
+      setColumns(grouped);
+    } catch {
       messageApi.error("Не удалось загрузить задачи");
     }
   }, [user?.id, messageApi]);
 
   useEffect(() => {
     fetchTasks(); // первая загрузка
-
+  
     const interval = setInterval(() => {
       fetchTasks(); // периодическая проверка
     }, 10000); // каждые 10 сек
-
+  
     return () => clearInterval(interval); // очистка при размонтировании
   }, [fetchTasks]);
+  
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
@@ -375,11 +329,12 @@ const EmployeeDashboard = () => {
     return (
       <Avatar.Group max={{ count: 3 }}>
         {employees.map((emp) => (
-          <Tooltip key={emp.id} title={emp.fullName}>
+          <Tooltip key={emp.ID_Employee} title={emp.Full_Name || "—"}>
             <Avatar
-              src={emp.avatar ? `${API_URL}/uploads/${emp.avatar}` : undefined}
+              src={emp.Avatar ? `${API_URL}/uploads/${emp.Avatar}` : undefined}
+              style={{ backgroundColor: emp.Avatar ? "transparent" : "#777" }}
             >
-              {!emp.avatar && getInitials(emp.fullName)}
+              {!emp.Avatar && getInitials(emp.Full_Name || "")}
             </Avatar>
           </Tooltip>
         ))}
@@ -548,91 +503,53 @@ const EmployeeDashboard = () => {
     const now = dayjs();
     if (task.Status_Name === "Выполнена") {
       return (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: "13px",
-            color: "#aaa",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
+        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
           <ClockCircleOutlined />
           Выполнено
         </div>
       );
     }
-
+  
     if (task.Status_Name === "Завершена") {
       if (!task.Deadline || dayjs(task.Deadline).isBefore(now)) {
         return (
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: "13px",
-              color: "red",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <div style={{ marginTop: 8, fontSize: "13px", color: "red", display: "flex", alignItems: "center", gap: 6 }}>
             <ClockCircleOutlined />
             Срок истёк
           </div>
         );
       } else {
         return (
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: "13px",
-              color: "#aaa",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
+          <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
             <ClockCircleOutlined />
             Завершено
           </div>
         );
       }
     }
-
+  
     if (!task.Deadline) {
       return (
-        <div
-          style={{
-            marginTop: 8,
-            fontSize: "13px",
-            color: "#aaa",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
+        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
           <ClockCircleOutlined />
           Без срока
         </div>
       );
     }
-
+  
     const deadline = dayjs(task.Deadline);
     const isExpired = deadline.isBefore(now);
     const isSoon = deadline.diff(now, "hour") <= 24;
-
+  
     return (
-      <div
-        style={{
-          marginTop: 8,
-          fontSize: "13px",
-          color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
+      <div style={{
+        marginTop: 8,
+        fontSize: "13px",
+        color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}>
         <ClockCircleOutlined />
         {isExpired
           ? "Срок истёк"
@@ -640,14 +557,15 @@ const EmployeeDashboard = () => {
       </div>
     );
   };
-
+  
+  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
         <div className="dashboard">
           <HeaderEmployee />
           <div className="dashboard-body">
-            <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
+          <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
 
             <main className="main-content kanban-board">
               <h1
@@ -695,11 +613,6 @@ const EmployeeDashboard = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: "250px" }}
                           />
-                          <Button onClick={() => setShowArchive(!showArchive)}>
-                            {showArchive
-                              ? "Показать текущие задачи"
-                              : "Показать архив"}
-                          </Button>
 
                           <Dropdown
                             menu={{
@@ -754,6 +667,7 @@ const EmployeeDashboard = () => {
                                     fontSize: "15px",
                                     fontWeight: 400,
                                     color: "var(--text-color)",
+
                                     justifyContent: "center",
                                     position: "relative",
                                     minHeight: "40px",
@@ -804,10 +718,14 @@ const EmployeeDashboard = () => {
                                           "0 4px 12px rgba(0, 0, 0, 0.2)",
                                       }}
                                     >
-{displayedTasks[status]?.map((task, index) => (
+                                      {filteredTasks
+                                        .filter(
+                                          (task) => task.Status_Name === status
+                                        )
+                                        .map((task, index) => (
                                           <Draggable
-                                            key={`task-${task.ID_Task}-${index}`}
-                                            draggableId={`task-${task.ID_Task}-${index}`}
+                                            key={`task-${task.ID_Task}`}
+                                            draggableId={`task-${task.ID_Task}`}
                                             index={index}
                                           >
                                             {(providedDraggable) => (
@@ -836,90 +754,17 @@ const EmployeeDashboard = () => {
                                                     <i>Проект:</i>{" "}
                                                     {task.Order_Name}
                                                   </p>
-                                                  <div
-                                                    className="task-assignees-row"
-                                                    style={{
-                                                      display: "flex",
-                                                      justifyContent:
-                                                        "space-between",
-                                                      alignItems: "center",
-                                                      marginTop: "10px",
-                                                    }}
-                                                  >
-                                                    <span
-                                                      style={{
-                                                        fontStyle: "italic",
-                                                        fontSize: "13px",
-                                                        color: "#bbb",
-                                                      }}
-                                                    >
-                                                      Задача назначена:
-                                                    </span>
-                                                    <div
-                                                      className="kanban-avatars"
-                                                      style={{
-                                                        display: "flex",
-                                                        gap: "6px",
-                                                      }}
-                                                    >
-                                                      {task.Employees.map(
-                                                        (emp, empIndex) => (
-                                                          <Tooltip
-                                                            key={`emp-${emp.id}-${empIndex}`}
-                                                            title={
-                                                              emp.fullName ||
-                                                              "—"
-                                                            }
-                                                          >
-                                                            <Avatar
-                                                              src={
-                                                                emp.avatar &&
-                                                                emp.avatar !==
-                                                                  "null"
-                                                                  ? `${API_URL}/uploads/${encodeURIComponent(
-                                                                      emp.avatar
-                                                                    )}`
-                                                                  : undefined
-                                                              }
-                                                              size={32}
-                                                              style={{
-                                                                border:
-                                                                  "2px solid #1f1f1f",
-                                                                cursor:
-                                                                  "pointer",
-                                                                backgroundColor:
-                                                                  !emp.avatar ||
-                                                                  emp.avatar ===
-                                                                    "null"
-                                                                    ? "#777"
-                                                                    : "transparent",
-                                                              }}
-                                                            >
-                                                              {!emp.avatar ||
-                                                              emp.avatar ===
-                                                                "null"
-                                                                ? (
-                                                                    emp.fullName ||
-                                                                    ""
-                                                                  )
-                                                                    .split(" ")
-                                                                    .map(
-                                                                      (n) =>
-                                                                        n[0]
-                                                                    )
-                                                                    .slice(0, 2)
-                                                                    .join("")
-                                                                    .toUpperCase()
-                                                                : null}
-                                                            </Avatar>
-                                                          </Tooltip>
-                                                        )
-                                                      )}
-                                                    </div>
+
+                                                  {/* Аватарки сотрудников */}
+                                                  <div className="kanban-avatars">
+                                                    {renderEmployees(
+                                                      task.Employees
+                                                    )}
                                                   </div>
 
                                                   {renderDeadlineBox(task)}
 
+                                                  {/* Кнопки просмотров и комментариев — отдельно ниже */}
                                                   <div className="task-footer">
                                                     <Button
                                                       type="text"
@@ -981,12 +826,6 @@ const EmployeeDashboard = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: 200 }}
                           />
-                          <Button onClick={() => setShowArchive(!showArchive)}>
-                            {showArchive
-                              ? "Показать текущие задачи"
-                              : "Показать архив"}
-                          </Button>
-
                           <Dropdown
                             menu={{
                               onClick: ({ key }) => handleExport(key),
@@ -1061,27 +900,29 @@ const EmployeeDashboard = () => {
                       <strong>Сотрудники:</strong>
                     </p>
                     <div className="kanban-avatars">
-                      {viewingTask?.Employees?.map((emp) => (
-                        <Tooltip key={emp.id} title={emp.fullName || "—"}>
+                      {viewingTask.Employees.map((emp, idx) => (
+                        <Tooltip
+                          key={`emp-view-${emp.ID_Employee}-${idx}`}
+                          title={emp.Full_Name}
+                        >
                           <Avatar
                             src={
-                              emp.avatar
-                                ? `${API_URL}/uploads/${emp.avatar}`
+                              emp.Avatar
+                                ? `${API_URL}/uploads/${emp.Avatar}`
                                 : undefined
                             }
                             style={{
-                              backgroundColor: emp.avatar
+                              backgroundColor: emp.Avatar
                                 ? "transparent"
                                 : "#777",
                               marginRight: 4,
                             }}
                           >
-                            {!emp.avatar && getInitials(emp.fullName || "")}
+                            {!emp.Avatar && getInitials(emp.Full_Name || "")}
                           </Avatar>
                         </Tooltip>
                       ))}
                     </div>
-
                     <p
                       style={{
                         marginTop: 8,

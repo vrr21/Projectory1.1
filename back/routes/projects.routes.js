@@ -3,6 +3,7 @@ const { poolConnect, pool, sql } = require('../config/db');
 const router = express.Router();
 const verifyToken = require('../middleware/authMiddleware');
 const { notifyProjectAssignment } = require('../services/notification.service');
+const projectController = require('../controllers/project.controller');
 
 // 📥 Получить все проекты
 router.get('/', async (req, res) => {
@@ -249,5 +250,5 @@ router.get('/by-team', async (req, res) => {
   const projectController = require('../controllers/project.controller');
   return projectController.getProjectsByTeam(req, res);
 });
-
+router.get('/:id', projectController.getProjectById);
 module.exports = router;

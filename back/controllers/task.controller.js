@@ -14,10 +14,11 @@ exports.getProjects = async (req, res) => {
 
     request.input('TeamID', sql.Int, parseInt(teamId, 10));
     const result = await request.query(`
-      SELECT ID_Order, Order_Name
+      SELECT ID_Order, Order_Name, Status
       FROM Orders
-      WHERE ID_Team = @TeamID
+      WHERE ID_Team = @TeamID AND Status != 'Закрыт'
     `);
+    
 
     res.status(200).json(result.recordset);
   } catch (error) {
@@ -37,46 +38,61 @@ exports.getAllTasks = async (req, res) => {
 
     const result = await request.query(`
       SELECT 
-        t.ID_Task,
-        t.Task_Name,
-        t.Description,
-        t.Time_Norm,
-        t.Deadline,
-        TRIM(s.Status_Name) as Status_Name,
-        o.Order_Name,
-        tm.Team_Name,
-        a.ID_Employee AS Assigned_Employee_Id,
-        u.ID_User,
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        u.Avatar
-      FROM Assignment a
-      INNER JOIN Tasks t ON a.ID_Task = t.ID_Task
-      INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
-      INNER JOIN Orders o ON t.ID_Order = o.ID_Order
-      INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
-      LEFT JOIN Users u ON a.ID_Employee = u.ID_User
-      WHERE 1=1
-      ${employee ? 'AND a.ID_Employee = @EmployeeID' : ''}
-      ${team ? 'AND tm.ID_Team = @TeamID' : ''}
-      AND s.Status_Name != 'Архив'
+  t.ID_Task,
+  t.Task_Name,
+  t.Description,
+  t.Time_Norm,
+  t.Deadline,
+  TRIM(s.Status_Name) as Status_Name,
+  o.Order_Name,
+  tm.Team_Name,
+  a.ID_Employee AS Assigned_Employee_Id,
+  u.ID_User,
+  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+  u.Avatar
+FROM Tasks t
+LEFT JOIN Assignment a ON a.ID_Task = t.ID_Task
+INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
+INNER JOIN Orders o ON t.ID_Order = o.ID_Order
+INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
+LEFT JOIN Users u ON a.ID_Employee = u.ID_User
+WHERE s.Status_Name != 'Архив'
+
     `);
 
-    const tasks = result.recordset.map(row => ({
-      ID_Task: row.ID_Task,
-      Task_Name: row.Task_Name,
-      Description: row.Description,
-      Time_Norm: row.Time_Norm,
-      Deadline: row.Deadline,
-      Status_Name: row.Status_Name,
-      Order_Name: row.Order_Name,
-      Team_Name: row.Team_Name,
-      Assigned_Employee_Id: row.Assigned_Employee_Id,
-      Employees: [{
-        ID_Employee: row.ID_User,
-        Full_Name: row.Employee_Name,
-        Avatar: row.Avatar ?? null
-      }]
-    }));
+    // Группировка задач
+    const tasksMap = {};
+
+    result.recordset.forEach(row => {
+      const taskId = row.ID_Task;
+      if (!tasksMap[taskId]) {
+        tasksMap[taskId] = {
+          ID_Task: row.ID_Task,
+          Task_Name: row.Task_Name,
+          Description: row.Description,
+          Time_Norm: row.Time_Norm,
+          Deadline: row.Deadline,
+          Status_Name: row.Status_Name,
+          Order_Name: row.Order_Name,
+          Team_Name: row.Team_Name,
+          Assigned_Employee_Id: row.Assigned_Employee_Id,
+          Employees: []
+        };
+      }
+
+      // Добавляем всех сотрудников
+      if (row.ID_User && row.Employee_Name) {
+        if (!tasksMap[taskId].Employees.some(emp => emp.ID_Employee === row.ID_User)) {
+          tasksMap[taskId].Employees.push({
+            ID_Employee: row.ID_User,
+            Full_Name: row.Employee_Name,
+            Avatar: row.Avatar ?? null
+          });
+        }
+      }
+    });
+
+    const tasks = Object.values(tasksMap);
 
     res.status(200).json(tasks);
   } catch (error) {
@@ -86,7 +102,7 @@ exports.getAllTasks = async (req, res) => {
 };
 
 
-// 🔹 Создание задачи с уведомлением (исправлено)
+
 // 🔹 Создание задачи с уведомлением (исправлено)
 exports.createTask = async (req, res) => {
   const { Task_Name, Description, Time_Norm, ID_Order, Deadline, Employee_Names = [], ID_Manager: providedManager } = req.body;

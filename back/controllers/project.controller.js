@@ -76,17 +76,45 @@ exports.closeProject = async (req, res) => {
   const { id } = req.params;
 
   try {
-    await db.pool
-      .request()
-      .input("ID_Order", db.sql.Int, id)
-      .query("UPDATE Orders SET Status = 'Завершён' WHERE ID_Order = @ID_Order");
+    await poolConnect;
 
-    res.status(200).json({ message: "Проект закрыт" });
+    // 1️⃣ Закрыть проект
+    await pool.request()
+      .input('ID_Order', sql.Int, id)
+      .query("UPDATE Orders SET Status = 'Закрыт' WHERE ID_Order = @ID_Order");
+
+    // 2️⃣ Найти ID статуса "Завершена"
+    const statusResult = await pool.request()
+      .input('Status_Name', sql.NVarChar, 'Завершена')
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+
+    if (!statusResult.recordset.length) {
+      return res.status(400).json({ message: 'Статус "Завершена" не найден' });
+    }
+
+    const completedStatusId = statusResult.recordset[0].ID_Status;
+
+    // 3️⃣ Обновить все незавершенные задачи проекта
+    await pool.request()
+      .input('ID_Order', sql.Int, id)
+      .input('CompletedStatus', sql.Int, completedStatusId)
+      .query(`
+        UPDATE Tasks
+        SET ID_Status = @CompletedStatus
+        WHERE ID_Order = @ID_Order
+        AND ID_Status IN (
+          SELECT ID_Status FROM Statuses 
+          WHERE Status_Name IN ('Новая', 'В работе')
+        )
+      `);
+
+    res.status(200).json({ message: 'Проект закрыт и все незавершённые задачи завершены' });
   } catch (error) {
-    console.error("Ошибка при закрытии проекта:", error);
-    res.status(500).json({ message: "Ошибка при закрытии проекта" });
+    console.error("🔥 Ошибка при закрытии проекта:", error);
+    res.status(500).json({ message: 'Ошибка при закрытии проекта', error: error.message });
   }
 };
+
 
 // Обновление проекта
 exports.updateProject = async (req, res) => {
@@ -198,17 +226,45 @@ exports.getProjectsByTeam = async (req, res) => {
     await db.poolConnect;
 
     const result = await db.pool
-      .request()
-      .input('TeamID', db.sql.Int, parseInt(teamId, 10))
-      .query(`
-        SELECT o.ID_Order, o.Order_Name
-        FROM Orders o
-        WHERE o.ID_Team = @TeamID
-      `);
-
+    .request()
+    .input('TeamID', db.sql.Int, parseInt(teamId, 10))
+    .query(`
+      SELECT o.ID_Order, o.Order_Name, o.Status
+      FROM Orders o
+      WHERE o.ID_Team = @TeamID AND o.Status != 'Закрыт'
+    `);
+  
     res.status(200).json(result.recordset);
   } catch (error) {
     console.error('Ошибка при получении проектов по команде:', error);
     res.status(500).json({ message: 'Ошибка при получении проектов по команде' });
+  }
+};
+
+
+exports.getProjectById = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await db.pool
+      .request()
+      .input('ID_Order', db.sql.Int, id)
+      .query(`
+        SELECT 
+          ID_Order,
+          Order_Name,
+          End_Date,
+          ID_Manager
+        FROM Orders
+        WHERE ID_Order = @ID_Order
+      `);
+
+    if (!result.recordset.length) {
+      return res.status(404).json({ message: 'Проект не найден' });
+    }
+
+    res.status(200).json(result.recordset[0]);
+  } catch (error) {
+    console.error('Ошибка при получении проекта:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении проекта' });
   }
 };

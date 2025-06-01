@@ -61,6 +61,8 @@ interface CreateTaskFormValues {
   Deadline?: string;
   Time_Norm: number;
   attachments?: File[];
+  ID_Manager?: number;
+
 }
 
 interface Team {
@@ -71,6 +73,8 @@ interface Team {
 interface Project {
   ID_Order: number;
   Order_Name: string;
+  Status_Name?: string;
+  End_Date?: string; // ✅ Добавлено
 }
 
 interface EmployeeFromAPI {
@@ -115,7 +119,6 @@ const ManagerDashboard: React.FC = () => {
 
   const handleFinish = async (values: CreateTaskFormValues) => {
     try {
-      // Сначала создаём родительскую задачу
       const parentTaskPayload = {
         Task_Name: values.Task_Name,
         Description: values.Description,
@@ -123,7 +126,9 @@ const ManagerDashboard: React.FC = () => {
         ID_Team: values.ID_Team,
         ID_Order: values.ID_Order,
         Time_Norm: values.Time_Norm,
+        ID_Manager: values.ID_Manager 
       };
+      
 
       const parentResponse = await fetch(`${API_URL}/api/tasks`, {
         method: "POST",
@@ -147,12 +152,12 @@ const ManagerDashboard: React.FC = () => {
           body: JSON.stringify(childTaskPayload),
         });
       });
-
       await Promise.all(childTaskPromises);
-
       messageApi.success("Задача успешно создана");
       setIsModalVisible(false);
-      loadTasks();
+      await loadTasks();
+      
+
     } catch (err) {
       console.error(err);
       messageApi.error("Ошибка при создании задачи");
@@ -183,35 +188,42 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Ошибка при загрузке команд");
     }
   }, [messageApi]);
-  const loadProjectsAndEmployees = useCallback(
-    async (teamId: number) => {
-      try {
-        const [projectsResponse, employeesResponse] = await Promise.all([
-          fetch(`${API_URL}/api/projects/by-team?teamId=${teamId}`),
-          fetch(`${API_URL}/api/employees/by-team?teamId=${teamId}`),
-        ]);
 
-        const projects = await projectsResponse.json();
-        const employees: EmployeeFromAPI[] = await employeesResponse.json();
+ const loadProjectsAndEmployees = useCallback(
+  async (teamId: number) => {
+    try {
+      const [projectsResponse, employeesResponse] = await Promise.all([
+        fetch(`${API_URL}/api/projects/by-team?teamId=${teamId}`),
+        fetch(`${API_URL}/api/employees/by-team?teamId=${teamId}`),
+      ]);
 
-        console.log("Employees from API:", employees); // Debug
+      const rawProjects: Project[] = await projectsResponse.json();
+      const projects = rawProjects.filter(
+        (proj) => proj.Status_Name !== "Закрыт"
+      );
+      
 
-        const formattedEmployees: Employee[] = employees.map((emp) => ({
-          ID_Employee: emp.ID_Employee ?? emp.ID_User ?? 0,
-          Full_Name: `${emp.First_Name ?? ""} ${emp.Last_Name ?? ""}`.trim(),
-          Position: emp.Position ?? "Без должности",
-          Avatar: emp.Avatar ?? null,
-        }));
+      const employees: EmployeeFromAPI[] = await employeesResponse.json();
 
-        setFilteredProjects(projects);
-        setFilteredEmployees(formattedEmployees);
-      } catch (err) {
-        console.error(err);
-        messageApi.error("Ошибка при загрузке проектов и сотрудников");
-      }
-    },
-    [messageApi]
-  );
+      console.log("Employees from API:", employees); // Debug
+
+      const formattedEmployees: Employee[] = employees.map((emp) => ({
+        ID_Employee: emp.ID_Employee ?? emp.ID_User ?? 0,
+        Full_Name: `${emp.First_Name ?? ""} ${emp.Last_Name ?? ""}`.trim(),
+        Position: emp.Position ?? "Без должности",
+        Avatar: emp.Avatar ?? null,
+      }));
+
+      setFilteredProjects(projects);
+      setFilteredEmployees(formattedEmployees);
+    } catch (err) {
+      console.error(err);
+      messageApi.error("Ошибка при загрузке проектов и сотрудников");
+    }
+  },
+  [messageApi]
+);
+
 
   const handleTeamChange = (teamId: number) => {
     form.setFieldValue("ID_Team", teamId);
@@ -220,12 +232,27 @@ const ManagerDashboard: React.FC = () => {
     form.setFieldValue("Employees", []);
   };
 
+  const handleProjectChange = async (projectId: number) => {
+    const project = filteredProjects.find((p) => p.ID_Order === projectId);
+    if (project) {
+      try {
+        const response = await fetch(`${API_URL}/api/projects/${projectId}`);
+        const projectData = await response.json();
+        form.setFieldValue('ID_Manager', projectData.ID_Manager);
+      } catch (err) {
+        console.error("Ошибка при получении проекта:", err);
+      }
+    }
+  };
+  
+
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
 
   const filteredTasks = tasks
-    .filter((task) => task.Assigned_Employee_Id) // показываем только задачи с исполнителем
+  .filter((task) => task.Status_Name !== 'Архив') // если нужно скрывать архивные задачи
+
     .filter((task) => {
       const query = searchQuery.toLowerCase().trim();
       return (
@@ -406,97 +433,106 @@ const ManagerDashboard: React.FC = () => {
                                   <i>Проект:</i> {task.Order_Name}
                                 </p>
                                 <p>
-  <i>Данный модуль выполняет:</i>{" "}
-  {task.Employees.find(
-    (emp) => emp.ID_Employee === task.Assigned_Employee_Id
-  )?.Full_Name || "Не назначено"}
-</p>
+                                  <i>Данный модуль выполняет:</i>{" "}
+                                  {task.Employees.find(
+                                    (emp) =>
+                                      emp.ID_Employee ===
+                                      task.Assigned_Employee_Id
+                                  )?.Full_Name || "Не назначено"}
+                                </p>
 
-{(() => {
-  const otherEmployees = task.Employees.filter(
-    (emp) => emp.ID_Employee !== task.Assigned_Employee_Id
-  );
-  return otherEmployees.length > 0 ? (
-    <div
-      className="kanban-avatars-row"
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: "8px",
-      }}
-    >
-      <span
-        style={{
-          fontSize: "13px",
-          fontStyle: "italic",
-          color: "#bbb",
-          marginRight: "8px",
-        }}
-      >
-        Задача назначена также:
-      </span>
-      <div
-        className="kanban-avatars"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0px",
-        }}
-      >
-        {otherEmployees.map((emp, idx) => (
-          <div
-            key={emp.ID_Employee}
-            title={emp.Full_Name}
-            style={{
-              marginLeft: idx === 0 ? "0" : "-8px",
-              zIndex: otherEmployees.length - idx,
-            }}
-          >
-            {emp.Avatar && emp.Avatar !== "null" ? (
-              <img
-                src={`${API_URL}/uploads/${encodeURIComponent(emp.Avatar)}`}
-                alt={emp.Full_Name}
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  objectFit: "cover",
-                  border: "2px solid #444",
-                  backgroundColor: "#555",
-                  cursor: "pointer",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "28px",
-                  height: "28px",
-                  borderRadius: "50%",
-                  backgroundColor: "#777",
-                  color: "#fff",
-                  fontSize: "12px",
-                  fontWeight: "bold",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  border: "2px solid #444",
-                  cursor: "pointer",
-                }}
-              >
-                {emp.Full_Name.split(" ")
-                  .map((n) => n[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase()}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  ) : null;
-})()}
+                                {(() => {
+                                  const otherEmployees = task.Employees.filter(
+                                    (emp) =>
+                                      emp.ID_Employee !==
+                                      task.Assigned_Employee_Id
+                                  );
+                                  return otherEmployees.length > 0 ? (
+                                    <div
+                                      className="kanban-avatars-row"
+                                      style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        marginTop: "8px",
+                                      }}
+                                    >
+                                      <span
+                                        style={{
+                                          fontSize: "13px",
+                                          fontStyle: "italic",
+                                          color: "#bbb",
+                                          marginRight: "8px",
+                                        }}
+                                      >
+                                        Задача назначена также:
+                                      </span>
+                                      <div
+                                        className="kanban-avatars"
+                                        style={{
+                                          display: "flex",
+                                          alignItems: "center",
+                                          gap: "0px",
+                                        }}
+                                      >
+                                        {otherEmployees.map((emp, idx) => (
+                                          <div
+                                            key={emp.ID_Employee}
+                                            title={emp.Full_Name}
+                                            style={{
+                                              marginLeft:
+                                                idx === 0 ? "0" : "-8px",
+                                              zIndex:
+                                                otherEmployees.length - idx,
+                                            }}
+                                          >
+                                            {emp.Avatar &&
+                                            emp.Avatar !== "null" ? (
+                                              <img
+                                                src={`${API_URL}/uploads/${encodeURIComponent(
+                                                  emp.Avatar
+                                                )}`}
+                                                alt={emp.Full_Name}
+                                                style={{
+                                                  width: "28px",
+                                                  height: "28px",
+                                                  borderRadius: "50%",
+                                                  objectFit: "cover",
+                                                  border: "2px solid #444",
+                                                  backgroundColor: "#555",
+                                                  cursor: "pointer",
+                                                }}
+                                              />
+                                            ) : (
+                                              <div
+                                                style={{
+                                                  width: "28px",
+                                                  height: "28px",
+                                                  borderRadius: "50%",
+                                                  backgroundColor: "#777",
+                                                  color: "#fff",
+                                                  fontSize: "12px",
+                                                  fontWeight: "bold",
+                                                  display: "flex",
+                                                  alignItems: "center",
+                                                  justifyContent: "center",
+                                                  border: "2px solid #444",
+                                                  cursor: "pointer",
+                                                }}
+                                              >
+                                                {emp.Full_Name.split(" ")
+                                                  .map((n) => n[0])
+                                                  .slice(0, 2)
+                                                  .join("")
+                                                  .toUpperCase()}
+                                              </div>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ) : null;
+                                })()}
 
                                 {/* Дедлайн */}
                                 <div
@@ -678,13 +714,14 @@ const ManagerDashboard: React.FC = () => {
               rules={[{ required: true, message: "Выберите проект" }]}
             >
               <Select
-                key={form.getFieldValue("ID_Team")} // 👈 Динамический ключ!
+                key={form.getFieldValue("ID_Team")}
                 placeholder={
                   filteredProjects.length > 0
                     ? "Выберите проект"
                     : "Сначала выберите команду"
                 }
                 disabled={filteredProjects.length === 0}
+                onChange={handleProjectChange}
               >
                 {filteredProjects.map((project) => (
                   <Select.Option
@@ -725,12 +762,31 @@ const ManagerDashboard: React.FC = () => {
               <Input.TextArea />
             </Form.Item>
             <Form.Item label="Дедлайн" name="Deadline">
-              <DatePicker
-                style={{ width: "100%" }}
-                showTime
-                format="DD.MM.YYYY HH:mm"
-              />
+            <DatePicker
+  style={{ width: "100%" }}
+  showTime
+  format="DD.MM.YYYY HH:mm"
+  disabledDate={(current) => {
+    const now = dayjs();
+    const selectedProject = filteredProjects.find(
+      (p) => p.ID_Order === form.getFieldValue("ID_Order")
+    );
+
+    // 🚨 Ограничение по дедлайну проекта
+    if (selectedProject && selectedProject.End_Date) {
+      const projectEnd = dayjs(selectedProject.End_Date).endOf("day");
+      if (current && current.isAfter(projectEnd)) {
+        return true;
+      }
+    }
+
+    // 🚨 Нельзя выбрать дату раньше сегодняшнего дня
+    return current && current.isBefore(now.startOf("day"));
+  }}
+/>
+
             </Form.Item>
+
             <Form.Item
               label="Норма времени (часы)"
               name="Time_Norm"
