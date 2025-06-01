@@ -48,6 +48,7 @@ interface Task {
   Order_Name: string;
   Status_Name: string;
   Deadline?: string | null;
+  Assigned_Employee_Id?: number;
   Employees: Employee[];
 }
 
@@ -114,15 +115,41 @@ const ManagerDashboard: React.FC = () => {
 
   const handleFinish = async (values: CreateTaskFormValues) => {
     try {
-      const payload = {
-        ...values,
+      // Сначала создаём родительскую задачу
+      const parentTaskPayload = {
+        Task_Name: values.Task_Name,
+        Description: values.Description,
         Deadline: values.Deadline ? dayjs(values.Deadline).toISOString() : null,
+        ID_Team: values.ID_Team,
+        ID_Order: values.ID_Order,
+        Time_Norm: values.Time_Norm,
       };
-      await fetch(`${API_URL}/api/tasks`, {
+
+      const parentResponse = await fetch(`${API_URL}/api/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(parentTaskPayload),
       });
+
+      const parentTask = await parentResponse.json();
+      const parentTaskId = parentTask.ID_Task;
+
+      // Для каждого сотрудника создаём отдельную подзадачу
+      const childTaskPromises = values.Employees.map(async (employeeId) => {
+        const childTaskPayload = {
+          ...parentTaskPayload,
+          Parent_Task_Id: parentTaskId,
+          Assigned_Employee_Id: employeeId,
+        };
+        return fetch(`${API_URL}/api/tasks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(childTaskPayload),
+        });
+      });
+
+      await Promise.all(childTaskPromises);
+
       messageApi.success("Задача успешно создана");
       setIsModalVisible(false);
       loadTasks();
@@ -197,15 +224,17 @@ const ManagerDashboard: React.FC = () => {
     loadTasks();
   }, [loadTasks]);
 
-  const filteredTasks = tasks.filter((task) => {
-    const query = searchQuery.toLowerCase().trim();
-    return (
-      !query ||
-      task.Task_Name.toLowerCase().includes(query) ||
-      task.Description.toLowerCase().includes(query) ||
-      task.Order_Name.toLowerCase().includes(query)
-    );
-  });
+  const filteredTasks = tasks
+    .filter((task) => task.Assigned_Employee_Id) // показываем только задачи с исполнителем
+    .filter((task) => {
+      const query = searchQuery.toLowerCase().trim();
+      return (
+        !query ||
+        task.Task_Name.toLowerCase().includes(query) ||
+        task.Description.toLowerCase().includes(query) ||
+        task.Order_Name.toLowerCase().includes(query)
+      );
+    });
 
   const onDragEnd = async (result: DropResult) => {
     const { source, destination, draggableId } = result;
@@ -376,87 +405,99 @@ const ManagerDashboard: React.FC = () => {
                                 <p>
                                   <i>Проект:</i> {task.Order_Name}
                                 </p>
-                                {/* Аватары сотрудников */}
-                                <div
-                                  className="kanban-avatars-row"
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    marginTop: "8px",
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      fontSize: "13px",
-                                      fontStyle: "italic",
-                                      color: "#bbb",
-                                      marginRight: "8px",
-                                    }}
-                                  >
-                                    Задача назначена также:
-                                  </span>
-                                  <div
-                                    className="kanban-avatars"
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "0px",
-                                    }}
-                                  >
-                                    {task.Employees.map((emp, idx) => (
-                                      <div
-                                        key={emp.ID_Employee}
-                                        title={emp.Full_Name}
-                                        style={{
-                                          marginLeft: idx === 0 ? "0" : "-8px",
-                                          zIndex: task.Employees.length - idx,
-                                        }}
-                                      >
-                                        {emp.Avatar && emp.Avatar !== "null" ? (
-                                          <img
-                                            src={`${API_URL}/uploads/${encodeURIComponent(
-                                              emp.Avatar
-                                            )}`}
-                                            alt={emp.Full_Name}
-                                            style={{
-                                              width: "28px",
-                                              height: "28px",
-                                              borderRadius: "50%",
-                                              objectFit: "cover",
-                                              border: "2px solid #444",
-                                              backgroundColor: "#555",
-                                              cursor: "pointer",
-                                            }}
-                                          />
-                                        ) : (
-                                          <div
-                                            style={{
-                                              width: "28px",
-                                              height: "28px",
-                                              borderRadius: "50%",
-                                              backgroundColor: "#777",
-                                              color: "#fff",
-                                              fontSize: "12px",
-                                              fontWeight: "bold",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              border: "2px solid #444",
-                                              cursor: "pointer",
-                                            }}
-                                          >
-                                            {emp.Full_Name.split(" ")
-                                              .map((n) => n[0])
-                                              .slice(0, 2)
-                                              .join("")
-                                              .toUpperCase()}
-                                          </div>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
+                                <p>
+  <i>Данный модуль выполняет:</i>{" "}
+  {task.Employees.find(
+    (emp) => emp.ID_Employee === task.Assigned_Employee_Id
+  )?.Full_Name || "Не назначено"}
+</p>
+
+{(() => {
+  const otherEmployees = task.Employees.filter(
+    (emp) => emp.ID_Employee !== task.Assigned_Employee_Id
+  );
+  return otherEmployees.length > 0 ? (
+    <div
+      className="kanban-avatars-row"
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginTop: "8px",
+      }}
+    >
+      <span
+        style={{
+          fontSize: "13px",
+          fontStyle: "italic",
+          color: "#bbb",
+          marginRight: "8px",
+        }}
+      >
+        Задача назначена также:
+      </span>
+      <div
+        className="kanban-avatars"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0px",
+        }}
+      >
+        {otherEmployees.map((emp, idx) => (
+          <div
+            key={emp.ID_Employee}
+            title={emp.Full_Name}
+            style={{
+              marginLeft: idx === 0 ? "0" : "-8px",
+              zIndex: otherEmployees.length - idx,
+            }}
+          >
+            {emp.Avatar && emp.Avatar !== "null" ? (
+              <img
+                src={`${API_URL}/uploads/${encodeURIComponent(emp.Avatar)}`}
+                alt={emp.Full_Name}
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  objectFit: "cover",
+                  border: "2px solid #444",
+                  backgroundColor: "#555",
+                  cursor: "pointer",
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  borderRadius: "50%",
+                  backgroundColor: "#777",
+                  color: "#fff",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "2px solid #444",
+                  cursor: "pointer",
+                }}
+              >
+                {emp.Full_Name.split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")
+                  .toUpperCase()}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
+})()}
+
                                 {/* Дедлайн */}
                                 <div
                                   style={{

@@ -26,7 +26,6 @@ exports.getProjects = async (req, res) => {
   }
 };
 
-// 🔹 Получение задач с фильтрацией
 exports.getAllTasks = async (req, res) => {
   const { employee, team } = req.query;
 
@@ -43,50 +42,41 @@ exports.getAllTasks = async (req, res) => {
         t.Description,
         t.Time_Norm,
         t.Deadline,
-        TRIM(s.Status_Name) as Status_Name,  -- <<< вот здесь
+        TRIM(s.Status_Name) as Status_Name,
         o.Order_Name,
         tm.Team_Name,
+        a.ID_Employee AS Assigned_Employee_Id,
         u.ID_User,
         u.First_Name + ' ' + u.Last_Name AS Employee_Name,
         u.Avatar
-      FROM Tasks t
+      FROM Assignment a
+      INNER JOIN Tasks t ON a.ID_Task = t.ID_Task
       INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
       INNER JOIN Orders o ON t.ID_Order = o.ID_Order
       INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
-      LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task
       LEFT JOIN Users u ON a.ID_Employee = u.ID_User
       WHERE 1=1
-      ${employee ? 'AND EXISTS (SELECT 1 FROM Assignment a2 WHERE a2.ID_Task = t.ID_Task AND a2.ID_Employee = @EmployeeID)' : ''}
+      ${employee ? 'AND a.ID_Employee = @EmployeeID' : ''}
       ${team ? 'AND tm.ID_Team = @TeamID' : ''}
       AND s.Status_Name != 'Архив'
     `);
-    
 
-    const tasks = Object.values(
-      result.recordset.reduce((acc, row) => {
-        if (!acc[row.ID_Task]) {
-          acc[row.ID_Task] = {
-            ID_Task: row.ID_Task,
-            Task_Name: row.Task_Name,
-            Description: row.Description,
-            Time_Norm: row.Time_Norm,
-            Deadline: row.Deadline,
-            Status_Name: row.Status_Name,
-            Order_Name: row.Order_Name,
-            Team_Name: row.Team_Name,
-            Employees: []
-          };
-        }
-        if (row.ID_User && row.Employee_Name) {
-          acc[row.ID_Task].Employees.push({
-            ID_Employee: row.ID_User,
-            Full_Name: row.Employee_Name,
-            Avatar: row.Avatar ?? null
-          });
-        }
-        return acc;
-      }, {})
-    );
+    const tasks = result.recordset.map(row => ({
+      ID_Task: row.ID_Task,
+      Task_Name: row.Task_Name,
+      Description: row.Description,
+      Time_Norm: row.Time_Norm,
+      Deadline: row.Deadline,
+      Status_Name: row.Status_Name,
+      Order_Name: row.Order_Name,
+      Team_Name: row.Team_Name,
+      Assigned_Employee_Id: row.Assigned_Employee_Id,
+      Employees: [{
+        ID_Employee: row.ID_User,
+        Full_Name: row.Employee_Name,
+        Avatar: row.Avatar ?? null
+      }]
+    }));
 
     res.status(200).json(tasks);
   } catch (error) {
@@ -294,6 +284,7 @@ exports.getTasksWithDetails = async (req, res) => {
             Order_Name: row.Order_Name,
             ID_Order: row.ID_Order,
             Team_Name: row.Team_Name,
+            Assigned_Employee_Id: row.Assigned_Employee_Id,
             Employees: []
           };
         }
