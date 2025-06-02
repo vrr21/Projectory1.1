@@ -1,10 +1,8 @@
 const ExcelJS = require('exceljs');
 const puppeteer = require('puppeteer');
-const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, VerticalAlign } = require('docx');
-
+const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, VerticalAlign, PageOrientation } = require('docx');
 const { poolConnect, sql, pool } = require('../config/db');
 
-// Получение данных задач
 async function getTasksData() {
   await poolConnect;
   const result = await pool.request().query(`
@@ -22,18 +20,17 @@ function formatDate(date) {
   const d = new Date(date);
   return d.toLocaleDateString('ru-RU');
 }
+
 async function exportTasksToExcel(res) {
   const data = await getTasksData();
   const workbook = new ExcelJS.Workbook();
-  const sheet = workbook.addWorksheet('Tasks');
+  const sheet = workbook.addWorksheet('Tasks', { pageSetup: { orientation: 'landscape' } });
 
-  // Только Список задач без номера таблицы
   const tableTitleRow = sheet.addRow(['Список задач']);
   tableTitleRow.font = { bold: true, size: 12 };
   tableTitleRow.alignment = { horizontal: 'left', vertical: 'middle' };
   sheet.mergeCells(`A${tableTitleRow.number}:G${tableTitleRow.number}`);
 
-  // Заголовки столбцов
   const headerRow = sheet.addRow([
     'Название задачи', 'Описание', 'Норма времени',
     'Статус', 'Проект', 'Команда', 'Дедлайн'
@@ -67,7 +64,6 @@ async function exportTasksToExcel(res) {
     });
   });
 
-  // Автоматическая ширина
   sheet.columns.forEach(column => {
     let maxLength = 10;
     column.eachCell({ includeEmpty: true }, cell => {
@@ -121,7 +117,7 @@ async function exportTasksToPDF(res) {
   const browser = await puppeteer.launch({ headless: 'new' });
   const page = await browser.newPage();
   await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-  const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
+  const pdfBuffer = await page.pdf({ format: 'A4', landscape: true, printBackground: true });
   await browser.close();
 
   res.setHeader('Content-Disposition', 'attachment; filename="tasks.pdf"');
@@ -131,16 +127,24 @@ async function exportTasksToPDF(res) {
 async function exportTasksToWord(res) {
   const data = await getTasksData();
 
+  // Заголовок таблицы
   const headerRow = new TableRow({
     children: ['Название задачи', 'Описание', 'Норма времени', 'Статус', 'Проект', 'Команда', 'Дедлайн'].map(text =>
       new TableCell({
         shading: { fill: '333333' },
-        children: [new Paragraph({ children: [new TextRun({ text, bold: true, color: 'FFFFFF' })] })],
+        children: [
+          new Paragraph({
+            children: [new TextRun({ text, bold: true, color: 'FFFFFF' })],
+            alignment: 'center'
+          })
+        ],
         verticalAlign: VerticalAlign.CENTER,
       })
-    )
+    ),
+    height: { value: 600, rule: 'atLeast' }, // Высота заголовка
   });
 
+  // Данные
   const dataRows = data.map((row, rowIndex) => new TableRow({
     children: [
       row.Task_Name,
@@ -152,15 +156,29 @@ async function exportTasksToWord(res) {
       formatDate(row.Deadline)
     ].map(value => new TableCell({
       shading: { fill: rowIndex % 2 === 0 ? 'D3D3D3' : 'FFFFFF' },
-      children: [new Paragraph(value)],
+      children: [
+        new Paragraph({
+          children: [new TextRun({ text: value, font: "Times New Roman", size: 24 })],
+          alignment: 'left'
+        })
+      ],
       verticalAlign: VerticalAlign.CENTER,
-    }))
+      margins: { top: 100, bottom: 100, left: 100, right: 100 }, // padding в ячейках
+    })),
+    height: { value: 600, rule: 'atLeast' }, // Высота строки
   }));
 
-  const table = new Table({ rows: [headerRow, ...dataRows] });
+  const table = new Table({
+    rows: [headerRow, ...dataRows],
+    width: { size: 100, type: 'pct' }, // 100% ширины страницы
+    layout: 'autofit', // адаптивная ширина
+  });
 
   const doc = new Document({
     sections: [{
+      properties: {
+        page: { size: { orientation: 'landscape' } }
+      },
       children: [
         new Paragraph({
           children: [new TextRun({ text: 'Список задач', bold: true, size: 28 })],
@@ -176,6 +194,7 @@ async function exportTasksToWord(res) {
   res.setHeader('Content-Disposition', 'attachment; filename="tasks.docx"');
   res.send(buffer);
 }
+
 
 module.exports = {
   exportTasksToExcel,

@@ -1,7 +1,10 @@
+// back/routes/exportTasks.routes.js
+
 const express = require('express');
 const router = express.Router();
 const { exportTasksHandler } = require('../controllers/exportTasks.controller');
 
-router.get('/tasks', exportTasksHandler);
+// Экспорт задач
+router.get('/:format', exportTasksHandler);
 
 module.exports = router;

@@ -264,19 +264,26 @@ const EmployeeDashboard = () => {
   const fetchTasks = useCallback(async () => {
     try {
       const url = `${API_URL}/api/tasks?employee=${user?.id}`;
-
       const response = await fetch(url);
       const data: Task[] = await response.json();
-
+  
       const grouped: Record<string, Task[]> = {};
       statuses.forEach((status) => {
-        grouped[status] = data.filter((task) => task.Status_Name === status);
+        grouped[status] = data
+          .filter(
+            (task) =>
+              task.Status_Name === status &&
+              task.Employees.some(
+                (emp) => emp.ID_Employee === user?.id
+              )
+          );
       });
       setColumns(grouped);
     } catch {
       messageApi.error("Не удалось загрузить задачи");
     }
   }, [user?.id, messageApi]);
+  
 
   useEffect(() => {
     fetchTasks(); // первая загрузка

@@ -84,11 +84,13 @@ exports.getAllTasks = async (req, res) => {
         tasksMap[taskId].AlsoAssignedEmployees = [];
       }
       if (row.ID_User && row.Employee_Name) {
-        tasksMap[taskId].AlsoAssignedEmployees.push({
+        tasksMap[taskId].Employees.push({
+          ID_Employee: row.ID_User,
           ID_User: row.ID_User,
-          EmployeeName: row.Employee_Name,
+          Full_Name: row.Employee_Name,
           Avatar: row.Avatar ?? null
         });
+        
       }
       
     });
@@ -327,18 +329,19 @@ exports.getTasksByEmployee = async (req, res) => {
 
     for (const task of result.recordset) {
       const parentId = task.Parent_Task_ID || task.ID_Task;
+// 2. Найти всех остальных сотрудников с таким Parent_Task_ID
+const alsoAssignedResult = await pool.request()
+  .input('ParentID', sql.Int, parentId)
+  .input('ID_User', sql.Int, employeeId) // 🔥 ДОБАВЛЕНО!
+  .query(`
+    SELECT DISTINCT u.ID_User, u.First_Name + ' ' + u.Last_Name AS EmployeeName, u.Avatar
+    FROM Tasks t
+    INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
+    INNER JOIN Users u ON a.ID_Employee = u.ID_User
+    WHERE (t.Parent_Task_ID = @ParentID OR t.ID_Task = @ParentID)
+    AND u.ID_User != @ID_User
+  `);
 
-      // 2. Найти всех остальных сотрудников с таким Parent_Task_ID
-      const alsoAssignedResult = await pool.request()
-        .input('ParentID', sql.Int, parentId)
-        .query(`
-          SELECT DISTINCT u.ID_User, u.First_Name + ' ' + u.Last_Name AS EmployeeName, u.Avatar
-          FROM Tasks t
-          INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
-          INNER JOIN Users u ON a.ID_Employee = u.ID_User
-          WHERE (t.Parent_Task_ID = @ParentID OR t.ID_Task = @ParentID)
-          AND u.ID_User != @ID_User
-        `);
 
       // Собираем задачу
       tasks.push({
@@ -360,26 +363,34 @@ exports.getTasksWithDetails = async (req, res) => {
   try {
     await poolConnect;
     const result = await pool.request().query(`
-      SELECT 
-        t.ID_Task,
-        t.Task_Name,
-        t.Description,
-        t.Time_Norm,
-        t.Deadline,
-        s.Status_Name,
-        o.Order_Name,
-        o.ID_Order,
-        tm.Team_Name,
-        u.ID_User,
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        u.Avatar
-      FROM Tasks t
-      LEFT JOIN Statuses s ON t.ID_Status = s.ID_Status
-      LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
-      LEFT JOIN Teams tm ON o.ID_Team = tm.ID_Team
-      LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task
-      LEFT JOIN Users u ON a.ID_Employee = u.ID_User
-      WHERE s.Status_Name != 'Архив'
+SELECT 
+  t.ID_Task,
+  t.Task_Name,
+  t.Description,
+  t.Time_Norm,
+  t.Deadline,
+  s.Status_Name,
+  o.Order_Name,
+  o.ID_Order,
+  tm.Team_Name,
+  (
+    SELECT TOP 1 a1.ID_Employee
+    FROM Assignment a1
+    WHERE a1.ID_Task = t.ID_Task
+    ORDER BY a1.ID_Employee ASC
+  ) AS Assigned_Employee_Id,
+  u.ID_User,
+  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+  u.Avatar
+FROM Tasks t
+LEFT JOIN Statuses s ON t.ID_Status = s.ID_Status
+LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
+LEFT JOIN Teams tm ON o.ID_Team = tm.ID_Team
+LEFT JOIN Assignment a ON a.ID_Task = t.ID_Task
+LEFT JOIN Users u ON a.ID_Employee = u.ID_User
+WHERE t.ID_Task = @ID_Task
+
+
     `);
 
     const tasks = Object.values(
@@ -395,15 +406,15 @@ exports.getTasksWithDetails = async (req, res) => {
             Order_Name: row.Order_Name,
             ID_Order: row.ID_Order,
             Team_Name: row.Team_Name,
-            Assigned_Employee_Id: row.Assigned_Employee_Id,
+            Assigned_Employee_Id: row.Assigned_Employee_Id,  // 🔥 добавлено!
             Employees: []
           };
         }
         if (row.ID_User && row.Employee_Name) {
           acc[row.ID_Task].Employees.push({
-            id: row.ID_User,
-            fullName: row.Employee_Name,
-            avatar: row.Avatar ?? null
+            ID_Employee: row.ID_User,
+            Full_Name: row.Employee_Name,
+            Avatar: row.Avatar ?? null
           });
         }
         return acc;
@@ -416,6 +427,8 @@ exports.getTasksWithDetails = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при получении задач с деталями', error: error.message });
   }
 };
+
+
 // 🔹 Закрытие задачи
 exports.closeTask = async (req, res) => {
   const { id } = req.params;
@@ -701,6 +714,114 @@ exports.getTaskById = async (req, res) => {
   }
 };
 
+
+exports.getAllArchivedTasks = async (req, res) => {
+  try {
+    await poolConnect;
+
+    const result = await pool.request().query(`
+SELECT 
+  t.ID_Task,
+  t.Task_Name,
+  t.Description,
+  t.Time_Norm,
+  t.Deadline,
+  s.Status_Name,
+  o.Order_Name,
+  o.ID_Order,
+  tm.Team_Name,
+  (
+    SELECT TOP 1 a1.ID_Employee
+    FROM Assignment a1
+    WHERE a1.ID_Task = t.ID_Task
+    ORDER BY a1.ID_Employee ASC
+  ) AS Assigned_Employee_Id,
+  u.ID_User,
+  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+  u.Avatar
+FROM Tasks t
+LEFT JOIN Statuses s ON t.ID_Status = s.ID_Status
+LEFT JOIN Orders o ON t.ID_Order = o.ID_Order
+LEFT JOIN Teams tm ON o.ID_Team = tm.ID_Team
+LEFT JOIN Assignment a ON a.ID_Task = t.ID_Task
+LEFT JOIN Users u ON a.ID_Employee = u.ID_User
+WHERE t.ID_Task = @ID_Task
+
+    `);
+
+    const tasksMap = {};
+
+    result.recordset.forEach(row => {
+      const taskId = row.ID_Task;
+
+      if (!tasksMap[taskId]) {
+        tasksMap[taskId] = {
+          ID_Task: row.ID_Task,
+          Task_Name: row.Task_Name,
+          Description: row.Description,
+          Time_Norm: row.Time_Norm,
+          Deadline: row.Deadline,
+          Status_Name: row.Status_Name,
+          Order_Name: row.Order_Name,
+          Team_Name: row.Team_Name,
+          Assigned_Employee_Id: row.Assigned_Employee_Id,
+          Employees: []
+        };
+      }
+
+      if (row.ID_User && row.Employee_Name) {
+        tasksMap[taskId].Employees.push({
+          ID_Employee: row.ID_User,
+          Full_Name: row.Employee_Name,
+          Avatar: row.Avatar ?? null
+        });
+      }
+    });
+
+    const archivedTasks = Object.values(tasksMap);
+    res.status(200).json(archivedTasks);
+  } catch (error) {
+    console.error('🔥 Ошибка при получении архивных задач:', error);
+    res.status(500).json({ message: 'Ошибка при получении архивных задач', error: error.message });
+  }
+};
+
+exports.archiveTask = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await poolConnect;
+
+    // Получить ID статуса "Архив"
+    const statusResult = await pool.request()
+      .input('Status_Name', sql.NVarChar, 'Архив')
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name');
+
+    if (!statusResult.recordset.length) {
+      return res.status(400).json({ message: 'Статус "Архив" не найден' });
+    }
+
+    const archiveStatusId = statusResult.recordset[0].ID_Status;
+
+    // Обновить задачу в Tasks
+    await pool.request()
+      .input('ID_Task', sql.Int, id)
+      .input('ID_Status', sql.Int, archiveStatusId)
+      .query('UPDATE Tasks SET ID_Status = @ID_Status WHERE ID_Task = @ID_Task');
+
+    // Обновить статус в Assignment для всех исполнителей
+    await pool.request()
+      .input('ID_Task', sql.Int, id)
+      .input('ID_Status', sql.Int, archiveStatusId)
+      .query('UPDATE Assignment SET ID_Status = @ID_Status WHERE ID_Task = @ID_Task');
+
+    res.status(200).json({ message: `Задача ${id} перенесена в архив` });
+  } catch (error) {
+    console.error('🔥 Ошибка при переносе задачи в архив:', error);
+    res.status(500).json({ message: 'Ошибка при переносе задачи в архив', error: error.message });
+  }
+};
+
 module.exports = {
   getAllTasks: exports.getAllTasks,
   createTask: exports.createTask,
@@ -713,5 +834,8 @@ module.exports = {
   deleteAllArchivedTasks: exports.deleteAllArchivedTasks,
   updateTask: exports.updateTask,
   getProjects: exports.getProjects,
-  deleteUnassignedTasks: exports.deleteUnassignedTasks
+  deleteUnassignedTasks: exports.deleteUnassignedTasks,
+  archiveTask: exports.archiveTask,
+  getAllArchivedTasks: exports.getAllArchivedTasks,
+
 };

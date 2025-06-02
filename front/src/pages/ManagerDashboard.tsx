@@ -38,17 +38,18 @@ import { FilterOutlined } from "@ant-design/icons";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import { EditOutlined, InboxOutlined } from "@ant-design/icons";
+import { Dropdown } from "antd";
+import { Tooltip, Avatar } from "antd";
 
 interface Employee {
   ID_Employee: number;
   ID_User?: number;
   Full_Name: string;
-  Employee_Name?: string;  // <-- Добавляем!
+  Employee_Name?: string; // <-- Добавляем!
   Position: string;
   Avatar?: string | null;
   ID_Manager?: number;
 }
-
 
 interface Task {
   ID_Task: number;
@@ -68,12 +69,14 @@ interface Task {
   ID_Team?: number;
   Time_Norm?: number;
   Team_Name?: string;
+  Is_Archived?: boolean;
+  attachments?: string[]; // 👈 добавляем сюда!
 }
 
 interface CreateTaskFormValues {
   ID_Team: number;
   ID_Order: number;
-  Employees: number[];
+  Employees: { value: number; label: string }[];
   Task_Name: string;
   Description: string;
   Deadline?: string;
@@ -122,6 +125,7 @@ interface RawTask {
   ID_Team?: number;
   Time_Norm?: number;
   Team_Name?: string;
+  Is_Archived?: boolean;
 }
 
 interface RawEmployee {
@@ -146,6 +150,7 @@ const ManagerDashboard: React.FC = () => {
     teamId?: number;
     projectId?: number;
   }>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -187,14 +192,30 @@ const ManagerDashboard: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/api/tasks/${taskId}/details`);
       if (!response.ok) throw new Error("Ошибка при загрузке задачи");
-      const data = await response.json();
-      setTaskDetails(data);
+  
+      const rawData: RawTask = await response.json();
+  
+      const normalizedTask: Task = {
+        ...rawData,
+        Employees: rawData.Employees.map((emp: RawEmployee) => ({
+          ID_Employee: emp.ID_Employee ?? emp.ID_User ?? 0,
+          ID_User: emp.ID_User ?? 0,
+          Full_Name: emp.Employee_Name ?? emp.Full_Name ?? "Без имени",
+          Position: emp.Position ?? "Без должности",
+          Avatar: emp.Avatar ?? null,
+        })),
+      };
+  
+      setTaskDetails(normalizedTask);
       setIsDetailsModalVisible(true);
     } catch (error) {
       console.error("Ошибка при загрузке деталей задачи:", error);
       messageApi.error("Не удалось загрузить детали задачи");
     }
   };
+  
+
+  const [showArchive, setShowArchive] = useState(false);
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -274,24 +295,34 @@ const ManagerDashboard: React.FC = () => {
     setEditingTaskId(null);
     setIsModalVisible(false);
   };
-
   const handleFinish = async (values: CreateTaskFormValues) => {
+    if (submitting) return;
+    setSubmitting(true);
+
     try {
       if (editingTaskId) {
-        // режим редактирования
+        // Режим редактирования
         const updatedTaskPayload = {
           ...values,
           Deadline: values.Deadline
             ? dayjs(values.Deadline).toISOString()
             : null,
         };
-        await fetch(`${API_URL}/api/tasks/${editingTaskId}`, {
+
+        const response = await fetch(`${API_URL}/api/tasks/${editingTaskId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedTaskPayload),
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Ошибка API: ${response.status} ${errorText}`);
+        }
+
         messageApi.success("Задача успешно обновлена");
       } else {
+        // Режим создания
         const parentTaskPayload = {
           Task_Name: values.Task_Name,
           Description: values.Description,
@@ -302,17 +333,25 @@ const ManagerDashboard: React.FC = () => {
           ID_Order: values.ID_Order,
           Time_Norm: values.Time_Norm,
           ID_Manager: values.ID_Manager,
-          Employee_Names: values.Employees.map((id) => {
+          // 👇 Составляем массив имен сотрудников
+          Employee_Names: values.Employees.map((empObj) => {
+            const id = empObj.value;
             const emp = filteredEmployees.find((e) => e.ID_Employee === id);
             return emp ? emp.Full_Name : null;
           }).filter((name) => name !== null),
         };
 
-        await fetch(`${API_URL}/api/tasks`, {
+        const response = await fetch(`${API_URL}/api/tasks`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(parentTaskPayload),
         });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Ошибка API: ${response.status} ${errorText}`);
+        }
+
         messageApi.success("Задача успешно создана");
       }
 
@@ -322,13 +361,18 @@ const ManagerDashboard: React.FC = () => {
     } catch (err) {
       console.error(err);
       messageApi.error("Ошибка при сохранении задачи");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/tasks`);
+      const endpoint = showArchive
+        ? `${API_URL}/api/tasks/archived`
+        : `${API_URL}/api/tasks`;
+      const response = await fetch(endpoint);
       const data: RawTask[] = await response.json();
 
       const normalized = data.map((task: RawTask) => ({
@@ -349,7 +393,7 @@ const ManagerDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [messageApi]);
+  }, [messageApi, showArchive]);
 
   const loadTeams = useCallback(async () => {
     try {
@@ -402,19 +446,18 @@ const ManagerDashboard: React.FC = () => {
 
   const getAssignedEmployeeName = (task: Task) => {
     if (!task || !task.Employees) return "Не назначено";
-  
+
     const assignedId = Number(task.Assigned_Employee_Id);
-  
+
     const assigned = task.Employees.find(
       (emp) =>
         Number(emp.ID_Employee) === assignedId ||
         Number(emp.ID_User) === assignedId
     );
-  
+
     return assigned?.Full_Name || "Не назначено";
   };
-  
-  
+
   const handleTeamChange = (teamId?: number) => {
     form.setFieldValue("ID_Team", teamId);
     form.setFieldValue("ID_Order", undefined);
@@ -462,7 +505,15 @@ const ManagerDashboard: React.FC = () => {
   );
 
   const filteredTasks = tasks
-    .filter((task) => task.Status_Name !== "Архив")
+    .filter((task) => {
+      if (showArchive) {
+        // Показывать только задачи в архиве
+        return task.Status_Name === "Архив" || task.Is_Archived === true;
+      } else {
+        // Показывать только активные задачи
+        return task.Status_Name !== "Архив" && !task.Is_Archived;
+      }
+    })
     .filter((task) => task.Assigned_Employee_Id)
     .filter((task) => {
       const query = searchQuery.toLowerCase().trim();
@@ -571,19 +622,19 @@ const ManagerDashboard: React.FC = () => {
 
   const getDeadlineStatus = (deadline?: string | null, status?: string) => {
     if (!deadline || !status) return null;
-  
+
     if (["Выполнена", "Завершена"].includes(status)) {
       return {
         label: status,
         color: "#4caf50", // зелёный
       };
     }
-  
+
     const now = dayjs();
     const end = dayjs(deadline);
     const diffDays = end.diff(now, "day");
     const diffMinutes = end.diff(now, "minute");
-  
+
     if (diffDays < 0) {
       return { label: "Просрочено", color: "#f44336" }; // красный
     } else if (diffDays < 1) {
@@ -600,7 +651,7 @@ const ManagerDashboard: React.FC = () => {
       return { label: `${diffDays} дн.`, color: "#4caf50" }; // зелёный
     }
   };
-  
+
   const renderKanbanBoard = () => (
     <>
       <div
@@ -634,7 +685,9 @@ const ManagerDashboard: React.FC = () => {
           >
             Фильтры
           </Button>
-          <Button icon={<DownloadOutlined />}>Экспорт</Button>
+          <Dropdown menu={exportMenu} trigger={["click"]}>
+            <Button icon={<DownloadOutlined />}>Экспорт</Button>
+          </Dropdown>
         </div>
       </div>
 
@@ -727,8 +780,9 @@ const ManagerDashboard: React.FC = () => {
                                   <i>Проект:</i> {task.Order_Name}
                                 </p>
                                 <p>
-  <i>Данный модуль выполняет:</i> {getAssignedEmployeeName(task)}
-</p>
+                                  <i>Данный модуль выполняет:</i>{" "}
+                                  {getAssignedEmployeeName(task)}
+                                </p>
 
                                 {(() => {
                                   const assignedUserId =
@@ -851,68 +905,77 @@ const ManagerDashboard: React.FC = () => {
                                       : "Без срока"}
                                   </span>
                                 </div>
-                               {/* Футер задачи */}
-<div
-  className="task-footer"
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: "8px",
-  }}
->
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: "8px",
-    }}
-  >
-    <Button
-      type="link"
-      icon={<EyeOutlined />}
-      size="small"
-      style={{ padding: 0 }}
-      onClick={() => loadTaskDetails(task.ID_Task)}
-    />
-    <Button
-      type="link"
-      icon={<MessageOutlined />}
-      size="small"
-      style={{ padding: 0 }}
-    />
-  </div>
+                                {/* Футер задачи */}
+                                <div
+                                  className="task-footer"
+                                  style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginTop: "8px",
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: "8px",
+                                    }}
+                                  >
+                                    <Button
+                                      type="link"
+                                      icon={<EyeOutlined />}
+                                      size="small"
+                                      style={{ padding: 0 }}
+                                      onClick={() =>
+                                        loadTaskDetails(task.ID_Task)
+                                      }
+                                    />
+                                    <Button
+                                      type="link"
+                                      icon={<MessageOutlined />}
+                                      size="small"
+                                      style={{ padding: 0 }}
+                                    />
+                                  </div>
 
-  <div
-  style={{
-    backgroundColor: ["Выполнена", "Завершена"].includes(task.Status_Name)
-      ? "transparent"
-      : deadlineInfo?.color,
-    color: ["Выполнена", "Завершена"].includes(task.Status_Name)
-      ? "#ccc" // можно выбрать любой цвет для текста
-      : "#fff",
-    borderRadius: "4px",
-    padding: "2px 6px",
-    fontSize: "12px",
-    minWidth: "80px",
-    textAlign: "center",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "4px",
-    border: ["Выполнена", "Завершена"].includes(task.Status_Name)
-      ? "1px solid #ccc"
-      : "none",
-  }}
->
-  {["Выполнена", "Завершена"].includes(task.Status_Name) && (
-    <ClockCircleOutlined />
-  )}
-  {deadlineInfo?.label}
-</div>
-
-</div>
-
+                                  <div
+                                    style={{
+                                      backgroundColor: [
+                                        "Выполнена",
+                                        "Завершена",
+                                      ].includes(task.Status_Name)
+                                        ? "transparent"
+                                        : deadlineInfo?.color,
+                                      color: [
+                                        "Выполнена",
+                                        "Завершена",
+                                      ].includes(task.Status_Name)
+                                        ? "#ccc" // можно выбрать любой цвет для текста
+                                        : "#fff",
+                                      borderRadius: "4px",
+                                      padding: "2px 6px",
+                                      fontSize: "12px",
+                                      minWidth: "80px",
+                                      textAlign: "center",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: "4px",
+                                      border: [
+                                        "Выполнена",
+                                        "Завершена",
+                                      ].includes(task.Status_Name)
+                                        ? "1px solid #ccc"
+                                        : "none",
+                                    }}
+                                  >
+                                    {["Выполнена", "Завершена"].includes(
+                                      task.Status_Name
+                                    ) && <ClockCircleOutlined />}
+                                    {deadlineInfo?.label}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -980,14 +1043,30 @@ const ManagerDashboard: React.FC = () => {
       align: "left",
       render: (_, record) => {
         const assignedEmployee = record.Employees.find(
-          (emp) => emp.ID_Employee === record.Assigned_Employee_Id
+          (emp) =>
+            emp.ID_User === record.Assigned_Employee_Id ||
+            emp.ID_Employee === record.Assigned_Employee_Id
         );
+
+        const profileId =
+          assignedEmployee?.ID_User ?? assignedEmployee?.ID_Employee;
+
         return (
           <span
-            style={{ fontStyle: "italic", cursor: "pointer" }}
-            onClick={() => navigate(`/employee/${record.Assigned_Employee_Id}`)}
+            style={{
+              fontStyle: "italic",
+              textDecoration: "underline",
+              cursor: profileId ? "pointer" : "not-allowed",
+            }}
+            onClick={() => {
+              if (profileId) {
+                navigate(`/employee/${profileId}`);
+              } else {
+                messageApi.warning("Профиль сотрудника не найден");
+              }
+            }}
           >
-            {assignedEmployee ? assignedEmployee.Full_Name : "Не назначено"}
+            {assignedEmployee?.Full_Name || "Не назначено"}
           </span>
         );
       },
@@ -1063,6 +1142,10 @@ const ManagerDashboard: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: 250 }}
           />
+          <Button onClick={() => setShowArchive(!showArchive)}>
+            {showArchive ? "Назад к списку задач" : "Перейти в архив"}
+          </Button>
+
           <Button
             icon={<FilterOutlined />}
             onClick={() => setIsFilterModalVisible(true)}
@@ -1070,20 +1153,86 @@ const ManagerDashboard: React.FC = () => {
           >
             Фильтры
           </Button>
-          <Button icon={<DownloadOutlined />}>Экспорт</Button>
+          <Dropdown menu={exportMenu} trigger={["click"]}>
+            <Button icon={<DownloadOutlined />}>Экспорт</Button>
+          </Dropdown>
         </div>
       </div>
 
-      <Table
-        dataSource={filteredTasks}
-        columns={columns}
-        rowKey="ID_Task"
-        pagination={{ pageSize: 10 }}
-        bordered
-        style={{ backgroundColor: "#2a2a2a" }}
-      />
+      <h2 style={{ marginTop: "16px", color: "#fff" }}>
+        {showArchive ? "Архивные задачи" : "Активные задачи"}
+      </h2>
+
+      {filteredTasks.length === 0 ? (
+        <p style={{ color: "#aaa" }}>
+          {showArchive
+            ? "Нет архивированных задач"
+            : "Нет активных задач для отображения."}
+        </p>
+      ) : (
+        <Table
+          dataSource={filteredTasks}
+          columns={columns}
+          rowKey="ID_Task"
+          pagination={{ pageSize: 10 }}
+          bordered
+          className="table-no-background"
+          style={{ backgroundColor: "transparent" }}
+        />
+      )}
     </>
   );
+
+  const handleExport = async (format: "excel" | "pdf" | "word") => {
+    try {
+      const response = await fetch(`${API_URL}/api/export/tasks/${format}`, {
+        method: "GET",
+      });
+
+      if (!response.ok) {
+        throw new Error("Ошибка при экспорте");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      let fileName = "tasks";
+      if (format === "excel") fileName += ".xlsx";
+      if (format === "pdf") fileName += ".pdf";
+      if (format === "word") fileName += ".docx";
+
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Ошибка при экспорте:", error);
+      messageApi.error("Не удалось экспортировать задачи");
+    }
+  };
+
+  const exportMenu = {
+    items: [
+      {
+        key: "excel",
+        label: "Экспорт в Excel",
+        onClick: () => handleExport("excel"),
+      },
+      {
+        key: "pdf",
+        label: "Экспорт в PDF",
+        onClick: () => handleExport("pdf"),
+      },
+      {
+        key: "word",
+        label: "Экспорт в Word",
+        onClick: () => handleExport("word"),
+      },
+    ],
+  };
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -1354,7 +1503,7 @@ const ManagerDashboard: React.FC = () => {
           )}
         </Modal>
         <Modal
-          title="Детали задачи"
+          title="Информация о задаче"
           open={isDetailsModalVisible}
           onCancel={() => setIsDetailsModalVisible(false)}
           footer={[
@@ -1364,7 +1513,7 @@ const ManagerDashboard: React.FC = () => {
           ]}
         >
           {taskDetails ? (
-            <>
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
               <p>
                 <strong>Название:</strong> {taskDetails.Task_Name}
               </p>
@@ -1372,36 +1521,119 @@ const ManagerDashboard: React.FC = () => {
                 <strong>Описание:</strong> {taskDetails.Description}
               </p>
               <p>
-                <strong>Норма времени:</strong> {taskDetails.Time_Norm} ч.
+                <strong>Проект:</strong> {taskDetails.Order_Name}
               </p>
               <p>
-                <strong>Дедлайн:</strong>{" "}
-                {taskDetails.Deadline
-                  ? dayjs(taskDetails.Deadline).format("DD.MM.YYYY HH:mm")
-                  : "Без срока"}
+                <strong>Команда:</strong> {taskDetails.Team_Name || "—"}
               </p>
               <p>
                 <strong>Статус:</strong> {taskDetails.Status_Name}
               </p>
               <p>
-                <strong>Проект:</strong> {taskDetails.Order_Name}
+                <strong>Дедлайн:</strong>{" "}
+                {taskDetails.Deadline
+                  ? dayjs(taskDetails.Deadline).format("YYYY-MM-DD HH:mm")
+                  : "—"}
               </p>
               <p>
-                <strong>Команда:</strong> {taskDetails.Team_Name}
+                <strong>Норма времени:</strong> {taskDetails.Time_Norm} ч.
               </p>
 
               <p>
-                
-  <strong>Данный модуль выполняет:</strong>{" "}
-  {taskDetails.Employees.find(
-    (emp) =>
-      emp.ID_Employee === Number(taskDetails.Assigned_Employee_Id) ||
-      emp.ID_User === Number(taskDetails.Assigned_Employee_Id)
-  )?.Full_Name || "Не назначено"}
+                <strong>Сотрудники:</strong>
+              </p>
+              <div className="kanban-avatars">
+                {taskDetails.Employees.length > 0 ? (
+                  taskDetails.Employees.map((emp, idx) => (
+                    <Tooltip
+                      key={`emp-view-${emp.ID_Employee}-${idx}`}
+                      title={emp.Full_Name}
+                    >
+                      <Avatar
+                        src={
+                          emp.Avatar
+                            ? `${API_URL}/uploads/${encodeURIComponent(
+                                emp.Avatar
+                              )}`
+                            : undefined
+                        }
+                        style={{
+                          backgroundColor: emp.Avatar ? "transparent" : "#777",
+                          marginRight: 4,
+                        }}
+                      >
+                        {!emp.Avatar &&
+                          (emp.Full_Name?.split(" ")
+                            .map((n) => n[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase() ||
+                            "—")}
+                      </Avatar>
+                    </Tooltip>
+                  ))
+                ) : (
+                  <span style={{ color: "#aaa" }}>—</span>
+                )}
+              </div>
+              <p
+  style={{
+    marginTop: 8,
+    fontStyle: "italic",
+    color: "#aaa",
+  }}
+>
+  Модуль данной задачи выполняет:{" "}
+  <strong>
+    {taskDetails.Employees.find(
+      (emp) =>
+        emp.ID_Employee === Number(taskDetails.Assigned_Employee_Id) ||
+        emp.ID_User === Number(taskDetails.Assigned_Employee_Id)
+    )?.Full_Name || "Не назначено"}
+  </strong>
 </p>
 
 
-            </>
+              {taskDetails.attachments &&
+                taskDetails.attachments.length > 0 && (
+                  <>
+                    <p>
+                      <strong>Файлы:</strong>
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: 8,
+                      }}
+                    >
+                      {taskDetails.attachments.map(
+                        (filename: string, idx: number) => (
+                          <a
+                            key={`att-${idx}`}
+                            href={`${API_URL}/uploads/${encodeURIComponent(
+                              filename
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: "inline-block",
+                              backgroundColor: "#2a2a2a",
+                              color: "#fff",
+                              textDecoration: "none",
+                              padding: "4px 8px",
+                              borderRadius: 4,
+                              fontSize: 12,
+                            }}
+                          >
+                            📎 {filename}
+                          </a>
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+            </div>
           ) : (
             <Loader />
           )}

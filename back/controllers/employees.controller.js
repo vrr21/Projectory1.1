@@ -400,17 +400,19 @@ exports.getTasksByEmployee = async (req, res) => {
     for (const task of result.recordset) {
       const parentId = task.Parent_Task_ID || task.ID_Task;
 
-      // 2. Найти всех остальных сотрудников с таким Parent_Task_ID
-      const alsoAssignedResult = await pool.request()
-        .input('ParentID', sql.Int, parentId)
-        .query(`
-          SELECT DISTINCT u.ID_User, u.First_Name + ' ' + u.Last_Name AS EmployeeName, u.Avatar
-          FROM Tasks t
-          INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
-          INNER JOIN Users u ON a.ID_Employee = u.ID_User
-          WHERE (t.Parent_Task_ID = @ParentID OR t.ID_Task = @ParentID)
-          AND u.ID_User != @ID_User
-        `);
+// 2. Найти всех остальных сотрудников с таким Parent_Task_ID
+const alsoAssignedResult = await pool.request()
+  .input('ParentID', sql.Int, parentId)
+  .input('ID_User', sql.Int, employeeId) // 🔥 ДОБАВЛЕНО!
+  .query(`
+    SELECT DISTINCT u.ID_User, u.First_Name + ' ' + u.Last_Name AS EmployeeName, u.Avatar
+    FROM Tasks t
+    INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
+    INNER JOIN Users u ON a.ID_Employee = u.ID_User
+    WHERE (t.Parent_Task_ID = @ParentID OR t.ID_Task = @ParentID)
+    AND u.ID_User != @ID_User
+  `);
+
 
       // Собираем задачу
       tasks.push({

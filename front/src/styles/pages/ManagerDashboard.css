@@ -34,19 +34,17 @@ body.sidebar-collapsed .dashboard-body {
 }
 
 
-
 .kanban-column {
-  background-color: #2a2a2a !important;
+  background-color: #2a2a2a;
   padding: 1.5rem 1rem;
   border-radius: 8px;
-  width: 320px;
-  flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   transition: background-color var(--transition-time), color var(--transition-time), border-color var(--transition-time);
 }
+
 
 
 .kanban-column h3 {
@@ -122,12 +120,29 @@ body.sidebar-collapsed .dashboard-body {
 }
 
 .kanban-columns::-webkit-scrollbar {
-  display: none;
+  height: 8px; /* Плавный горизонтальный скролл */
 }
 
-.kanban-columns {
-  scrollbar-width: none;
+.kanban-columns::-webkit-scrollbar-thumb {
+  background-color: #555;
+  border-radius: 4px;
 }
+
+.kanban-columns::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+
+.kanban-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+}
+
+
 
 @media (max-width: 1200px) {
   .kanban-columns {
@@ -599,9 +614,29 @@ body.sidebar-collapsed .dashboard-body {
 
 
 @media (max-width: 768px) {
+  .kanban-columns {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+}
+
+
+@media (max-width: 768px) {
+  .kanban-columns {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
   .kanban-column {
+    width: 100%;
     min-width: 100%;
-    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .kanban-column {
+    width: 100%;
+    min-width: 100%;
   }
 
   .kanban-task {
@@ -664,3 +699,40 @@ body.sidebar-collapsed .dashboard-body {
 .kanban-avatars > div img {
   display: block;
 }
+
+.kanban-board-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+
+.kanban-header-row {
+  display: flex;
+  gap: 12px;
+  padding-inline: 4px;
+  min-width: max-content;
+  margin-bottom: 8px;
+}
+
+.kanban-status-header {
+  flex: 0 0 280px;
+  background-color: #2a2a2a;
+  border-left: 4px solid #006F7A;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f0f0f0;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 10px 12px;
+}
+
+.kanban-columns {
+  display: flex;
+  gap: 12px;
+  padding-inline: 4px;
+  min-width: max-content;
+}
+
+

@@ -51,6 +51,7 @@ app.use('/api/export/tasks', require('./routes/exportTasks.routes'));
 app.use('/api/export/reports', require('./routes/exportReports.routes'));
 app.use('/api/export/teams/custom', require('./routes/exportTeams.routes'));
 app.use('/api/export/projects-teams-employee', require('./routes/exportProjectsTeamsEmployee.routes'));
+app.use('/api/tasks/export', require('./routes/exportTasks.routes'));
 
 // Тестовый эндпоинт
 app.get('/', (_, res) => res.send('✅ Сервер работает!'));
