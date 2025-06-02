@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../config/db');
+const { pool, sql } = require('../config/db');
 
 router.get('/with-details', async (req, res) => {
   try {
@@ -15,6 +15,8 @@ router.get('/with-details', async (req, res) => {
         o.Order_Name,
         o.ID_Order,
         tm.Team_Name,
+        t.ID_Manager,
+        a.ID_Employee AS Assigned_Employee_Id,
         u.ID_User,
         u.First_Name + ' ' + u.Last_Name AS Employee_Name,
         u.Avatar
@@ -40,17 +42,48 @@ router.get('/with-details', async (req, res) => {
           Order_Name: row.Order_Name,
           ID_Order: row.ID_Order,
           Team_Name: row.Team_Name,
-          Employees: [],
+          Assigned_Employee_Id: row.Assigned_Employee_Id,
+          Employees: []
         });
       }
 
+      const task = map.get(row.ID_Task);
+
       if (row.ID_User) {
-        const task = map.get(row.ID_Task);
-        if (!task.Employees.some(e => e.id === row.ID_User)) {
+        // Избегаем дублирования сотрудников
+        if (!task.Employees.some(e => e.ID_User === row.ID_User)) {
           task.Employees.push({
-            id: row.ID_User,
-            fullName: row.Employee_Name,
-            avatar: row.Avatar ?? null
+            ID_User: row.ID_User,
+            Employee_Name: row.Employee_Name,
+            Avatar: row.Avatar ?? null
+          });
+        }
+      }
+    }
+
+    // Дозагрузка Assigned Employee, если он отсутствует в списке
+    for (const task of map.values()) {
+      const assignedId = task.Assigned_Employee_Id;
+      const assignedExists = task.Employees.some(e => e.ID_User === assignedId);
+
+      if (assignedId && !assignedExists) {
+        const assignedUserResult = await pool.request()
+          .input('ID_User', sql.Int, assignedId)
+          .query(`
+            SELECT 
+              ID_User, 
+              First_Name + ' ' + Last_Name AS Employee_Name, 
+              Avatar
+            FROM Users
+            WHERE ID_User = @ID_User
+          `);
+
+        if (assignedUserResult.recordset.length > 0) {
+          const assignedUser = assignedUserResult.recordset[0];
+          task.Employees.push({
+            ID_User: assignedUser.ID_User,
+            Employee_Name: assignedUser.Employee_Name,
+            Avatar: assignedUser.Avatar ?? null
           });
         }
       }

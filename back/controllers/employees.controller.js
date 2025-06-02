@@ -357,31 +357,75 @@ exports.getEmployeeById = async (req, res) => {
       .json({ message: "Ошибка сервера при получении профиля сотрудника" });
   }
 };
-
 exports.getTasksByEmployee = async (req, res) => {
-  const employeeId = parseInt(req.params.id, 10);
+  const { id } = req.params;
+  const employeeId = parseInt(id, 10);
 
-  if (isNaN(employeeId)) {
-    return res.status(400).json({ message: "Некорректный ID сотрудника" });
+  if (!employeeId || isNaN(employeeId)) {
+    console.error('Некорректный ID сотрудника:', id);
+    return res.status(400).json({ message: 'Некорректный ID сотрудника' });
   }
 
   try {
     await poolConnect;
-    const result = await pool.request().input("employeeId", sql.Int, employeeId)
+
+    // 1. Основной запрос: получить задачи сотрудника
+    const result = await pool.request()
+      .input('ID_User', sql.Int, employeeId)
       .query(`
-        SELECT T.ID_Task, T.Task_Name, S.Status_Name AS Status
-        FROM Tasks T
-        JOIN Assignment A ON T.ID_Task = A.ID_Task
-        LEFT JOIN Statuses S ON T.ID_Status = S.ID_Status
-        WHERE A.ID_Employee = @employeeId
+        SELECT 
+          t.ID_Task,
+          t.Parent_Task_ID,
+          t.Task_Name,
+          t.Description,
+          s.Status_Name,
+          o.Order_Name,
+          tm.Team_Name,
+          t.Time_Norm,
+          t.Deadline,
+          u.ID_User AS EmployeeId,
+          u.First_Name + ' ' + u.Last_Name AS EmployeeName,
+          u.Avatar
+        FROM Assignment a
+        INNER JOIN Tasks t ON a.ID_Task = t.ID_Task
+        INNER JOIN Statuses s ON t.ID_Status = s.ID_Status
+        INNER JOIN Orders o ON t.ID_Order = o.ID_Order
+        INNER JOIN Teams tm ON o.ID_Team = tm.ID_Team
+        LEFT JOIN Users u ON a.ID_Employee = u.ID_User
+        WHERE a.ID_Employee = @ID_User
       `);
 
-    res.json(result.recordset);
-  } catch (err) {
-    console.error("Ошибка при получении задач сотрудника:", err);
-    res.status(500).json({ message: "Ошибка при получении задач сотрудника" });
+    const tasks = [];
+
+    for (const task of result.recordset) {
+      const parentId = task.Parent_Task_ID || task.ID_Task;
+
+      // 2. Найти всех остальных сотрудников с таким Parent_Task_ID
+      const alsoAssignedResult = await pool.request()
+        .input('ParentID', sql.Int, parentId)
+        .query(`
+          SELECT DISTINCT u.ID_User, u.First_Name + ' ' + u.Last_Name AS EmployeeName, u.Avatar
+          FROM Tasks t
+          INNER JOIN Assignment a ON t.ID_Task = a.ID_Task
+          INNER JOIN Users u ON a.ID_Employee = u.ID_User
+          WHERE (t.Parent_Task_ID = @ParentID OR t.ID_Task = @ParentID)
+          AND u.ID_User != @ID_User
+        `);
+
+      // Собираем задачу
+      tasks.push({
+        ...task,
+        AlsoAssignedEmployees: alsoAssignedResult.recordset
+      });
+    }
+
+    res.status(200).json(tasks);
+  } catch (error) {
+    console.error('🔥 Ошибка при получении задач сотрудника:', error);
+    res.status(500).json({ message: 'Ошибка при получении задач сотрудника', error: error.message });
   }
 };
+
 
 exports.getEmployeesByTeam = async (req, res) => {
   const { teamId } = req.query;
