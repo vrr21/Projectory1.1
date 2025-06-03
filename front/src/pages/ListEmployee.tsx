@@ -67,9 +67,14 @@ const ListEmployee: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showArchive, setShowArchive] = useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
-  const [employeeIdToDelete, setEmployeeIdToDelete] = useState<number | null>(
-    null
-  );
+
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (selectedKeys: React.Key[]) => {
+      setSelectedRowKeys(selectedKeys);
+    },
+  };
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -198,20 +203,22 @@ const ListEmployee: React.FC = () => {
   };
 
   const handleDeleteConfirmed = async () => {
-    if (!employeeIdToDelete) return;
     try {
-      const res = await fetch(`${API_URL}/api/users/${employeeIdToDelete}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) throw new Error("Ошибка при удалении");
-      messageApi.success("Сотрудник удалён окончательно");
+      await Promise.all(
+        selectedRowKeys.map(async (id) => {
+          const res = await fetch(`${API_URL}/api/users/${id}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error("Ошибка при удалении");
+        })
+      );
+      messageApi.success("Сотрудники удалены");
       fetchEmployees();
     } catch (err) {
       messageApi.error((err as Error).message);
     } finally {
       setConfirmDeleteVisible(false);
-      setEmployeeIdToDelete(null);
+      setSelectedRowKeys([]); // Очистить выбор
     }
   };
 
@@ -376,7 +383,7 @@ const ListEmployee: React.FC = () => {
               type="link"
               style={buttonStyle}
               onClick={() => {
-                setEmployeeIdToDelete(record.ID_User);
+                setSelectedRowKeys([record.ID_User]);
                 setConfirmDeleteVisible(true);
               }}
               icon={<DeleteOutlined />}
@@ -397,7 +404,6 @@ const ListEmployee: React.FC = () => {
                   ID_Role: record.ID_Role || 2, // по умолчанию сотрудник, если нет роли
                 });
               }}
-              
               icon={<EditOutlined />}
             ></Button>
             <Button
@@ -486,16 +492,40 @@ const ListEmployee: React.FC = () => {
                 </Dropdown>
               </div>
             </div>
-            <h2 style={{ marginBottom: "0", fontWeight: "400" }}>
-              {showArchive ? "Архивные сотрудники" : "Активные сотрудники"}
+
+            <h2
+              style={{
+                marginBottom: "0",
+                fontWeight: "400",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              {showArchive ? (
+                <>
+                  <span>Архивные сотрудники</span>
+                  <Button
+                    danger
+                    disabled={selectedRowKeys.length === 0}
+                    onClick={() => setConfirmDeleteVisible(true)}
+                    icon={<DeleteOutlined />}
+                  >
+                    Удалить выбранных
+                  </Button>
+                </>
+              ) : (
+                "Активные сотрудники"
+              )}
             </h2>
 
             <Table
+              {...(showArchive ? { rowSelection } : {})}
               dataSource={filteredEmployees}
               columns={columns}
               rowKey="ID_User"
               pagination={{ pageSize: 10 }}
-              style={{ marginTop: -40 }} // уменьшает расстояние между заголовком и таблицей
+              style={{ marginTop: -40 }}
             />
 
             <Modal
@@ -510,123 +540,141 @@ const ListEmployee: React.FC = () => {
               okText="Сохранить"
               cancelText="Отмена"
             >
-<Form form={form} layout="vertical" onFinish={handleSave}>
-  <Form.Item
-    name="First_Name"
-    label="Имя"
-    rules={[{ required: true, message: "Введите имя" }]}
-  >
-    <Input />
-  </Form.Item>
+              <Form form={form} layout="vertical" onFinish={handleSave}>
+                <Form.Item
+                  name="First_Name"
+                  label="Имя"
+                  rules={[{ required: true, message: "Введите имя" }]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Last_Name"
-    label="Фамилия"
-    rules={[{ required: true, message: "Введите фамилию" }]}
-  >
-    <Input />
-  </Form.Item>
+                <Form.Item
+                  name="Last_Name"
+                  label="Фамилия"
+                  rules={[{ required: true, message: "Введите фамилию" }]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Email"
-    label="Email"
-    rules={[
-      { required: true, message: "Введите email" },
-      { type: "email", message: "Некорректный email!" },
-      {
-        validator: (_, value) => {
-          if (!value) return Promise.resolve();
-          const allowedDomains = [
-            "gmail.com", "outlook.com", "hotmail.com", "yahoo.com",
-            "icloud.com", "me.com", "mail.ru", "yandex.ru", "yandex.com",
-            "protonmail.com", "zoho.com", "gmx.com",
-          ];
-          const domain = value.split("@")[1];
-          return allowedDomains.includes(domain)
-            ? Promise.resolve()
-            : Promise.reject(
-                new Error("Разрешены только домены: " + allowedDomains.join(", "))
-              );
-        },
-      },
-    ]}
-  >
-    <Input />
-  </Form.Item>
+                <Form.Item
+                  name="Email"
+                  label="Email"
+                  rules={[
+                    { required: true, message: "Введите email" },
+                    { type: "email", message: "Некорректный email!" },
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const allowedDomains = [
+                          "gmail.com",
+                          "outlook.com",
+                          "hotmail.com",
+                          "yahoo.com",
+                          "icloud.com",
+                          "me.com",
+                          "mail.ru",
+                          "yandex.ru",
+                          "yandex.com",
+                          "protonmail.com",
+                          "zoho.com",
+                          "gmx.com",
+                        ];
+                        const domain = value.split("@")[1];
+                        return allowedDomains.includes(domain)
+                          ? Promise.resolve()
+                          : Promise.reject(
+                              new Error(
+                                "Разрешены только домены: " +
+                                  allowedDomains.join(", ")
+                              )
+                            );
+                      },
+                    },
+                  ]}
+                >
+                  <Input />
+                </Form.Item>
 
-  <Form.Item
-    name="Phone"
-    label="Телефон"
-    rules={[
-      { required: true, message: "Введите номер телефона" },
-      {
-        validator: (_, value) =>
-          value && value.length >= 10
-            ? Promise.resolve()
-            : Promise.reject(new Error("Некорректный номер телефона")),
-      },
-    ]}
-  >
-    <PhoneInput
-      country={"by"}
-      enableSearch
-      onlyCountries={["ru", "by"]}
-      inputProps={{
-        name: "Phone",
-        required: true,
-        autoComplete: "off",
-        style: { width: "100%", paddingLeft: "48px" },
-      }}
-      containerClass="custom-phone-container"
-      inputClass="custom-phone-input"
-      buttonClass="custom-phone-button"
-      dropdownClass="custom-phone-dropdown"
-      searchClass="custom-phone-search"
-    />
-  </Form.Item>
+                <Form.Item
+                  name="Phone"
+                  label="Телефон"
+                  rules={[
+                    { required: true, message: "Введите номер телефона" },
+                    {
+                      validator: (_, value) =>
+                        value && value.length >= 10
+                          ? Promise.resolve()
+                          : Promise.reject(
+                              new Error("Некорректный номер телефона")
+                            ),
+                    },
+                  ]}
+                >
+                  <PhoneInput
+                    country={"by"}
+                    enableSearch
+                    onlyCountries={["ru", "by"]}
+                    inputProps={{
+                      name: "Phone",
+                      required: true,
+                      autoComplete: "off",
+                      style: { width: "100%", paddingLeft: "48px" },
+                    }}
+                    containerClass="custom-phone-container"
+                    inputClass="custom-phone-input"
+                    buttonClass="custom-phone-button"
+                    dropdownClass="custom-phone-dropdown"
+                    searchClass="custom-phone-search"
+                  />
+                </Form.Item>
 
-  <Form.Item
-    name="Password"
-    label="Пароль"
-    rules={[
-      ...(editingEmployee
-        ? []
-        : [{ required: true, message: "Введите пароль" }]),
-      {
-        validator: (_, value) => {
-          if (!value && editingEmployee) return Promise.resolve();
-          if (!value || value.length < 8) {
-            return Promise.reject(
-              new Error("Пароль должен быть не менее 8 символов")
-            );
-          }
-          if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
-            return Promise.reject(
-              new Error("Пароль должен содержать как минимум одну букву и одну цифру")
-            );
-          }
-          return Promise.resolve();
-        },
-      },
-    ]}
-    tooltip={editingEmployee ? "Оставьте пустым, чтобы не менять пароль" : undefined}
-  >
-    <Input.Password autoComplete="new-password" />
-  </Form.Item>
+                <Form.Item
+                  name="Password"
+                  label="Пароль"
+                  rules={[
+                    ...(editingEmployee
+                      ? []
+                      : [{ required: true, message: "Введите пароль" }]),
+                    {
+                      validator: (_, value) => {
+                        if (!value && editingEmployee) return Promise.resolve();
+                        if (!value || value.length < 8) {
+                          return Promise.reject(
+                            new Error("Пароль должен быть не менее 8 символов")
+                          );
+                        }
+                        if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) {
+                          return Promise.reject(
+                            new Error(
+                              "Пароль должен содержать как минимум одну букву и одну цифру"
+                            )
+                          );
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
+                  tooltip={
+                    editingEmployee
+                      ? "Оставьте пустым, чтобы не менять пароль"
+                      : undefined
+                  }
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
 
-  <Form.Item
-    name="ID_Role"
-    label="Роль"
-    initialValue={2} // Сотрудник по умолчанию
-  >
-    <Radio.Group className="custom-radio-group">
-      <Radio value={2}>Сотрудник</Radio>
-      <Radio value={1}>Менеджер</Radio>
-    </Radio.Group>
-  </Form.Item>
-</Form>
-
-
+                <Form.Item
+                  name="ID_Role"
+                  label="Роль"
+                  initialValue={2} // Сотрудник по умолчанию
+                >
+                  <Radio.Group className="custom-radio-group">
+                    <Radio value={2}>Сотрудник</Radio>
+                    <Radio value={1}>Менеджер</Radio>
+                  </Radio.Group>
+                </Form.Item>
+              </Form>
             </Modal>
 
             <Modal

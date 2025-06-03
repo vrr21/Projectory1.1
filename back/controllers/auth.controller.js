@@ -49,8 +49,9 @@ router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
 });
 
 // ✅ Регистрация
+// ✅ Регистрация
 router.post('/register', async (req, res) => {
-  const { firstName, lastName, phone, email, password } = req.body;
+  const { firstName, lastName, phone, email, password, ID_Role } = req.body;
 
   if (!firstName || !lastName || !phone || !email || !password) {
     return res.status(400).json({ message: 'Все поля обязательны для заполнения' });
@@ -65,15 +66,16 @@ router.post('/register', async (req, res) => {
 
     if (checkUser.recordset.length > 0) {
       return res.status(400).json({ message: "Пользователь с таким email уже существует" });
-
     }
 
+    // 🟢 Выбор роли
+    const roleName = ID_Role === 1 ? 'Менеджер' : 'Сотрудник';
     const roleResult = await pool.request()
-    .input('roleName', sql.NVarChar, 'Сотрудник')
-    .query('SELECT ID_Role FROM Roles WHERE Role_Name = @roleName');
-  
+      .input('roleName', sql.NVarChar, roleName)
+      .query('SELECT ID_Role FROM Roles WHERE Role_Name = @roleName');
+
     if (roleResult.recordset.length === 0) {
-      return res.status(400).json({ message: 'Роль "Сотрудник" не найдена' });
+      return res.status(400).json({ message: `Роль "${roleName}" не найдена` });
     }
 
     const roleId = roleResult.recordset[0].ID_Role;
@@ -95,6 +97,7 @@ router.post('/register', async (req, res) => {
     res.status(500).json({ message: 'Внутренняя ошибка сервера' });
   }
 });
+
 
 
 // 🔐 Авторизация

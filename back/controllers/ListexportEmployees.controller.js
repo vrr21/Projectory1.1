@@ -19,6 +19,7 @@ function formatDate(date) {
   return d.toLocaleDateString('ru-RU');
 }
 
+
 async function getEmployeesData() {
   await poolConnect;
   const result = await pool.request().query(`
@@ -29,12 +30,7 @@ async function getEmployeesData() {
       U.Phone,
       ISNULL(U.Avatar, '–') AS Avatar,
       U.Archived,
-      ISNULL((
-        SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
-        FROM TeamMembers TM
-        JOIN Teams T ON TM.ID_Team = T.ID_Team
-        WHERE TM.ID_User = U.ID_User
-      ), '–') AS Roles,
+      R.Role_Name AS Roles,
       ISNULL((
         SELECT STRING_AGG(T.Team_Name, ', ')
         FROM TeamMembers TM
@@ -58,9 +54,11 @@ async function getEmployeesData() {
         WHERE A.ID_Employee = U.ID_User
       ), '–') AS Tasks
     FROM Users U
+    LEFT JOIN Roles R ON U.ID_Role = R.ID_Role
   `);
   return result.recordset;
 }
+
 
 // ✅ Excel
 async function exportEmployeesToExcel(res) {

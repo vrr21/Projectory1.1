@@ -14,21 +14,45 @@ exports.getExtendedEmployees = async (req, res) => {
         u.Email,
         u.Phone,
         u.Avatar,
-        STRING_AGG(DISTINCT tm.Team_Name, ', ') AS Teams,
-        STRING_AGG(DISTINCT o.Order_Name, ', ') AS Projects,
-        STRING_AGG(DISTINCT t.Task_Name, ', ') AS Tasks,
-        STRING_AGG(DISTINCT ISNULL(tm2.Role, r.Role_Name), ', ') AS Roles
+        u.Archived,
+        -- Роли
+        ISNULL(
+          (
+            SELECT STRING_AGG(
+              ISNULL(tm2.Role, r.Role_Name), ', '
+            )
+            FROM TeamMembers tm2
+            LEFT JOIN Roles r ON u.ID_Role = r.ID_Role
+            WHERE tm2.ID_User = u.ID_User OR u.ID_User = u.ID_User
+          ), r.Role_Name
+        ) AS Roles,
+        -- Остальное без изменений...
+        ISNULL((
+          SELECT STRING_AGG(T.Team_Name, ', ')
+          FROM TeamMembers TM
+          JOIN Teams T ON TM.ID_Team = T.ID_Team
+          WHERE TM.ID_User = u.ID_User
+        ), '–') AS Teams,
+        ISNULL((
+          SELECT STRING_AGG(O.Order_Name, ', ')
+          FROM Orders O
+          WHERE EXISTS (
+            SELECT 1
+            FROM Teams T
+            JOIN TeamMembers TM ON T.ID_Team = TM.ID_Team
+            WHERE T.ID_Team = O.ID_Team AND TM.ID_User = u.ID_User
+          )
+        ), '–') AS Projects,
+        ISNULL((
+          SELECT STRING_AGG(TK.Task_Name, ', ')
+          FROM Assignment A
+          JOIN Tasks TK ON A.ID_Task = TK.ID_Task
+          WHERE A.ID_Employee = u.ID_User
+        ), '–') AS Tasks
       FROM Users u
-      LEFT JOIN TeamMembers tm2 ON u.ID_User = tm2.ID_User
-      LEFT JOIN Teams tm ON tm2.ID_Team = tm.ID_Team
-      LEFT JOIN Orders o ON tm.ID_Team = o.ID_Team
-      LEFT JOIN Tasks t ON o.ID_Order = t.ID_Order
-      LEFT JOIN Assignment a ON t.ID_Task = a.ID_Task AND a.ID_Employee = u.ID_User
       LEFT JOIN Roles r ON u.ID_Role = r.ID_Role
-      WHERE u.ID_Role != 1 -- исключить менеджеров
-      GROUP BY 
-        u.ID_User, u.First_Name, u.Last_Name, u.Email, u.Phone, u.Avatar
     `);
+    
 
     res.json(result.recordset);
   } catch (error) {

@@ -27,6 +27,9 @@ router.delete('/archive/all', taskController.deleteAllArchivedTasks);
 // 🔹 Получить все архивные задачи
 router.get('/archived', taskController.getAllArchivedTasks);
 
+// 🔹 Проверить просроченные задачи
+router.patch('/check-overdue', taskController.checkAndUpdateOverdueTasks);
+
 // 🔹 Поиск задач
 router.get('/search', async (req, res) => {
   const { q } = req.query;
@@ -55,7 +58,6 @@ router.get('/:id/details', async (req, res) => {
   try {
     await poolConnect;
 
-    // Основной запрос задачи
     const taskResult = await pool.request()
       .input('ID_Task', sql.Int, id)
       .query(`
@@ -80,7 +82,6 @@ router.get('/:id/details', async (req, res) => {
       return res.status(404).json({ message: 'Задача не найдена' });
     }
 
-    // Запрос главного исполнителя
     const assignedResult = await pool.request()
       .input('ID_Task', sql.Int, id)
       .query(`
@@ -90,7 +91,6 @@ router.get('/:id/details', async (req, res) => {
         ORDER BY a.ID_Employee ASC
       `);
 
-    // Запрос всех сотрудников
     const employeesResult = await pool.request()
       .input('ID_Task', sql.Int, id)
       .query(`
@@ -104,7 +104,6 @@ router.get('/:id/details', async (req, res) => {
         WHERE a.ID_Task = @ID_Task
       `);
 
-    // Формирование объекта задачи
     const task = {
       ...taskResult.recordset[0],
       Assigned_Employee_Id: assignedResult.recordset[0]?.ID_Employee || null,
@@ -131,8 +130,11 @@ router.put('/:id', taskController.updateTask);
 // 🔹 Закрыть задачу
 router.patch('/:id/close', taskController.closeTask);
 
-// 🔹 Обновить статус задачи для конкретного сотрудника
+// 🔹 Обновить статус задачи для сотрудника
 router.put('/:taskId/status', taskController.updateEmployeeTaskStatus);
+
+// 🔹 Обновить общий статус задачи
+router.put('/:id/status', taskController.updateTaskStatus);
 
 // 🔹 Создать задачу
 router.post('/', taskController.createTask);

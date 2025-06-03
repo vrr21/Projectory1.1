@@ -93,9 +93,9 @@ exports.fullSearchEmployeeData = async (req, res) => {
 
 // Обновить профиль сотрудника
 exports.updateEmployeeProfile = async (req, res) => {
-  const { id, firstName, lastName, phone } = req.body;
+  const { id, firstName, lastName, phone, ID_Role } = req.body;
 
-  if (!id || !firstName || !lastName) {
+  if (!id || !firstName || !lastName || !ID_Role) {
     return res.status(400).json({ message: "Некорректные данные" });
   }
 
@@ -106,11 +106,14 @@ exports.updateEmployeeProfile = async (req, res) => {
       .input("id", sql.Int, id)
       .input("firstName", sql.NVarChar(255), firstName)
       .input("lastName", sql.NVarChar(255), lastName)
-      .input("phone", sql.NVarChar(50), phone || null).query(`
+      .input("phone", sql.NVarChar(50), phone || null)
+      .input("ID_Role", sql.Int, ID_Role)
+      .query(`
         UPDATE Users
         SET First_Name = @firstName,
             Last_Name = @lastName,
-            Phone = @phone
+            Phone = @phone,
+            ID_Role = @ID_Role
         WHERE ID_User = @id
       `);
 
@@ -120,6 +123,7 @@ exports.updateEmployeeProfile = async (req, res) => {
     res.status(500).json({ message: "Ошибка при обновлении профиля" });
   }
 };
+
 
 const path = require("path");
 const multer = require("multer");
@@ -233,7 +237,6 @@ exports.getAllEmployeesFull = async (req, res) => {
 exports.getAllEmployeesExtended = async (req, res) => {
   try {
     await poolConnect;
-
     const result = await pool.request().query(`
       SELECT 
         U.ID_User,
@@ -242,15 +245,18 @@ exports.getAllEmployeesExtended = async (req, res) => {
         U.Email,
         U.Phone,
         U.Avatar,
-        U.Archived, -- ✅ добавлено
+        U.Archived,
 
-        -- Роли
-        ISNULL((
-          SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
-          FROM TeamMembers TM
-          JOIN Teams T ON TM.ID_Team = T.ID_Team
-          WHERE TM.ID_User = U.ID_User
-        ), '–') AS Roles,
+        -- 🎯 Роли
+        CASE 
+          WHEN U.ID_Role = 1 THEN R.Role_Name
+          ELSE ISNULL((
+            SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
+            FROM TeamMembers TM
+            JOIN Teams T ON TM.ID_Team = T.ID_Team
+            WHERE TM.ID_User = U.ID_User
+          ), '–')
+        END AS Roles,
 
         -- Команды
         ISNULL((
@@ -281,19 +287,17 @@ exports.getAllEmployeesExtended = async (req, res) => {
         ), '–') AS Tasks
 
       FROM Users U
+      LEFT JOIN Roles R ON U.ID_Role = R.ID_Role
     `);
 
     res.json(result.recordset);
   } catch (err) {
-    console.error(
-      "Ошибка при получении расширенной информации о сотрудниках:",
-      err
-    );
-    res
-      .status(500)
-      .json({ message: "Ошибка сервера при получении сотрудников" });
+    console.error("Ошибка при получении расширенной информации:", err);
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 };
+
+
 
 // back/controllers/employees.controller.js
 // Получить профиль сотрудника по ID
@@ -464,5 +468,40 @@ exports.getEmployeesByTeam = async (req, res) => {
   } catch (error) {
     console.error('Ошибка при получении сотрудников команды:', error);
     res.status(500).json({ message: 'Ошибка при получении сотрудников команды' });
+  }
+};
+
+// Удалить сотрудника (и уведомления)
+exports.deleteEmployee = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await poolConnect;
+
+    // 🔎 Найти Email пользователя
+    const userResult = await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("SELECT Email FROM Users WHERE ID_User = @ID_User");
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
+
+    const userEmail = userResult.recordset[0].Email;
+
+    // 🗑️ Удалить уведомления пользователя
+    await pool.request()
+      .input("UserEmail", sql.NVarChar, userEmail)
+      .query("DELETE FROM Notifications WHERE UserEmail = @UserEmail");
+
+    // 🗑️ Удалить самого пользователя
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("DELETE FROM Users WHERE ID_User = @ID_User");
+
+    res.json({ message: "Пользователь и связанные уведомления успешно удалены" });
+  } catch (error) {
+    console.error("Ошибка при удалении пользователя:", error);
+    res.status(500).json({ message: "Ошибка сервера при удалении пользователя" });
   }
 };

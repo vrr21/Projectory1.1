@@ -3,6 +3,7 @@ const router = express.Router();
 const path = require('path');
 const multer = require('multer');
 const { poolConnect, pool, sql } = require('../config/db');
+const employeesController = require('../controllers/employees.controller');  // 🟢 Импортируем весь контроллер целиком
 const {
   updateEmployeeProfile,
   uploadAvatar,
@@ -11,8 +12,8 @@ const {
   getAllEmployeesExtended,
   getEmployeeById,
   getTasksByEmployee,
-  getEmployeesByTeam // ✅ добавлен импорт
-} = require('../controllers/employees.controller');
+  getEmployeesByTeam
+} = employeesController;  // 🟢 Деструктурируем нужные методы
 const { getExtendedEmployees } = require('../controllers/employeesExtended.controller');
 
 // Настройка хранилища для multer
@@ -97,6 +98,8 @@ router.get('/:id/tasks', getTasksByEmployee);
 
 // 👤 Получение одного сотрудника по ID
 router.get('/:id', getEmployeeById);
-router.get('/by-team', getEmployeesByTeam);
+
+// ❌ Удаление пользователя (с каскадной очисткой уведомлений)
+router.delete('/users/:id', employeesController.deleteEmployee);  // 🟢 Теперь работает!
 
 module.exports = router;

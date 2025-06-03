@@ -87,12 +87,11 @@ const EmployeeDashboard = () => {
     } else {
       document.body.classList.remove("sidebar-collapsed");
     }
-  
+
     // Возвращаем отступы в нормальное состояние при монтировании компонента
     return () => document.body.classList.remove("sidebar-collapsed");
-  
   }, [sidebarCollapsed]);
-  
+
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Только потом объявлять filteredTasks
@@ -266,35 +265,30 @@ const EmployeeDashboard = () => {
       const url = `${API_URL}/api/tasks?employee=${user?.id}`;
       const response = await fetch(url);
       const data: Task[] = await response.json();
-  
+
       const grouped: Record<string, Task[]> = {};
       statuses.forEach((status) => {
-        grouped[status] = data
-          .filter(
-            (task) =>
-              task.Status_Name === status &&
-              task.Employees.some(
-                (emp) => emp.ID_Employee === user?.id
-              )
-          );
+        grouped[status] = data.filter(
+          (task) =>
+            task.Status_Name === status &&
+            task.Employees.some((emp) => emp.ID_Employee === user?.id)
+        );
       });
       setColumns(grouped);
     } catch {
       messageApi.error("Не удалось загрузить задачи");
     }
   }, [user?.id, messageApi]);
-  
 
   useEffect(() => {
     fetchTasks(); // первая загрузка
-  
+
     const interval = setInterval(() => {
       fetchTasks(); // периодическая проверка
     }, 10000); // каждые 10 сек
-  
+
     return () => clearInterval(interval); // очистка при размонтировании
   }, [fetchTasks]);
-  
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, source } = result;
@@ -347,6 +341,42 @@ const EmployeeDashboard = () => {
         ))}
       </Avatar.Group>
     );
+  };
+
+  
+  const getDeadlineStatus = (task: Task) => {
+    const now = dayjs();
+    if (!task.Deadline) {
+      return { label: "Без срока" };
+    }
+
+    const deadline = dayjs(task.Deadline);
+    const isExpired = deadline.isBefore(now);
+    const isSoon = deadline.diff(now, "hour") <= 24;
+
+    if (task.Status_Name === "Выполнена") {
+      return { label: "Выполнена" };
+    }
+
+    if (task.Status_Name === "Завершена") {
+      return { label: "Завершена" };
+    }
+
+    if (isExpired) {
+      return { label: "Срок истёк", color: "red" };
+    }
+
+    if (isSoon) {
+      return {
+        label: ` ${deadline.diff(now, "hour")} ч.`,
+        color: "#b28a00",
+      };
+    }
+
+    return {
+      label: ` ${deadline.diff(now, "day")} дн.`,
+      color: "#388e3c",
+    };
   };
 
   const confirmDragAction = async (result: DropResult) => {
@@ -506,73 +536,14 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const renderDeadlineBox = (task: Task) => {
-    const now = dayjs();
-    if (task.Status_Name === "Выполнена") {
-      return (
-        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
-          <ClockCircleOutlined />
-          Выполнено
-        </div>
-      );
-    }
-  
-    if (task.Status_Name === "Завершена") {
-      if (!task.Deadline || dayjs(task.Deadline).isBefore(now)) {
-        return (
-          <div style={{ marginTop: 8, fontSize: "13px", color: "red", display: "flex", alignItems: "center", gap: 6 }}>
-            <ClockCircleOutlined />
-            Срок истёк
-          </div>
-        );
-      } else {
-        return (
-          <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
-            <ClockCircleOutlined />
-            Завершено
-          </div>
-        );
-      }
-    }
-  
-    if (!task.Deadline) {
-      return (
-        <div style={{ marginTop: 8, fontSize: "13px", color: "#aaa", display: "flex", alignItems: "center", gap: 6 }}>
-          <ClockCircleOutlined />
-          Без срока
-        </div>
-      );
-    }
-  
-    const deadline = dayjs(task.Deadline);
-    const isExpired = deadline.isBefore(now);
-    const isSoon = deadline.diff(now, "hour") <= 24;
-  
-    return (
-      <div style={{
-        marginTop: 8,
-        fontSize: "13px",
-        color: isExpired ? "red" : isSoon ? "#ffc107" : "#52c41a",
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-      }}>
-        <ClockCircleOutlined />
-        {isExpired
-          ? "Срок истёк"
-          : `Дедлайн: ${deadline.format("YYYY-MM-DD HH:mm")}`}
-      </div>
-    );
-  };
-  
-  
+
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <App>
         <div className="dashboard">
           <HeaderEmployee />
           <div className="dashboard-body">
-          <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
+            <Sidebar role="employee" onCollapse={setSidebarCollapsed} />
 
             <main className="main-content kanban-board">
               <h1
@@ -769,29 +740,86 @@ const EmployeeDashboard = () => {
                                                     )}
                                                   </div>
 
-                                                  {renderDeadlineBox(task)}
+                                                  <div
+  style={{
+    marginTop: 8,
+    fontSize: "13px",
+    fontStyle: "italic",
+    color: "#bbb",
+  }}
+>
+  Дедлайн:{" "}
+  <span
+    style={{
+      color: "#52c41a",
+      fontWeight: "bold",
+    }}
+  >
+    {task.Deadline
+      ? dayjs(task.Deadline).format("DD.MM.YYYY HH:mm")
+      : "Без срока"}
+  </span>
+</div>
 
-                                                  {/* Кнопки просмотров и комментариев — отдельно ниже */}
-                                                  <div className="task-footer">
-                                                    <Button
-                                                      type="text"
-                                                      icon={<EyeOutlined />}
-                                                      onClick={() =>
-                                                        openViewModal(task)
-                                                      }
+
+                                                  <div
+                                                    className="task-footer"
+                                                    style={{
+                                                      display: "flex",
+                                                      justifyContent:
+                                                        "space-between",
+                                                      alignItems: "center",
+                                                    }}
+                                                  >
+                                                    <div>
+                                                      <Button
+                                                        type="text"
+                                                        icon={<EyeOutlined />}
+                                                        onClick={() =>
+                                                          openViewModal(task)
+                                                        }
+                                                        style={{
+                                                          padding: 0,
+                                                          marginRight: 8,
+                                                        }}
+                                                      />
+                                                      <Button
+                                                        type="text"
+                                                        icon={
+                                                          <MessageOutlined />
+                                                        }
+                                                        onClick={() =>
+                                                          openCommentsModal(
+                                                            task
+                                                          )
+                                                        }
+                                                        style={{ padding: 0 }}
+                                                      />
+                                                    </div>
+                                                    <div
                                                       style={{
-                                                        padding: 0,
-                                                        marginRight: 8,
+                                                        backgroundColor:
+                                                          getDeadlineStatus(
+                                                            task
+                                                          ).color,
+                                                        color: "#fff",
+                                                        borderRadius: "4px",
+                                                        padding: "2px 6px",
+                                                        fontSize: "12px",
+                                                        minWidth: "90px",
+                                                        textAlign: "center",
                                                       }}
-                                                    />
-                                                    <Button
-                                                      type="text"
-                                                      icon={<MessageOutlined />}
-                                                      onClick={() =>
-                                                        openCommentsModal(task)
+                                                    >
+                                                      <ClockCircleOutlined
+                                                        style={{
+                                                          marginRight: 4,
+                                                        }}
+                                                      />
+                                                      {
+                                                        getDeadlineStatus(task)
+                                                          .label
                                                       }
-                                                      style={{ padding: 0 }}
-                                                    />
+                                                    </div>
                                                   </div>
                                                 </div>
                                               </div>
@@ -1029,139 +1057,152 @@ const EmployeeDashboard = () => {
                   <>
                     <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
                     <List
-  className="comment-list"
-  header={`${comments.length} комментариев`}
-  itemLayout="horizontal"
-  dataSource={comments}
-  renderItem={(item: CommentType) => (
-    <List.Item>
-      <List.Item.Meta
-        avatar={
-          <Avatar
-            src={
-              item.Avatar
-                ? `${API_URL}/uploads/${item.Avatar}`
-                : undefined
-            }
-            style={{
-              backgroundColor: item.Avatar ? "transparent" : "#777",
-            }}
-          >
-            {!item.Avatar && getInitials(item.AuthorName || "")}
-          </Avatar>
-        }
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap", // 👈 Добавляем перенос, если не хватает места
-              gap: "8px",
-              width: "100%",
-            }}
-          >
-            <span
-              style={{
-                fontWeight: 600,
-                color: "#fff",
-                whiteSpace: "normal", // 👈 Разрешаем перенос текста
-                wordBreak: "break-word",
-                flex: "1 1 auto", // 👈 Имя автора может занимать доступное место
-              }}
-            >
-              {item.AuthorName}
-            </span>
-            <span
-              style={{
-                fontSize: 12,
-                color: "#999",
-                whiteSpace: "nowrap", // 👈 Дата не переносится
-                flexShrink: 0, // 👈 Дата не сжимается
-              }}
-            >
-              {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
-            </span>
-          </div>
-        }
-        description={
-          <>
-            {editingCommentId === item.ID_Comment ? (
-              <Input.TextArea
-                value={editingCommentText}
-                onChange={(e) => setEditingCommentText(e.target.value)}
-                autoSize
-              />
-            ) : (
-              <div
-                className="comment-text"
-                style={{
-                  color: "#fff",
-                  whiteSpace: "normal", // 👈 Разрешаем перенос текста
-                  wordBreak: "break-word",
-                }}
-              >
-                {item.CommentText
-                  .replace(/(\r\n|\n|\r)/g, " ")
-                  .trim()}
-              </div>
-            )}
+                      className="comment-list"
+                      header={`${comments.length} комментариев`}
+                      itemLayout="horizontal"
+                      dataSource={comments}
+                      renderItem={(item: CommentType) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={
+                              <Avatar
+                                src={
+                                  item.Avatar
+                                    ? `${API_URL}/uploads/${item.Avatar}`
+                                    : undefined
+                                }
+                                style={{
+                                  backgroundColor: item.Avatar
+                                    ? "transparent"
+                                    : "#777",
+                                }}
+                              >
+                                {!item.Avatar &&
+                                  getInitials(item.AuthorName || "")}
+                              </Avatar>
+                            }
+                            title={
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  flexWrap: "wrap", // 👈 Добавляем перенос, если не хватает места
+                                  gap: "8px",
+                                  width: "100%",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    color: "#fff",
+                                    whiteSpace: "normal", // 👈 Разрешаем перенос текста
+                                    wordBreak: "break-word",
+                                    flex: "1 1 auto", // 👈 Имя автора может занимать доступное место
+                                  }}
+                                >
+                                  {item.AuthorName}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 12,
+                                    color: "#999",
+                                    whiteSpace: "nowrap", // 👈 Дата не переносится
+                                    flexShrink: 0, // 👈 Дата не сжимается
+                                  }}
+                                >
+                                  {dayjs(item.Created_At).format(
+                                    "YYYY-MM-DD HH:mm"
+                                  )}
+                                </span>
+                              </div>
+                            }
+                            description={
+                              <>
+                                {editingCommentId === item.ID_Comment ? (
+                                  <Input.TextArea
+                                    value={editingCommentText}
+                                    onChange={(e) =>
+                                      setEditingCommentText(e.target.value)
+                                    }
+                                    autoSize
+                                  />
+                                ) : (
+                                  <div
+                                    className="comment-text"
+                                    style={{
+                                      color: "#fff",
+                                      whiteSpace: "normal", // 👈 Разрешаем перенос текста
+                                      wordBreak: "break-word",
+                                    }}
+                                  >
+                                    {item.CommentText.replace(
+                                      /(\r\n|\n|\r)/g,
+                                      " "
+                                    ).trim()}
+                                  </div>
+                                )}
 
-            <div
-              style={{
-                marginTop: 8,
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: 8,
-              }}
-            >
-              {editingCommentId === item.ID_Comment ? (
-                <>
-                  <Button
-                    type="primary"
-                    size="small"
-                    style={{ color: "#fff" }}
-                    onClick={() => handleUpdateComment()}
-                  >
-                    Сохранить
-                  </Button>
-                  <Button
-                    size="small"
-                    style={{ color: "#fff" }}
-                    onClick={() => setEditingCommentId(null)}
-                  >
-                    Отмена
-                  </Button>
-                </>
-              ) : (
-                item.ID_User === user?.id && (
-                  <>
-                   <Button
-  type="link"
-  size="small"
-  style={{ color: "#fff" }}
-  onClick={() => startEditingComment(item)}
-  icon={<EditOutlined />}
-/>
-<Button
-  type="link"
-  size="small"
-  style={{ color: "#fff" }}
-  danger
-  onClick={() => handleDeleteComment(item.ID_Comment)}
-  icon={<DeleteOutlined />}
-/>
-
-                  </>
-                )
-              )}
-            </div>
-          </>
-        }
-      />
-    </List.Item>
-  )}
-/>
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    display: "flex",
+                                    justifyContent: "flex-end",
+                                    gap: 8,
+                                  }}
+                                >
+                                  {editingCommentId === item.ID_Comment ? (
+                                    <>
+                                      <Button
+                                        type="primary"
+                                        size="small"
+                                        style={{ color: "#fff" }}
+                                        onClick={() => handleUpdateComment()}
+                                      >
+                                        Сохранить
+                                      </Button>
+                                      <Button
+                                        size="small"
+                                        style={{ color: "#fff" }}
+                                        onClick={() =>
+                                          setEditingCommentId(null)
+                                        }
+                                      >
+                                        Отмена
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    item.ID_User === user?.id && (
+                                      <>
+                                        <Button
+                                          type="link"
+                                          size="small"
+                                          style={{ color: "#fff" }}
+                                          onClick={() =>
+                                            startEditingComment(item)
+                                          }
+                                          icon={<EditOutlined />}
+                                        />
+                                        <Button
+                                          type="link"
+                                          size="small"
+                                          style={{ color: "#fff" }}
+                                          danger
+                                          onClick={() =>
+                                            handleDeleteComment(item.ID_Comment)
+                                          }
+                                          icon={<DeleteOutlined />}
+                                        />
+                                      </>
+                                    )
+                                  )}
+                                </div>
+                              </>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                    />
                     <Input.TextArea
                       rows={3}
                       value={newComment}

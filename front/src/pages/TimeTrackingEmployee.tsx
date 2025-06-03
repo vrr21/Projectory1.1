@@ -21,7 +21,7 @@ import {
   RightOutlined,
   CalendarOutlined,
 } from "@ant-design/icons";
-
+import { Tabs, Table } from "antd";
 import { UploadFile } from "antd/es/upload/interface";
 import HeaderEmployee from "../components/HeaderEmployee";
 import Sidebar from "../components/Sidebar";
@@ -81,7 +81,8 @@ interface RawTimeEntry {
   Description?: string;
   Attachments?: string[];
   ID_User: string;
-  link?: string; // Добавлено свойство link
+  link?: string;
+  Hours_Spent_Total?: number;
 }
 
 interface CommentType {
@@ -254,8 +255,18 @@ const TimeTrackingEmployee: React.FC = () => {
 
     const totalHours = (values.hours || 0) + (values.minutes || 0) / 60;
 
+    const selectedTask = tasks.find((t) => t.ID_Task === values.taskName);
+    const projectId = selectedTask?.ID_Order;
+
+    if (!projectId) {
+      api.error({
+        message: "Не удалось определить проект для выбранной задачи.",
+      });
+      return;
+    }
+
     const payload = {
-      project: values.project,
+      project: projectId,
       taskName: values.taskName,
       date: values.date.toISOString(),
       description: values.description,
@@ -396,6 +407,8 @@ const TimeTrackingEmployee: React.FC = () => {
               >
                 Учёт времени
               </h1>
+
+              {/* 👉 Фильтры и кнопки */}
               <div
                 style={{
                   display: "flex",
@@ -404,7 +417,7 @@ const TimeTrackingEmployee: React.FC = () => {
                   flexWrap: "wrap",
                   gap: "1rem",
                   width: "100%",
-                  padding: "24px 0", // отступ сверху и снизу
+                  padding: "24px 0",
                 }}
               >
                 {/* Левая часть — кнопка добавления */}
@@ -414,7 +427,6 @@ const TimeTrackingEmployee: React.FC = () => {
                   onClick={() => {
                     form.resetFields();
                     setEditingEntry(null);
-
                     setIsModalVisible(true);
                   }}
                 >
@@ -488,69 +500,127 @@ const TimeTrackingEmployee: React.FC = () => {
                 </div>
               </div>
 
-              <div className="horizontal-columns">
-                {getWeekDays().map((day) => (
-                  <div key={day.toString()} className="horizontal-column">
-                    <div className="day-header">
-                      {weekDaysRu[day.isoWeekday() - 1]}
-                    </div>
-                    <div className="day-date">{day.format("DD.MM")}</div>
-                    <div className="card-stack">
-                      {getFilteredEntriesByDay(day)
-                        .filter((entry) => entry.ID_User === user?.id)
-                        .map((entry) => (
-                          <div key={entry.ID_Execution} className="entry-card">
-                            <div>
-                              <b>{entry.Task_Name}</b>
-                              <div>Проект: {entry.Order_Name}</div>
-                              <div>{entry.Hours_Spent} ч</div>
-                            </div>
-
-                            <div
-                              style={{
-                                marginTop: 8,
-                                display: "flex",
-                                gap: 8,
-                                flexWrap: "wrap",
-                              }}
-                            >
-                              <Tooltip title="Просмотр">
-                                <Button
-                                  icon={<EyeOutlined />}
-                                  onClick={() => handleViewEntry(entry)}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Редактировать">
-                                <Button
-                                  icon={<EditOutlined />}
-                                  onClick={() => handleEdit(entry)}
-                                />
-                              </Tooltip>
-                              <Tooltip title="Удалить">
-                                <Button
-                                  icon={<DeleteOutlined />}
-                                  danger
-                                  onClick={() =>
-                                    handleDelete(entry.ID_Execution)
-                                  }
-                                />
-                              </Tooltip>
-                              <Tooltip title="Комментарии">
-                                <Button
-                                  icon={<MessageOutlined />}
-                                  onClick={() => openCommentsModal(entry)}
-                                />
-                              </Tooltip>
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+              {/* 👉 Вкладки */}
+              <Tabs defaultActiveKey="cards" type="card">
+                {/* 🗂️ Вкладка Карточки */}
+                <Tabs.TabPane tab="Карточки" key="cards">
+                  <div className="horizontal-columns">
+                    {getWeekDays().map((day) => (
+                      <div key={day.toString()} className="horizontal-column">
+                        <div className="day-header">
+                          {weekDaysRu[day.isoWeekday() - 1]}
+                        </div>
+                        <div className="day-date">{day.format("DD.MM")}</div>
+                        <div className="card-stack">
+                          {getFilteredEntriesByDay(day)
+                            .filter((entry) => entry.ID_User === user?.id)
+                            .map((entry) => (
+                              <div
+                                key={entry.ID_Execution}
+                                className="entry-card"
+                              >
+                                <div>
+                                  <b>{entry.Task_Name}</b>
+                                  <div>Проект: {entry.Order_Name}</div>
+                                  <div>{entry.Hours_Spent} ч</div>
+                                  <div>
+                                    Потрачено всего:{" "}
+                                    {entry.Hours_Spent_Total ?? "-"} ч
+                                  </div>
+                                </div>
+                                <div
+                                  style={{
+                                    marginTop: 8,
+                                    display: "flex",
+                                    gap: 8,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  <Tooltip title="Просмотр">
+                                    <Button
+                                      icon={<EyeOutlined />}
+                                      onClick={() => handleViewEntry(entry)}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Редактировать">
+                                    <Button
+                                      icon={<EditOutlined />}
+                                      onClick={() => handleEdit(entry)}
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Удалить">
+                                    <Button
+                                      icon={<DeleteOutlined />}
+                                      danger
+                                      onClick={() =>
+                                        handleDelete(entry.ID_Execution)
+                                      }
+                                    />
+                                  </Tooltip>
+                                  <Tooltip title="Комментарии">
+                                    <Button
+                                      icon={<MessageOutlined />}
+                                      onClick={() => openCommentsModal(entry)}
+                                    />
+                                  </Tooltip>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </Tabs.TabPane>
+
+                {/* 🗂️ Вкладка Таблица */}
+                <Tabs.TabPane tab="Таблица" key="table">
+                  <Table
+                    dataSource={timeEntries.filter(
+                      (entry) => entry.ID_User === user?.id
+                    )}
+                    rowKey="ID_Execution"
+                    pagination={{ pageSize: 10 }}
+                    columns={[
+                      { title: "Задача", dataIndex: "Task_Name", key: "task" },
+                      {
+                        title: "Проект",
+                        dataIndex: "Order_Name",
+                        key: "order",
+                      },
+                      {
+                        title: "Начало",
+                        dataIndex: "Start_Date",
+                        key: "start",
+                        render: (date: string) =>
+                          dayjs(date).format("DD.MM.YYYY HH:mm"),
+                      },
+                      {
+                        title: "Окончание",
+                        dataIndex: "End_Date",
+                        key: "end",
+                        render: (date: string) =>
+                          dayjs(date).format("DD.MM.YYYY HH:mm"),
+                      },
+                      {
+                        title: "Потрачено (запись)",
+                        dataIndex: "Hours_Spent",
+                        key: "hours",
+                      },
+                      {
+                        title: "Потрачено всего",
+                        dataIndex: "Hours_Spent_Total",
+                        key: "total",
+                        render: (val: number | undefined) => (val ? val : "-"),
+                      },
+                    ]}
+                  />
+                </Tabs.TabPane>
+              </Tabs>
 
               <Modal
-                title={editingEntry ? "Редактировать" : "Добавить потраченное время"}
+                title={
+                  editingEntry ? "Редактировать" : "Добавить потраченное время"
+                }
                 open={isModalVisible}
                 onCancel={() => setIsModalVisible(false)}
                 footer={[
@@ -566,47 +636,46 @@ const TimeTrackingEmployee: React.FC = () => {
                   </Button>,
                 ]}
               >
-                <Form
-                  form={form}
-                  layout="vertical"
-                  onFinish={handleFormSubmit}
-                  onValuesChange={(changedValues) => {
-                    if (changedValues.project) {
-                      form.setFieldsValue({ taskName: undefined }); // сброс задачи
-                    }
-                  }}
-                >
-                  <Form.Item
-                    name="project"
-                    label="Проект"
-                    rules={[{ required: true }]}
-                  >
-                    <Select placeholder="Выберите проект">
-                      {projects.map((p) => (
-                        <Select.Option key={p.ID_Order} value={p.ID_Order}>
-                          {p.Order_Name}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
+                <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
+                  {form.getFieldValue("taskName") && (
+                    <Form.Item label="Проект">
+                      <Input
+                        value={(() => {
+                          const selectedTask = tasks.find(
+                            (t) => t.ID_Task === form.getFieldValue("taskName")
+                          );
+                          const project = projects.find(
+                            (p) => p.ID_Order === selectedTask?.ID_Order
+                          );
+                          return project?.Order_Name || "-";
+                        })()}
+                        readOnly
+                      />
+                    </Form.Item>
+                  )}
 
                   <Form.Item
                     name="taskName"
                     label="Задача"
                     rules={[{ required: true }]}
                   >
-                    <Select placeholder="Выберите задачу">
-                      {tasks
-                        .filter(
-                          (task) =>
-                            task.ID_Order === form.getFieldValue("project")
-                        )
-
-                        .map((t) => (
-                          <Select.Option key={t.ID_Task} value={t.ID_Task}>
-                            {t.Task_Name}
-                          </Select.Option>
-                        ))}
+                    <Select
+                      placeholder="Выберите задачу"
+                      onChange={(taskId) => {
+                        const selectedTask = tasks.find(
+                          (t) => t.ID_Task === taskId
+                        );
+                        form.setFieldsValue({
+                          taskName: taskId,
+                          project: selectedTask?.ID_Order,
+                        });
+                      }}
+                    >
+                      {tasks.map((t) => (
+                        <Select.Option key={t.ID_Task} value={t.ID_Task}>
+                          {t.Task_Name}
+                        </Select.Option>
+                      ))}
                     </Select>
                   </Form.Item>
 
@@ -779,8 +848,13 @@ const TimeTrackingEmployee: React.FC = () => {
                       {dayjs(viewingEntry.End_Date).format("DD.MM.YYYY HH:mm")}
                     </p>
                     <p>
-                      <b>Потрачено:</b> {viewingEntry.Hours_Spent} ч
+                      <b>Потрачено (запись):</b> {viewingEntry.Hours_Spent} ч
                     </p>
+                    <p>
+                      <b>Потрачено всего:</b>{" "}
+                      {viewingEntry.Hours_Spent_Total ?? "-"} ч
+                    </p>{" "}
+                    {/* 🟢 Добавляем */}
                     {viewingEntry.Description && (
                       <p>
                         <b>Описание:</b> {viewingEntry.Description}

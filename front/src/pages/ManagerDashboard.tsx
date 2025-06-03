@@ -72,7 +72,9 @@ interface Task {
   Time_Norm?: number;
   Team_Name?: string;
   Is_Archived?: boolean;
-  attachments?: string[]; // 👈 добавляем сюда!
+  attachments?: string[]; 
+  OverdueCompleted?: number;
+
 }
 
 interface CreateTaskFormValues {
@@ -514,6 +516,17 @@ const ManagerDashboard: React.FC = () => {
         })),
       }));
 
+      // 🔥 Проверяем дедлайн и обновляем статус если просрочено
+      for (const task of normalized) {
+        if (
+          task.Status_Name !== "Завершена" &&
+          task.Deadline &&
+          dayjs(task.Deadline).isBefore(dayjs())
+        ) {
+          await updateTaskStatus(task.ID_Task, "Завершена");
+        }
+      }
+
       setTasks(normalized);
     } catch (err) {
       console.error(err);
@@ -749,34 +762,76 @@ const ManagerDashboard: React.FC = () => {
   };
 
   const getDeadlineStatus = (deadline?: string | null, status?: string) => {
-    if (!deadline || !status) return null;
-
-    if (["Выполнена", "Завершена"].includes(status)) {
+    if (!deadline || !status) {
       return {
-        label: status,
-        color: "#4caf50", // зелёный
+        label: (
+          <>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            Без срока
+          </>
+        ),
+        color: "#aaa",
       };
     }
-
+  
+    if (status === "Завершена" || status === "Выполнена") {
+      // Без иконки для статусов Завершена и Выполнена
+      return {
+        label: status,
+        color: "#aaa",
+      };
+    }
+  
     const now = dayjs();
     const end = dayjs(deadline);
-    const diffDays = end.diff(now, "day");
+  
+    if (end.isBefore(now)) {
+      return {
+        label: (
+          <>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            Срок истёк
+          </>
+        ),
+        color: "#f44336",
+      };
+    }
+  
     const diffMinutes = end.diff(now, "minute");
-
-    if (diffDays < 0) {
-      return { label: "Просрочено", color: "#f44336" }; // красный
-    } else if (diffDays < 1) {
-      // Меньше суток
+    const diffDays = end.diff(now, "day");
+  
+    if (diffDays < 1) {
       const hours = Math.floor(diffMinutes / 60);
       const minutes = diffMinutes % 60;
       return {
-        label: `${hours} ч. ${minutes} мин.`,
-        color: "#ff9800", // жёлтый
+        label: (
+          <>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            {hours} ч. {minutes} мин.
+          </>
+        ),
+        color: "#b28a00",
       };
     } else if (diffDays <= 3) {
-      return { label: `${diffDays} дн.`, color: "#ff9800" }; // жёлтый
+      return {
+        label: (
+          <>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            {diffDays} дн.
+          </>
+        ),
+        color: "#b28a00",
+      };
     } else {
-      return { label: `${diffDays} дн.`, color: "#4caf50" }; // зелёный
+      return {
+        label: (
+          <>
+            <ClockCircleOutlined style={{ marginRight: 4 }} />
+            {diffDays} дн.
+          </>
+        ),
+        color: "#388e3c",
+      };
     }
   };
 
@@ -904,6 +959,16 @@ const ManagerDashboard: React.FC = () => {
                               <div className="kanban-task-content">
                                 <strong>{task.Task_Name}</strong>
                                 <p>{task.Description}</p>
+                                {task.OverdueCompleted === 1 && (
+                                  <span
+                                    style={{
+                                      color: "#f44336",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    Срок истёк!
+                                  </span>
+                                )}
                                 <p>
                                   <i>Проект:</i> {task.Order_Name}
                                 </p>
@@ -1022,7 +1087,7 @@ const ManagerDashboard: React.FC = () => {
                                   Дедлайн:{" "}
                                   <span
                                     style={{
-                                      color: "#09d0a0",
+                                      color: "#52c41a",
                                       fontWeight: "bold",
                                     }}
                                   >
@@ -1095,12 +1160,6 @@ const ManagerDashboard: React.FC = () => {
                                       alignItems: "center",
                                       justifyContent: "center",
                                       gap: "4px",
-                                      border: [
-                                        "Выполнена",
-                                        "Завершена",
-                                      ].includes(task.Status_Name)
-                                        ? "1px solid #ccc"
-                                        : "none",
                                     }}
                                   >
                                     {["Выполнена", "Завершена"].includes(
@@ -1868,69 +1927,70 @@ const ManagerDashboard: React.FC = () => {
                       </div>
 
                       {item.ID_User === user?.id && (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "flex-end", // перемещаем вправо
-      alignItems: "center",
-      gap: 8,
-      marginTop: 8,
-    }}
-  >
-    {editingCommentId === item.ID_Comment ? (
-      <>
-        <Button
-          type="primary"
-          size="small"
-          onClick={handleUpdateComment}
-          style={{ border: "none", boxShadow: "none" }}
-        >
-          Сохранить
-        </Button>
-        <Button
-          size="small"
-          onClick={() => {
-            setEditingCommentId(null);
-            setEditingCommentText("");
-          }}
-          style={{ border: "none", boxShadow: "none" }}
-        >
-          Отмена
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button
-          type="link"
-          size="small"
-          style={{
-            color: "#fff",
-            border: "none",
-            boxShadow: "none",
-          }}
-          onClick={() => {
-            setEditingCommentId(item.ID_Comment);
-            setEditingCommentText(item.CommentText);
-          }}
-          icon={<EditOutlined />}
-        />
-        <Button
-          type="link"
-          size="small"
-          style={{
-            color: "#fff",
-            border: "none",
-            boxShadow: "none",
-          }}
-          danger
-          onClick={() => handleDeleteComment(item.ID_Comment)}
-          icon={<DeleteOutlined />}
-        />
-      </>
-    )}
-  </div>
-)}
-
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "flex-end", // перемещаем вправо
+                            alignItems: "center",
+                            gap: 8,
+                            marginTop: 8,
+                          }}
+                        >
+                          {editingCommentId === item.ID_Comment ? (
+                            <>
+                              <Button
+                                type="primary"
+                                size="small"
+                                onClick={handleUpdateComment}
+                                style={{ border: "none", boxShadow: "none" }}
+                              >
+                                Сохранить
+                              </Button>
+                              <Button
+                                size="small"
+                                onClick={() => {
+                                  setEditingCommentId(null);
+                                  setEditingCommentText("");
+                                }}
+                                style={{ border: "none", boxShadow: "none" }}
+                              >
+                                Отмена
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                type="link"
+                                size="small"
+                                style={{
+                                  color: "#fff",
+                                  border: "none",
+                                  boxShadow: "none",
+                                }}
+                                onClick={() => {
+                                  setEditingCommentId(item.ID_Comment);
+                                  setEditingCommentText(item.CommentText);
+                                }}
+                                icon={<EditOutlined />}
+                              />
+                              <Button
+                                type="link"
+                                size="small"
+                                style={{
+                                  color: "#fff",
+                                  border: "none",
+                                  boxShadow: "none",
+                                }}
+                                danger
+                                onClick={() =>
+                                  handleDeleteComment(item.ID_Comment)
+                                }
+                                icon={<DeleteOutlined />}
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
                     </>
                   }
                 />
