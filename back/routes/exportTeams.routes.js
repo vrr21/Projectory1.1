@@ -5,6 +5,7 @@ const exportTeamsController = require('../controllers/exportTeams.controller');
 
 router.post('/', exportTeamsController.exportTeams);
 router.post('/teams/custom', exportTeamsController.exportTeams);
+router.get('/', exportTeamsController.exportTeams);
 
 
 module.exports = router;

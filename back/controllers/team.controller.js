@@ -272,6 +272,7 @@ const restoreTeam = async (req, res) => {
     res.status(500).json({ message: 'Ошибка при восстановлении команды' });
   }
 };
+
 // Создание команды с участниками
 const createTeamWithMembers = async (req, res) => {
   try {
@@ -321,6 +322,8 @@ const createTeamWithMembers = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при создании команды с участниками' });
   }
 };
+
+
 const archiveTeamWithProjectsAndTasks = async (req, res) => {
   await poolConnect;
   const transaction = new sql.Transaction(pool);

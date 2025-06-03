@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
-  Layout,
   Button,
   Table,
   Modal,
@@ -11,24 +10,23 @@ import {
   ConfigProvider,
   theme,
   App as AntdApp,
-  Dropdown,
 } from "antd";
+import type { ColumnsType } from "antd/es/table";
 import {
   EditOutlined,
   DeleteOutlined,
   DownloadOutlined,
   InboxOutlined,
   ReloadOutlined,
-  PlusOutlined,
-  InfoCircleOutlined,
 } from "@ant-design/icons";
-import type { ColumnsType } from "antd/es/table";
+import { PlusOutlined } from "@ant-design/icons";
 import Header from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
 import "../styles/pages/TeamManagementPage.css";
+import { Dropdown } from "antd";
 import { theme as antdTheme } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 const { darkAlgorithm } = theme;
-const { Content } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TeamMember {
@@ -155,32 +153,33 @@ const TeamManagementPage: React.FC = () => {
 
   const handleExport = async (format: string) => {
     try {
-      const response = await fetch(`http://localhost:3002/api/export/teams`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format, teams }),
-      });
+      const exportFormat = format === "docx" ? "word" : format;
+  
+      const response = await fetch(`${API_URL}/api/export/teams?format=${exportFormat}`);
+  
       if (!response.ok) {
         throw new Error(await response.text());
       }
-
+  
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
+  
       let extension = "txt";
-
       if (format === "excel") extension = "xlsx";
       else if (format === "docx") extension = "docx";
       else if (format === "pdf") extension = "pdf";
-
+  
       a.href = url;
       a.download = `teams.${extension}`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Export failed:", error);
+      messageApi.error("Ошибка экспорта. Пожалуйста, попробуйте снова.");
     }
   };
+  
 
   const getTeamNameFilters = () => {
     const unique = Array.from(new Set(teams.map((t) => t.Team_Name)));
@@ -410,35 +409,36 @@ const TeamManagementPage: React.FC = () => {
       onFilter: (value, record) => record.members.some((m) => m.role === value),
       render: (_, team) => (
         <div>
-          {team.members.map((m) => (
-            <div key={`${team.ID_Team}-${m.ID_User ?? m.email ?? m.fullName}`}>
-              {m.fullName} ({m.role}) — {m.email}
-              <Button
-                type="link"
-                icon={<EditOutlined />}
-                size="small"
-                style={{ marginLeft: 4 }}
-                onClick={() => {
-                  setCurrentTeamId(team.ID_Team);
-                  setEditingMember(m);
-                  editMemberForm.setFieldsValue({ role: m.role });
-                  setIsEditMemberModalVisible(true);
-                }}
-              >
-                Ред.
-              </Button>
-              <Button
-                type="link"
-                danger
-                size="small"
-                onClick={() => handleDeleteMember(team.ID_Team, m.ID_User)}
-                icon={<DeleteOutlined />}
-                style={{ marginLeft: 8 }}
-              >
-                Удалить
-              </Button>
-            </div>
-          ))}
+         {team.members.map((m) => (
+  <div key={`${team.ID_Team}-${m.ID_User ?? m.email ?? m.fullName}`}>
+    {m.fullName} ({m.role}) — {m.email}
+    <Button
+      type="link"
+      icon={<EditOutlined />}
+      size="small"
+      style={{ marginLeft: 4 }}
+      onClick={() => {
+        setCurrentTeamId(team.ID_Team);
+        setEditingMember(m);
+        editMemberForm.setFieldsValue({ role: m.role });
+        setIsEditMemberModalVisible(true);
+      }}
+    >
+      Ред.
+    </Button>
+    <Button
+      type="link"
+      danger
+      size="small"
+      onClick={() => handleDeleteMember(team.ID_Team, m.ID_User)}
+      icon={<DeleteOutlined />}
+      style={{ marginLeft: 8 }}
+    >
+      Удалить
+    </Button>
+  </div>
+))}
+
         </div>
       ),
     },
@@ -554,11 +554,11 @@ const TeamManagementPage: React.FC = () => {
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       <AntdApp>
         {contextHolder}
-        <Layout className="layout">
-          <SidebarManager />
-          <Layout className="main-layout">
-            <Header />
-            <Content className="team-management-page">
+        <div className="dashboard">
+          <Header />
+          <div className="dashboard-body">
+            <SidebarManager />
+            <main className="main-content team-management-page">
               <h1
                 style={{
                   fontSize: "28px",
@@ -597,9 +597,8 @@ const TeamManagementPage: React.FC = () => {
                   <Input
                     placeholder="Поиск по всем данным..."
                     allowClear
-                    onChange={(e) =>
-                      setSearchTerm((e.target.value ?? "").toLowerCase())
-                    }
+                    onChange={(e) => setSearchTerm((e.target.value ?? "").toLowerCase())}
+
                     style={{ width: 250 }}
                   />
                   <Button
@@ -612,7 +611,7 @@ const TeamManagementPage: React.FC = () => {
                     menu={{
                       onClick: ({ key }) => handleExport(key),
                       items: [
-                        { key: "docx", label: "Экспорт в Word (.docx)" },
+                        { key: "word", label: "Экспорт в Word (.docx)" },
                         { key: "excel", label: "Экспорт в Excel (.xlsx)" },
                         { key: "pdf", label: "Экспорт в PDF (.pdf)" },
                       ],
@@ -674,20 +673,17 @@ const TeamManagementPage: React.FC = () => {
                     // Проверка: пользователь уже состоит в другой команде
                     for (const m of members) {
                       const alreadyInTeam = teams.some((team) =>
-                        team.members.some(
-                          (member) => member.ID_User === m.userId
-                        )
+                        team.members.some((member) => member.ID_User === m.userId)
                       );
                       if (alreadyInTeam) {
                         const user = users.find((u) => u.id === m.userId);
                         messageApi.error(
-                          `Сотрудник ${
-                            user?.fullName || m.userId
-                          } уже состоит в команде`
+                          `Сотрудник ${user?.fullName || m.userId} уже состоит в команде`
                         );
                         return;
                       }
                     }
+                    
 
                     const teamName = values.name.trim();
                     if (!teamName) {
@@ -1073,9 +1069,9 @@ const TeamManagementPage: React.FC = () => {
                   </Form.Item>
                 </Form>
               </Modal>
-            </Content>
-          </Layout>
-        </Layout>
+            </main>
+          </div>
+        </div>
       </AntdApp>
     </ConfigProvider>
   );

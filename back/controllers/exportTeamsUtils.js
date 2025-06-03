@@ -1,19 +1,12 @@
 const fetch = require('node-fetch');
 const ExcelJS = require('exceljs');
 const puppeteer = require('puppeteer');
-const { 
-  Document, 
-  Packer, 
-  Paragraph, 
-  Table, 
-  TableRow, 
-  TableCell, 
-  TextRun, 
-  VerticalAlign,
-  AlignmentType,
-  WidthType,
-  PageOrientation 
+const {
+  Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, VerticalAlign, WidthType, PageOrientation
 } = require('docx');
+
+
+// дальше твой код
 
 // 🔧 Форматирование списка участников
 function formatMembers(members) {
@@ -142,7 +135,6 @@ async function exportTeamsToPDF(res, teams = null) {
   res.send(pdfBuffer);
 }
 
-// 📤 Экспорт в Word
 async function exportTeamsToWord(res, teams = null) {
   if (!teams) {
     teams = await getTeamsData();
@@ -152,11 +144,15 @@ async function exportTeamsToWord(res, teams = null) {
     children: ['Название команды', 'Участники'].map(text =>
       new TableCell({
         shading: { fill: '333333' },
-        children: [new Paragraph({ 
-          children: [new TextRun({ text, bold: true, color: 'FFFFFF' })], 
-          alignment: AlignmentType.CENTER 
-        })],
-        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({ text, bold: true, color: 'FFFFFF', font: 'Arial' }) // 👈 Указываем шрифт
+            ],
+            alignment: AlignmentType.CENTER
+          })
+        ],
+        verticalAlign: VerticalAlign.CENTER
       })
     )
   });
@@ -164,36 +160,41 @@ async function exportTeamsToWord(res, teams = null) {
   const dataRows = teams.map((team, rowIndex) => {
     const teamName = team.Team_Name || team.name || 'Без названия';
     return new TableRow({
-      children: [teamName, formatMembers(team.members)].map(value => 
+      children: [teamName, formatMembers(team.members)].map(value =>
         new TableCell({
           shading: { fill: rowIndex % 2 === 0 ? 'D3D3D3' : 'FFFFFF' },
-          children: [new Paragraph({ text: value, alignment: AlignmentType.LEFT })],
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({ text: value, font: 'Arial' }) // 👈 Указываем шрифт
+              ],
+              alignment: AlignmentType.LEFT
+            })
+          ],
           verticalAlign: VerticalAlign.CENTER,
-          width: { size: 50, type: WidthType.PERCENTAGE },
+          width: { size: 50, type: WidthType.PERCENTAGE }
         })
       )
     });
   });
-  
 
   const table = new Table({
     rows: [headerRow, ...dataRows],
-    width: { size: 100, type: WidthType.PERCENTAGE },
+    width: { size: 100, type: WidthType.PERCENTAGE }
   });
 
   const doc = new Document({
     sections: [{
       properties: {
-        // 📝 Ориентация страницы: портретная (Portrait)
-        page: {
-          size: { orientation: PageOrientation.PORTRAIT }
-        }
+        page: { size: { orientation: PageOrientation.PORTRAIT } }
       },
       children: [
         new Paragraph({
-          children: [new TextRun({ text: 'Список команд', bold: true, size: 28 })],
+          children: [
+            new TextRun({ text: 'Список команд', bold: true, size: 28, font: 'Arial' })
+          ],
           alignment: AlignmentType.CENTER,
-          spacing: { after: 560 },
+          spacing: { after: 560 }
         }),
         table
       ]
@@ -201,10 +202,13 @@ async function exportTeamsToWord(res, teams = null) {
   });
 
   const buffer = await Packer.toBuffer(doc);
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+
+  // 🚨 Вот тут мы добавляем charset=utf-8
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="teams.docx"');
   res.send(buffer);
 }
+
 
 // Экспортируем функции
 module.exports = {
