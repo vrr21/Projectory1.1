@@ -37,9 +37,11 @@ import { PlusOutlined } from "@ant-design/icons";
 import { FilterOutlined } from "@ant-design/icons";
 import { Table } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { EditOutlined, InboxOutlined } from "@ant-design/icons";
+import { EditOutlined, InboxOutlined, DeleteOutlined } from "@ant-design/icons";
 import { Dropdown } from "antd";
 import { Tooltip, Avatar } from "antd";
+import { List } from "antd";
+import { useAuth } from "../contexts/useAuth";
 
 interface Employee {
   ID_Employee: number;
@@ -137,12 +139,22 @@ interface RawEmployee {
   Avatar?: string | null;
 }
 
+interface CommentType {
+  ID_Comment: number;
+  CommentText: string;
+  Created_At: string;
+  AuthorName: string;
+  ID_User: number;
+  Avatar?: string;
+}
+
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
 const STATUSES = ["Новая", "В работе", "Завершена", "Выполнена"];
 
 const ManagerDashboard: React.FC = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filters, setFilters] = useState<{
@@ -151,6 +163,66 @@ const ManagerDashboard: React.FC = () => {
     projectId?: number;
   }>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+  const [viewingTaskId, setViewingTaskId] = useState<number | null>(null);
+  const [newComment, setNewComment] = useState<string>("");
+  const fetchComments = async (taskId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const data = await response.json();
+      // Очищаем переносы строк для каждого комментария
+      const cleanedComments = data.map((comment: CommentType) => ({
+        ...comment,
+        CommentText: comment.CommentText.replace(/(\r\n|\n|\r)/g, " ").trim(),
+      }));
+      setComments(cleanedComments);
+    } catch (error) {
+      console.error("Ошибка при получении комментариев:", error);
+      messageApi.error("Не удалось загрузить комментарии");
+    }
+  };
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !viewingTaskId) {
+      messageApi.error("Комментарий пустой");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      messageApi.error("Нет токена авторизации");
+      return;
+    }
+
+    try {
+      const cleanedComment = newComment.replace(/(\r\n|\n|\r)/g, " ").trim();
+
+      const response = await fetch(`${API_URL}/api/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          taskId: viewingTaskId,
+          userId: user?.id || 1, // 👈 Используем user?.id
+          commentText: cleanedComment,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Ошибка при добавлении комментария");
+      }
+
+      setNewComment("");
+      fetchComments(viewingTaskId);
+      messageApi.success("Комментарий добавлен");
+    } catch (error) {
+      console.error("Ошибка при добавлении комментария:", error);
+      messageApi.error("Не удалось добавить комментарий");
+    }
+  };
 
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -192,9 +264,9 @@ const ManagerDashboard: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/api/tasks/${taskId}/details`);
       if (!response.ok) throw new Error("Ошибка при загрузке задачи");
-  
+
       const rawData: RawTask = await response.json();
-  
+
       const normalizedTask: Task = {
         ...rawData,
         Employees: rawData.Employees.map((emp: RawEmployee) => ({
@@ -205,7 +277,7 @@ const ManagerDashboard: React.FC = () => {
           Avatar: emp.Avatar ?? null,
         })),
       };
-  
+
       setTaskDetails(normalizedTask);
       setIsDetailsModalVisible(true);
     } catch (error) {
@@ -213,9 +285,65 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Не удалось загрузить детали задачи");
     }
   };
-  
 
   const [showArchive, setShowArchive] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
+  const handleUpdateComment = async () => {
+    if (!editingCommentId) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const cleanedCommentText = editingCommentText
+        .replace(/(\r\n|\n|\r)/g, " ")
+        .trim();
+
+      const response = await fetch(
+        `${API_URL}/api/comments/${editingCommentId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ commentText: cleanedCommentText }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Ошибка при обновлении комментария");
+
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      if (viewingTaskId) fetchComments(viewingTaskId);
+      messageApi.success("Комментарий обновлен");
+    } catch (error) {
+      console.error(error);
+      messageApi.error("Не удалось обновить комментарий");
+    }
+  };
+
+  const handleDeleteComment = async (commentId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Ошибка при удалении комментария");
+
+      if (viewingTaskId) fetchComments(viewingTaskId);
+      messageApi.success("Комментарий удален");
+    } catch (error) {
+      console.error(error);
+      messageApi.error("Не удалось удалить комментарий");
+    }
+  };
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -936,6 +1064,11 @@ const ManagerDashboard: React.FC = () => {
                                       icon={<MessageOutlined />}
                                       size="small"
                                       style={{ padding: 0 }}
+                                      onClick={() => {
+                                        setViewingTaskId(task.ID_Task);
+                                        fetchComments(task.ID_Task);
+                                        setIsCommentsModalVisible(true);
+                                      }}
                                     />
                                   </div>
 
@@ -1577,22 +1710,22 @@ const ManagerDashboard: React.FC = () => {
                 )}
               </div>
               <p
-  style={{
-    marginTop: 8,
-    fontStyle: "italic",
-    color: "#aaa",
-  }}
->
-  Модуль данной задачи выполняет:{" "}
-  <strong>
-    {taskDetails.Employees.find(
-      (emp) =>
-        emp.ID_Employee === Number(taskDetails.Assigned_Employee_Id) ||
-        emp.ID_User === Number(taskDetails.Assigned_Employee_Id)
-    )?.Full_Name || "Не назначено"}
-  </strong>
-</p>
-
+                style={{
+                  marginTop: 8,
+                  fontStyle: "italic",
+                  color: "#aaa",
+                }}
+              >
+                Модуль данной задачи выполняет:{" "}
+                <strong>
+                  {taskDetails.Employees.find(
+                    (emp) =>
+                      emp.ID_Employee ===
+                        Number(taskDetails.Assigned_Employee_Id) ||
+                      emp.ID_User === Number(taskDetails.Assigned_Employee_Id)
+                  )?.Full_Name || "Не назначено"}
+                </strong>
+              </p>
 
               {taskDetails.attachments &&
                 taskDetails.attachments.length > 0 && (
@@ -1637,6 +1770,190 @@ const ManagerDashboard: React.FC = () => {
           ) : (
             <Loader />
           )}
+        </Modal>
+        <Modal
+          title="Комментарии к задаче"
+          open={isCommentsModalVisible}
+          onCancel={() => {
+            setIsCommentsModalVisible(false);
+            setViewingTaskId(null);
+            setComments([]);
+          }}
+          footer={null}
+        >
+          <List
+            dataSource={comments}
+            renderItem={(item) => (
+              <List.Item
+                style={{
+                  justifyContent: "flex-start",
+                  alignItems: "flex-start",
+                  textAlign: "left",
+                }}
+              >
+                <List.Item.Meta
+                  avatar={
+                    <Avatar
+                      src={
+                        item.Avatar
+                          ? `${API_URL}/uploads/${item.Avatar}`
+                          : undefined
+                      }
+                      style={{
+                        backgroundColor: item.Avatar ? "transparent" : "#777",
+                      }}
+                    >
+                      {!item.Avatar &&
+                        item.AuthorName?.split(" ")
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()}
+                    </Avatar>
+                  }
+                  title={
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        whiteSpace: "nowrap",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "bold", color: "#fff" }}>
+                        {item.AuthorName}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#999" }}>
+                        {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
+                      </span>
+                    </div>
+                  }
+                  description={
+                    <>
+                      <div
+                        className="comment-text-container"
+                        style={{
+                          color: "#fff",
+                          textAlign: "left",
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {editingCommentId === item.ID_Comment ? (
+                          <Input.TextArea
+                            value={editingCommentText}
+                            onChange={(e) =>
+                              setEditingCommentText(e.target.value)
+                            }
+                            autoSize
+                          />
+                        ) : (
+                          <p
+                            className="comment-text"
+                            style={{
+                              margin: 0,
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                              overflowWrap: "break-word",
+                            }}
+                          >
+                            {item.CommentText.replace(
+                              /(\r\n|\n|\r)/g,
+                              " "
+                            ).trim()}
+                          </p>
+                        )}
+                      </div>
+
+                      {item.ID_User === user?.id && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "flex-end", // перемещаем вправо
+      alignItems: "center",
+      gap: 8,
+      marginTop: 8,
+    }}
+  >
+    {editingCommentId === item.ID_Comment ? (
+      <>
+        <Button
+          type="primary"
+          size="small"
+          onClick={handleUpdateComment}
+          style={{ border: "none", boxShadow: "none" }}
+        >
+          Сохранить
+        </Button>
+        <Button
+          size="small"
+          onClick={() => {
+            setEditingCommentId(null);
+            setEditingCommentText("");
+          }}
+          style={{ border: "none", boxShadow: "none" }}
+        >
+          Отмена
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button
+          type="link"
+          size="small"
+          style={{
+            color: "#fff",
+            border: "none",
+            boxShadow: "none",
+          }}
+          onClick={() => {
+            setEditingCommentId(item.ID_Comment);
+            setEditingCommentText(item.CommentText);
+          }}
+          icon={<EditOutlined />}
+        />
+        <Button
+          type="link"
+          size="small"
+          style={{
+            color: "#fff",
+            border: "none",
+            boxShadow: "none",
+          }}
+          danger
+          onClick={() => handleDeleteComment(item.ID_Comment)}
+          icon={<DeleteOutlined />}
+        />
+      </>
+    )}
+  </div>
+)}
+
+                    </>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+
+          <Input.TextArea
+            rows={3}
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Введите комментарий..."
+            style={{ marginTop: 8 }}
+          />
+          <Button
+            type="primary"
+            block
+            style={{ marginTop: 8 }}
+            onClick={handleAddComment}
+            disabled={!newComment.trim()}
+          >
+            Добавить комментарий
+          </Button>
         </Modal>
       </App>
     </ConfigProvider>

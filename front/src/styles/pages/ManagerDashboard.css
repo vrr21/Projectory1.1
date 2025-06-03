@@ -573,18 +573,26 @@ body.sidebar-collapsed .dashboard-body {
   margin-top: 0.25rem;
 }
 
+/* Для кнопок редактирования и удаления в комментариях */
 .comment-action-buttons .ant-btn {
-  background-color: transparent !important;
-  border: none !important;
-  color: #ccc !important;
+  background-color: transparent !important; /* Убирает фон */
+  border: none !important;                 /* Убирает обводку */
+  box-shadow: none !important;             /* Убирает тень */
+  color: #ccc !important;                  /* Цвет текста */
   font-size: 13px;
   padding: 2px 8px;
-  transition: color 0.3s ease;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
+/* При наведении цвет иконки */
 .comment-action-buttons .ant-btn:hover {
   color: #00bcd4 !important;
   background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Светлая тема */
@@ -736,3 +744,42 @@ body.sidebar-collapsed .dashboard-body {
 }
 
 
+/* Стили для комментариев */
+.comment-text-container {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+.comment-text {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Убедимся, что List.Item и Meta не добавляют лишних переносов */
+.ant-list-item-meta-description {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.ant-list-item-meta-description p {
+  white-space: normal !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  margin: 0;
+}
+
+/* Переопределяем стили Ant Design для модального окна */
+.ant-modal-body .ant-list-item {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ant-modal-body .ant-list-item-meta {
+  width: 100%;
+}

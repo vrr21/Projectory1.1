@@ -8,13 +8,18 @@ exports.getCommentsByTask = async (req, res) => {
     const result = await poolConn.request()
       .input('taskId', sql.Int, taskId)
       .query(`
-        SELECT c.ID_Comment, c.CommentText, c.Created_At,
-               u.First_Name + ' ' + u.Last_Name AS AuthorName,
-               u.Avatar, u.ID_User
-        FROM TaskComments c
-        JOIN Users u ON c.ID_User = u.ID_User
-        WHERE c.ID_Task = @taskId
-        ORDER BY c.Created_At ASC
+SELECT 
+  c.ID_Comment, 
+  REPLACE(REPLACE(REPLACE(c.CommentText, CHAR(13) + CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ') AS CommentText,
+  c.Created_At,
+  u.First_Name + ' ' + u.Last_Name AS AuthorName,
+  u.Avatar, 
+  u.ID_User
+FROM TaskComments c
+JOIN Users u ON c.ID_User = u.ID_User
+WHERE c.ID_Task = @taskId
+ORDER BY c.Created_At ASC
+
       `);
     res.status(200).json(result.recordset);
   } catch (err) {
@@ -22,8 +27,6 @@ exports.getCommentsByTask = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении комментариев' });
   }
 };
-
-// Добавление комментария
 exports.addComment = async (req, res) => {
   const { taskId, commentText } = req.body;
   const userId = req.user?.id;
@@ -33,11 +36,16 @@ exports.addComment = async (req, res) => {
   }
 
   try {
+    // Очищаем переносы строк
+    const cleanedCommentText = commentText
+      .replace(/(\r\n|\n|\r)/g, ' ')
+      .trim();
+
     const poolConn = await pool.connect();
     await poolConn.request()
       .input('taskId', sql.Int, taskId)
       .input('userId', sql.Int, userId)
-      .input('commentText', sql.NVarChar(sql.MAX), commentText)
+      .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
       .query(`
         INSERT INTO TaskComments (ID_Task, ID_User, CommentText)
         VALUES (@taskId, @userId, @commentText)
@@ -50,7 +58,6 @@ exports.addComment = async (req, res) => {
   }
 };
 
-// Обновление комментария
 exports.updateComment = async (req, res) => {
   const { id } = req.params;
   const { commentText } = req.body;
@@ -60,10 +67,15 @@ exports.updateComment = async (req, res) => {
   }
 
   try {
+    // Очищаем переносы строк
+    const cleanedCommentText = commentText
+      .replace(/(\r\n|\n|\r)/g, ' ')
+      .trim();
+
     const poolConn = await pool.connect();
     await poolConn.request()
       .input('id', sql.Int, id)
-      .input('commentText', sql.NVarChar(sql.MAX), commentText)
+      .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
       .query(`
         UPDATE TaskComments
         SET CommentText = @commentText
