@@ -76,6 +76,7 @@ a {
   min-height: calc(100vh - var(--header-height));
 }
 
+
 /* Дополнительные секции */
 .section, .panel, .widget, .chart-card {
   background-color: var(--card-bg-color);
@@ -695,4 +696,31 @@ a {
   color: #ffffff !important;
 }
 
+
+/* Убрать все лишние разделители внутри таблиц */
+.ant-table-thead > tr > th::before,
+.ant-table-tbody > tr > td::before,
+.ant-table-thead > tr > th::after,
+.ant-table-tbody > tr > td::after {
+  display: none !important;
+}
+
+/* Убираем черные вертикальные линии в ячейках (разделители) */
+.ant-table-thead > tr > th,
+.ant-table-tbody > tr > td {
+  border-right: none !important;
+  border-left: none !important;
+  box-shadow: none !important;
+}
+
+/* Убираем серые тени у ячеек */
+.ant-table-thead > tr > th,
+.ant-table-tbody > tr > td {
+  background-image: none !important;
+}
+
+/* Можно оставить только нижнюю границу строк */
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--border-color) !important;
+}
 

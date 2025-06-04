@@ -245,57 +245,43 @@ const getTimeEntries = async (req, res) => {
   }
 };
 
-
 const getAllTimeEntries = async (req, res) => {
   try {
     await poolConnect;
+    const tokenUser = req.user;
+    if (!tokenUser?.id || (tokenUser.role || '').toLowerCase() !== 'менеджер') {
+      return res.status(403).json({ message: "Доступ запрещён" });
+    }
 
-    // Здесь важно проверить роль (например, если нужно ограничить)
-    // Но для примера сразу выводим все данные:
-    const result = await pool.request()
-      .query(`
-SELECT 
-  e.ID_Execution,
-  e.ID_Task,
-  t.Task_Name,
-  o.Order_Name,
-  e.Start_Date,
-  e.End_Date,
-  e.Hours_Spent,
-  e.Description,
-  e.Is_Completed,
-  e.ID_Employee,
-  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-  tm.Team_Name,
-  e.Attachments,
-  e.Link,
-  t.Time_Norm,
-  (
-    SELECT SUM(e2.Hours_Spent)
-    FROM Execution e2
-    WHERE e2.ID_Task = e.ID_Task 
-    AND e2.ID_Employee = e.ID_Employee
-    AND e2.Is_Completed = 1
-  ) AS Hours_Spent_Total,
-  CASE 
-    WHEN t.Time_Norm IS NOT NULL AND
-         (
-           SELECT SUM(e2.Hours_Spent)
-           FROM Execution e2
-           WHERE e2.ID_Task = e.ID_Task 
-           AND e2.ID_Employee = e.ID_Employee
-         ) <= t.Time_Norm THEN 1
-    ELSE 0
-  END AS FitTimeNorm
-FROM Execution e
-JOIN Tasks t ON e.ID_Task = t.ID_Task
-JOIN Orders o ON t.ID_Order = o.ID_Order
-JOIN Users u ON e.ID_Employee = u.ID_User
-JOIN Teams tm ON u.ID_Team = tm.ID_Team
-ORDER BY e.Start_Date DESC
-  `);
+    const result = await pool.request().query(`
+      SELECT 
+        e.ID_Execution,
+        e.ID_Task,
+        e.ID_Employee AS ID_User, -- 🔥 Добавить это поле!
+        t.Task_Name,
+        o.Order_Name,
+        e.Start_Date,
+        e.End_Date,
+        e.Hours_Spent,
+        e.Description,
+        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+        tms.Team_Name,
+        (
+          SELECT SUM(e2.Hours_Spent)
+          FROM Execution e2
+          WHERE e2.ID_Task = e.ID_Task 
+            AND e2.ID_Employee = e.ID_Employee
+            AND e2.Is_Completed = 1
+        ) AS Hours_Spent_Total
+      FROM Execution e
+      JOIN Tasks t ON e.ID_Task = t.ID_Task
+      JOIN Orders o ON t.ID_Order = o.ID_Order
+      JOIN Users u ON e.ID_Employee = u.ID_User
+      LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
+      LEFT JOIN Teams tms ON tm.ID_Team = tms.ID_Team
+      ORDER BY e.Start_Date DESC
+    `);
 
-    // Парсим Attachments
     const records = result.recordset.map((entry) => ({
       ...entry,
       Attachments: entry.Attachments
@@ -310,14 +296,12 @@ ORDER BY e.Start_Date DESC
   }
 };
 
-module.exports = {
-  getAllTimeEntries,
-  // остальные методы...
-};
+
 
 module.exports = {
   createTimeEntry,
   updateTimeEntry,
   deleteTimeEntry,
   getTimeEntries,
+  getAllTimeEntries  
 };

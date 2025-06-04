@@ -7,10 +7,14 @@ const {
   updateTimeEntry,
   deleteTimeEntry,
   getTimeEntries,
+  getAllTimeEntries
 } = require('../controllers/timeTController');
 
-// Получение всех записей учета времени
+// Получение всех записей учета времени для сотрудника
 router.get('/time-tracking', verifyToken, getTimeEntries);
+
+// Получение всех записей учета времени для менеджера
+router.get('/time-tracking/all', verifyToken, getAllTimeEntries);
 
 // Создание новой записи учета времени
 router.post('/time-tracking', verifyToken, createTimeEntry);

@@ -154,22 +154,24 @@ const TeamManagementPage: React.FC = () => {
   const handleExport = async (format: string) => {
     try {
       const exportFormat = format === "docx" ? "word" : format;
-  
-      const response = await fetch(`${API_URL}/api/export/teams?format=${exportFormat}`);
-  
+
+      const response = await fetch(
+        `${API_URL}/api/export/teams?format=${exportFormat}`
+      );
+
       if (!response.ok) {
         throw new Error(await response.text());
       }
-  
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-  
+
       let extension = "txt";
       if (format === "excel") extension = "xlsx";
       else if (format === "docx") extension = "docx";
       else if (format === "pdf") extension = "pdf";
-  
+
       a.href = url;
       a.download = `teams.${extension}`;
       a.click();
@@ -179,7 +181,6 @@ const TeamManagementPage: React.FC = () => {
       messageApi.error("Ошибка экспорта. Пожалуйста, попробуйте снова.");
     }
   };
-  
 
   const getTeamNameFilters = () => {
     const unique = Array.from(new Set(teams.map((t) => t.Team_Name)));
@@ -409,36 +410,35 @@ const TeamManagementPage: React.FC = () => {
       onFilter: (value, record) => record.members.some((m) => m.role === value),
       render: (_, team) => (
         <div>
-         {team.members.map((m) => (
-  <div key={`${team.ID_Team}-${m.ID_User ?? m.email ?? m.fullName}`}>
-    {m.fullName} ({m.role}) — {m.email}
-    <Button
-      type="link"
-      icon={<EditOutlined />}
-      size="small"
-      style={{ marginLeft: 4 }}
-      onClick={() => {
-        setCurrentTeamId(team.ID_Team);
-        setEditingMember(m);
-        editMemberForm.setFieldsValue({ role: m.role });
-        setIsEditMemberModalVisible(true);
-      }}
-    >
-      Ред.
-    </Button>
-    <Button
-      type="link"
-      danger
-      size="small"
-      onClick={() => handleDeleteMember(team.ID_Team, m.ID_User)}
-      icon={<DeleteOutlined />}
-      style={{ marginLeft: 8 }}
-    >
-      Удалить
-    </Button>
-  </div>
-))}
-
+          {team.members.map((m) => (
+            <div key={`${team.ID_Team}-${m.ID_User ?? m.email ?? m.fullName}`}>
+              {m.fullName} ({m.role}) — {m.email}
+              <Button
+                type="link"
+                icon={<EditOutlined />}
+                size="small"
+                style={{ marginLeft: 4 }}
+                onClick={() => {
+                  setCurrentTeamId(team.ID_Team);
+                  setEditingMember(m);
+                  editMemberForm.setFieldsValue({ role: m.role });
+                  setIsEditMemberModalVisible(true);
+                }}
+              >
+                Ред.
+              </Button>
+              <Button
+                type="link"
+                danger
+                size="small"
+                onClick={() => handleDeleteMember(team.ID_Team, m.ID_User)}
+                icon={<DeleteOutlined />}
+                style={{ marginLeft: 8 }}
+              >
+                Удалить
+              </Button>
+            </div>
+          ))}
         </div>
       ),
     },
@@ -575,6 +575,8 @@ const TeamManagementPage: React.FC = () => {
                   justifyContent: "space-between",
                   flexWrap: "wrap",
                   gap: "8px",
+                  marginTop: -24,
+                  marginBottom: -12,
                 }}
               >
                 <Button
@@ -597,8 +599,9 @@ const TeamManagementPage: React.FC = () => {
                   <Input
                     placeholder="Поиск по всем данным..."
                     allowClear
-                    onChange={(e) => setSearchTerm((e.target.value ?? "").toLowerCase())}
-
+                    onChange={(e) =>
+                      setSearchTerm((e.target.value ?? "").toLowerCase())
+                    }
                     style={{ width: 250 }}
                   />
                   <Button
@@ -673,17 +676,20 @@ const TeamManagementPage: React.FC = () => {
                     // Проверка: пользователь уже состоит в другой команде
                     for (const m of members) {
                       const alreadyInTeam = teams.some((team) =>
-                        team.members.some((member) => member.ID_User === m.userId)
+                        team.members.some(
+                          (member) => member.ID_User === m.userId
+                        )
                       );
                       if (alreadyInTeam) {
                         const user = users.find((u) => u.id === m.userId);
                         messageApi.error(
-                          `Сотрудник ${user?.fullName || m.userId} уже состоит в команде`
+                          `Сотрудник ${
+                            user?.fullName || m.userId
+                          } уже состоит в команде`
                         );
                         return;
                       }
                     }
-                    
 
                     const teamName = values.name.trim();
                     if (!teamName) {

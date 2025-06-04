@@ -204,50 +204,50 @@ const TimeTrackingEmployee: React.FC = () => {
     fetchTimeEntries();
   }, [fetchProjects, fetchTasks, fetchTimeEntries]);
 
+  const handleEdit = (entry: RawTimeEntry) => {
+    const project = projects.find(
+      (p) => p.Order_Name === entry.Order_Name
+    )?.ID_Order;
 
- const handleEdit = (entry: RawTimeEntry) => {
-  const project = projects.find(
-    (p) => p.Order_Name === entry.Order_Name
-  )?.ID_Order;
+    const fileList: UploadFile[] = (entry.Attachments || []).map(
+      (filename, index) => ({
+        uid: `${index}`,
+        name: filename,
+        status: "done",
+        url: `${API_URL}/uploads/${filename}`,
+      })
+    );
+    if (entry.link) {
+      fileList.push({
+        uid: `link`,
+        name: "Ссылка",
+        status: "done",
+        url: entry.link,
+      });
+    }
+    setEditingFileList(fileList);
 
-  const fileList: UploadFile[] = (entry.Attachments || []).map((filename, index) => ({
-    uid: `${index}`,
-    name: filename,
-    status: "done",
-    url: `${API_URL}/uploads/${filename}`
-  }));
-  if (entry.link) {
-    fileList.push({
-      uid: `link`,
-      name: "Ссылка",
-      status: "done",
-      url: entry.link
+    setEditingEntry(entry);
+
+    const hours = Math.floor(entry.Hours_Spent);
+    const minutes = Math.round((entry.Hours_Spent - hours) * 60);
+
+    const attachmentType = entry.link ? "link" : "file";
+
+    form.setFieldsValue({
+      project,
+      taskName: entry.ID_Task,
+      hours,
+      minutes,
+      date: dayjs(entry.Start_Date),
+      description: entry.Description || "",
+      attachmentType,
+      file: fileList,
+      link: entry.link || "",
     });
-  }
-  setEditingFileList(fileList);
-  
-  setEditingEntry(entry);
 
-  const hours = Math.floor(entry.Hours_Spent);
-  const minutes = Math.round((entry.Hours_Spent - hours) * 60);
-
-  const attachmentType = entry.link ? "link" : "file";
-
-  form.setFieldsValue({
-    project,
-    taskName: entry.ID_Task,
-    hours,
-    minutes,
-    date: dayjs(entry.Start_Date),
-    description: entry.Description || "",
-    attachmentType,
-    file: fileList,
-    link: entry.link || "",
-  });
-
-  setIsModalVisible(true);
-};
-
+    setIsModalVisible(true);
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -304,12 +304,12 @@ const TimeTrackingEmployee: React.FC = () => {
       isCompleted: values.isCompleted,
       ID_User: user?.id,
       ID_Employee: user?.id,
-      attachments: values.attachmentType === "file"
-        ? editingFileList.map((f) => f.name) // имена файлов, если файлы
-        : [],
+      attachments:
+        values.attachmentType === "file"
+          ? editingFileList.map((f) => f.name) // имена файлов, если файлы
+          : [],
       link: values.attachmentType === "link" ? values.link : "",
     };
-    
 
     const method = editingEntry ? "PUT" : "POST";
     const url = `${API_URL}/api/time-tracking${
@@ -675,8 +675,9 @@ const TimeTrackingEmployee: React.FC = () => {
                             title: "Готовность задачи",
                             dataIndex: "Is_Completed",
                             key: "isCompleted",
-                            render: (val) => (val ? "Завершена" : "Не завершена"),
-                          }                          
+                            render: (val) =>
+                              val ? "Завершена" : "Не завершена",
+                          },
                         ]}
                       />
                     ),
@@ -811,21 +812,21 @@ const TimeTrackingEmployee: React.FC = () => {
                       noStyle
                       initialValue="file"
                     >
-<Radio.Group
-  optionType="button"
-  buttonStyle="solid"
-  className="attachment-type-switch"
-  style={{ marginBottom: 12 }}
-  onChange={(e) => {
-    const type = e.target.value;
-    if (type === "file") {
-      form.setFieldsValue({ link: "" });
-    } else {
-      setEditingFileList([]);
-      form.setFieldsValue({ file: [] });
-    }
-  }}
->
+                      <Radio.Group
+                        optionType="button"
+                        buttonStyle="solid"
+                        className="attachment-type-switch"
+                        style={{ marginBottom: 12 }}
+                        onChange={(e) => {
+                          const type = e.target.value;
+                          if (type === "file") {
+                            form.setFieldsValue({ link: "" });
+                          } else {
+                            setEditingFileList([]);
+                            form.setFieldsValue({ file: [] });
+                          }
+                        }}
+                      >
                         <Radio.Button value="file">Файл</Radio.Button>
                         <Radio.Button value="link">Ссылка</Radio.Button>
                       </Radio.Group>
@@ -937,41 +938,48 @@ const TimeTrackingEmployee: React.FC = () => {
                         <b>Описание:</b> {viewingEntry.Description}
                       </p>
                     )}
-{(viewingEntry.Attachments || []).length > 0 || viewingEntry.link ? (
-  <div>
-    <p><b>Вложения:</b></p>
-    <ul className="attachments-list">
-      {/* Отображаем Attachments */}
-      {(viewingEntry.Attachments || []).map((item, idx) => {
-        const isUrl = /^https?:\/\//.test(item);
-        const href = isUrl ? item : `${API_URL}/uploads/${item}`;
-        const label = isUrl ? item : item.split("/").pop();
-        return (
-          <li key={`file-${idx}`}>
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {label}
-            </a>
-          </li>
-        );
-      })}
+                    {(viewingEntry.Attachments || []).length > 0 ||
+                    viewingEntry.link ? (
+                      <div>
+                        <p>
+                          <b>Вложения:</b>
+                        </p>
+                        <ul className="attachments-list">
+                          {/* Отображаем Attachments */}
+                          {(viewingEntry.Attachments || []).map((item, idx) => {
+                            const isUrl = /^https?:\/\//.test(item);
+                            const href = isUrl
+                              ? item
+                              : `${API_URL}/uploads/${item}`;
+                            const label = isUrl ? item : item.split("/").pop();
+                            return (
+                              <li key={`file-${idx}`}>
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {label}
+                                </a>
+                              </li>
+                            );
+                          })}
 
-      {/* Отображаем ссылку, если есть */}
-      {viewingEntry.link && (
-        <li key="link">
-          <a
-            href={viewingEntry.link}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {viewingEntry.link}
-          </a>
-        </li>
-      )}
-    </ul>
-  </div>
-) : null}
-
-
+                          {/* Отображаем ссылку, если есть */}
+                          {viewingEntry.link && (
+                            <li key="link">
+                              <a
+                                href={viewingEntry.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                {viewingEntry.link}
+                              </a>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    ) : null}
                   </div>
                 )}
               </Modal>

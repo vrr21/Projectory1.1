@@ -156,12 +156,30 @@ exports.createTask = async (req, res) => {
     Employee_Names = [],
     ID_Manager: providedManager,
   } = req.body;
+
   let ID_Manager = providedManager;
 
   try {
     await poolConnect;
 
-    // Найти менеджера
+    // Проверка на дубликат задачи в том же заказе
+    const duplicateResult = await pool
+      .request()
+      .input("Task_Name", sql.NVarChar, Task_Name)
+      .input("ID_Order", sql.Int, ID_Order)
+      .query(`
+        SELECT COUNT(*) as DuplicateCount
+        FROM Tasks
+        WHERE Task_Name = @Task_Name AND ID_Order = @ID_Order
+      `);
+
+    if (duplicateResult.recordset[0].DuplicateCount > 0) {
+      return res.status(400).json({
+        message: `Задача с названием "${Task_Name}" уже существует в этом проекте`,
+      });
+    }
+
+    // Найти менеджера, если не передан
     if (!ID_Manager && ID_Order) {
       const managerResult = await pool
         .request()
@@ -183,12 +201,14 @@ exports.createTask = async (req, res) => {
       .request()
       .input("Status_Name", sql.NVarChar, "Новая")
       .query("SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name");
+
     if (!statusResult.recordset.length) {
       return res.status(400).json({ message: 'Статус "Новая" не найден' });
     }
+
     const resolvedStatusId = statusResult.recordset[0].ID_Status;
 
-    // 🔥 Создаём главную задачу
+    // Создание главной задачи
     const mainTaskResult = await pool
       .request()
       .input("Task_Name", sql.NVarChar, Task_Name)
@@ -203,10 +223,13 @@ exports.createTask = async (req, res) => {
           ? new Date(Deadline)
           : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
       )
-      .input("ID_Manager", sql.Int, ID_Manager).query(`
-        INSERT INTO Tasks (Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, ID_Manager)
+      .input("ID_Manager", sql.Int, ID_Manager)
+      .query(`
+        INSERT INTO Tasks 
+          (Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, ID_Manager)
         OUTPUT INSERTED.ID_Task
-        VALUES (@Task_Name, @Description, @Time_Norm, @ID_Status, @ID_Order, @Deadline, @ID_Manager)
+        VALUES 
+          (@Task_Name, @Description, @Time_Norm, @ID_Status, @ID_Order, @Deadline, @ID_Manager)
       `);
 
     const parentTaskId = mainTaskResult.recordset[0].ID_Task;
@@ -216,16 +239,17 @@ exports.createTask = async (req, res) => {
       const userResult = await pool
         .request()
         .input("First_Name", sql.NVarChar, First_Name)
-        .input("Last_Name", sql.NVarChar, Last_Name).query(`
-          SELECT ID_User, Email 
-          FROM Users 
+        .input("Last_Name", sql.NVarChar, Last_Name)
+        .query(`
+          SELECT ID_User, Email
+          FROM Users
           WHERE First_Name = @First_Name AND Last_Name = @Last_Name
         `);
 
       if (userResult.recordset.length) {
         const { ID_User, Email } = userResult.recordset[0];
 
-        // 🔥 Создаём отдельную карточку для каждого
+        // Создание подзадачи для каждого сотрудника
         const taskResult = await pool
           .request()
           .input("Task_Name", sql.NVarChar, Task_Name)
@@ -241,35 +265,42 @@ exports.createTask = async (req, res) => {
               : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
           )
           .input("ID_Manager", sql.Int, ID_Manager)
-          .input("Parent_Task_ID", sql.Int, parentTaskId).query(`
-            INSERT INTO Tasks (Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, ID_Manager, Parent_Task_ID)
+          .input("Parent_Task_ID", sql.Int, parentTaskId)
+          .query(`
+            INSERT INTO Tasks 
+              (Task_Name, Description, Time_Norm, ID_Status, ID_Order, Deadline, ID_Manager, Parent_Task_ID)
             OUTPUT INSERTED.ID_Task
-            VALUES (@Task_Name, @Description, @Time_Norm, @ID_Status, @ID_Order, @Deadline, @ID_Manager, @Parent_Task_ID)
+            VALUES 
+              (@Task_Name, @Description, @Time_Norm, @ID_Status, @ID_Order, @Deadline, @ID_Manager, @Parent_Task_ID)
           `);
 
         const childTaskId = taskResult.recordset[0].ID_Task;
 
+        // Запись назначения
         await pool
           .request()
           .input("ID_Task", sql.Int, childTaskId)
           .input("ID_Employee", sql.Int, ID_User)
           .input("Assignment_Date", sql.Date, new Date())
-          .input("ID_Status", sql.Int, resolvedStatusId).query(`
-            INSERT INTO Assignment (ID_Task, ID_Employee, Assignment_Date, ID_Status)
-            VALUES (@ID_Task, @ID_Employee, @Assignment_Date, @ID_Status)
+          .input("ID_Status", sql.Int, resolvedStatusId)
+          .query(`
+            INSERT INTO Assignment 
+              (ID_Task, ID_Employee, Assignment_Date, ID_Status)
+            VALUES 
+              (@ID_Task, @ID_Employee, @Assignment_Date, @ID_Status)
           `);
 
+        // Создание уведомления
         await pool
           .request()
           .input("Title", sql.NVarChar, "Назначена новая задача")
-          .input(
-            "Description",
-            sql.NVarChar,
-            `Вам назначена задача "${Task_Name}"`
-          )
-          .input("UserEmail", sql.NVarChar, Email).query(`
-            INSERT INTO Notifications (Title, Description, UserEmail)
-            VALUES (@Title, @Description, @UserEmail)
+          .input("Description", sql.NVarChar, `Вам назначена задача "${Task_Name}"`)
+          .input("UserEmail", sql.NVarChar, Email)
+          .query(`
+            INSERT INTO Notifications 
+              (Title, Description, UserEmail)
+            VALUES 
+              (@Title, @Description, @UserEmail)
           `);
       }
     }
@@ -277,9 +308,10 @@ exports.createTask = async (req, res) => {
     res.status(201).json({ message: "Задачи и уведомления успешно созданы" });
   } catch (error) {
     console.error("🔥 Ошибка при создании задачи:", error);
-    res
-      .status(500)
-      .json({ message: "Ошибка при создании задачи", error: error.message });
+    res.status(500).json({
+      message: "Ошибка при создании задачи",
+      error: error.message,
+    });
   }
 };
 
@@ -626,8 +658,14 @@ exports.deleteAllArchivedTasks = async (req, res) => {
 
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
-  const { Task_Name, Description, Time_Norm, ID_Order, Deadline, ID_Status } =
-    req.body;
+  const {
+    Task_Name,
+    Description,
+    Time_Norm,
+    ID_Order,
+    Deadline,
+    ID_Status
+  } = req.body;
 
   try {
     await poolConnect;
@@ -642,6 +680,27 @@ exports.updateTask = async (req, res) => {
       return res.status(400).json({ message: "Все поля обязательны" });
     }
 
+    // Проверка на дубликат названия задачи в проекте (исключая текущую задачу)
+    const duplicateCheck = await pool
+      .request()
+      .input("Task_Name", sql.NVarChar, Task_Name)
+      .input("ID_Order", sql.Int, ID_Order)
+      .input("ID_Task", sql.Int, id)
+      .query(`
+        SELECT COUNT(*) as DuplicateCount
+        FROM Tasks
+        WHERE Task_Name = @Task_Name 
+          AND ID_Order = @ID_Order 
+          AND ID_Task != @ID_Task
+      `);
+
+    if (duplicateCheck.recordset[0].DuplicateCount > 0) {
+      return res.status(400).json({
+        message: `Задача с названием "${Task_Name}" уже существует в этом проекте`
+      });
+    }
+
+    // Обновляем задачу
     await pool
       .request()
       .input("ID_Task", sql.Int, id)
@@ -650,7 +709,8 @@ exports.updateTask = async (req, res) => {
       .input("Time_Norm", sql.Int, Time_Norm)
       .input("ID_Order", sql.Int, ID_Order)
       .input("Deadline", sql.DateTime, new Date(Deadline))
-      .input("ID_Status", sql.Int, ID_Status).query(`
+      .input("ID_Status", sql.Int, ID_Status)
+      .query(`
         UPDATE Tasks
         SET 
           Task_Name = @Task_Name,
@@ -665,12 +725,10 @@ exports.updateTask = async (req, res) => {
     res.status(200).json({ message: `Задача ${id} успешно обновлена` });
   } catch (error) {
     console.error("🔥 Ошибка при обновлении задачи:", error);
-    res
-      .status(500)
-      .json({
-        message: `Обновление задачи ${id} завершилось с ошибкой`,
-        error: error.message,
-      });
+    res.status(500).json({
+      message: `Обновление задачи ${id} завершилось с ошибкой`,
+      error: error.message
+    });
   }
 };
 

@@ -21,6 +21,7 @@ import type { ColumnsType } from "antd/es/table";
 import SidebarManager from "../components/SidebarManager";
 import HeaderManager from "../components/HeaderManager";
 import "../styles/pages/ListEmployee.css";
+import { useNavigate } from "react-router-dom";
 
 import { theme } from "antd";
 import PhoneInput from "react-phone-input-2";
@@ -62,7 +63,7 @@ const ListEmployee: React.FC = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<User | null>(null);
   const [form] = Form.useForm<Partial<User> & { ID_Role: number }>();
-
+  const navigate = useNavigate();
   const [messageApi, contextHolder] = message.useMessage();
   const [searchTerm, setSearchTerm] = useState("");
   const [showArchive, setShowArchive] = useState(false);
@@ -236,11 +237,19 @@ const ListEmployee: React.FC = () => {
       dataIndex: "Avatar",
       key: "Avatar",
       align: "center",
-      render: (avatar, record) => (
-        <Avatar src={avatar ? `${API_URL}/uploads/${avatar}` : undefined}>
-          {!avatar && record.First_Name?.[0]}
-        </Avatar>
-      ),
+      render: (avatar, record) => {
+        const initials = `${record.First_Name?.[0] ?? ""}${record.Last_Name?.[0] ?? ""}`;
+        return (
+          <Avatar
+            src={avatar ? `${API_URL}/uploads/${avatar}` : undefined}
+            className="custom-avatar"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate(`/employee/${record.ID_User}`)}
+          >
+            {!avatar && initials}
+          </Avatar>
+        );
+      },
     },
     {
       title: <div style={{ textAlign: "center" }}>Имя</div>,
@@ -430,17 +439,18 @@ const ListEmployee: React.FC = () => {
             <h1 style={{ fontSize: 28, fontWeight: 600, marginBottom: -2 }}>
               Сотрудники
             </h1>
-
             <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "8px",
-                flexWrap: "wrap",
-                marginBottom: -12,
-              }}
-            >
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "8px",
+    flexWrap: "wrap",
+    marginBottom: -24,
+    marginTop: -12,
+  }}
+>
+
               <Button
                 className="dark-action-button"
                 icon={<UserAddOutlined />}

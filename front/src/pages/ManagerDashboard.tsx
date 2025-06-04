@@ -74,8 +74,9 @@ interface Task {
   Is_Archived?: boolean;
   attachments?: string[]; 
   OverdueCompleted?: number;
-
+  ID_Status?: number; 
 }
+
 
 interface CreateTaskFormValues {
   ID_Team: number;
@@ -390,16 +391,21 @@ const ManagerDashboard: React.FC = () => {
   const openEditModal = async (task: Task) => {
     try {
       await loadTeams();
-      // 👇 Ждём проекты и сотрудников
+  
       if (task.ID_Team) {
         await loadProjectsAndEmployees(task.ID_Team);
       }
-
-      // 👇 Ждём, чтобы React отрендерил Select с опциями
+  
       setTimeout(() => {
+        const selectedProject = filteredProjects.find(
+          (proj) => proj.ID_Order === task.ID_Order
+        );
+  
         form.setFieldsValue({
           ID_Team: task.ID_Team,
-          ID_Order: task.ID_Order,
+          ID_Order: selectedProject
+            ? { value: selectedProject.ID_Order, label: selectedProject.Order_Name }
+            : undefined,
           Employees: task.Employees.map((emp) => ({
             value: emp.ID_Employee,
             label: `${emp.Full_Name} — ${emp.Position}`,
@@ -411,7 +417,7 @@ const ManagerDashboard: React.FC = () => {
           ID_Manager: task.Employees[0]?.ID_Manager,
         });
       }, 0);
-
+  
       setEditingTaskId(task.ID_Task);
       setIsModalVisible(true);
     } catch (error) {
@@ -419,37 +425,54 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Не удалось открыть задачу для редактирования");
     }
   };
+  
 
   const closeModal = () => {
     form.resetFields();
     setEditingTaskId(null);
     setIsModalVisible(false);
   };
+
+
   const handleFinish = async (values: CreateTaskFormValues) => {
     if (submitting) return;
     setSubmitting(true);
-
+  
     try {
+      // Проверка на дублирование имени задачи
+      const duplicateTask = tasks.find(
+        (task) => task.Task_Name.trim().toLowerCase() === values.Task_Name.trim().toLowerCase()
+      );
+  
+      if (!editingTaskId && duplicateTask) {
+        messageApi.error("Задача с таким названием уже существует!");
+        setSubmitting(false);
+        return;
+      }
+  
       if (editingTaskId) {
         // Режим редактирования
+        const existingTask = tasks.find((t) => t.ID_Task === editingTaskId);
+  
         const updatedTaskPayload = {
           ...values,
+          ID_Status: existingTask?.ID_Status ?? 1,
           Deadline: values.Deadline
             ? dayjs(values.Deadline).toISOString()
             : null,
         };
-
+  
         const response = await fetch(`${API_URL}/api/tasks/${editingTaskId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedTaskPayload),
         });
-
+  
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Ошибка API: ${response.status} ${errorText}`);
         }
-
+  
         messageApi.success("Задача успешно обновлена");
       } else {
         // Режим создания
@@ -463,28 +486,27 @@ const ManagerDashboard: React.FC = () => {
           ID_Order: values.ID_Order,
           Time_Norm: values.Time_Norm,
           ID_Manager: values.ID_Manager,
-          // 👇 Составляем массив имен сотрудников
           Employee_Names: values.Employees.map((empObj) => {
             const id = empObj.value;
             const emp = filteredEmployees.find((e) => e.ID_Employee === id);
             return emp ? emp.Full_Name : null;
           }).filter((name) => name !== null),
         };
-
+  
         const response = await fetch(`${API_URL}/api/tasks`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(parentTaskPayload),
         });
-
+  
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Ошибка API: ${response.status} ${errorText}`);
         }
-
+  
         messageApi.success("Задача успешно создана");
       }
-
+  
       setIsModalVisible(false);
       setEditingTaskId(null);
       await loadTasks();
@@ -495,6 +517,7 @@ const ManagerDashboard: React.FC = () => {
       setSubmitting(false);
     }
   };
+  
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -1209,38 +1232,38 @@ const ManagerDashboard: React.FC = () => {
       title: "Проект",
       dataIndex: "Order_Name",
       key: "Order_Name",
-      align: "left",
+      align: "center", // <-- изменил
       render: (text: string) => <span>{text}</span>,
     },
     {
       title: "Название задачи",
       dataIndex: "Task_Name",
       key: "Task_Name",
-      align: "left",
+      align: "center", // <-- изменил
       render: (text: string) => <span>{text}</span>,
     },
     {
       title: "Описание",
       dataIndex: "Description",
       key: "Description",
-      align: "left",
+      align: "center", // <-- изменил
       render: (text: string) => <span>{text}</span>,
     },
     {
       title: "Сотрудник",
       dataIndex: "Assigned_Employee_Id",
       key: "Assigned_Employee_Id",
-      align: "left",
+      align: "center", // <-- изменил
       render: (_, record) => {
         const assignedEmployee = record.Employees.find(
           (emp) =>
             emp.ID_User === record.Assigned_Employee_Id ||
             emp.ID_Employee === record.Assigned_Employee_Id
         );
-
+  
         const profileId =
           assignedEmployee?.ID_User ?? assignedEmployee?.ID_Employee;
-
+  
         return (
           <span
             style={{
@@ -1288,24 +1311,18 @@ const ManagerDashboard: React.FC = () => {
           <Button
             type="link"
             icon={<EditOutlined />}
-            onClick={() => {
-              // Логика открытия модалки для редактирования задачи
-              // Например:
-              openEditModal(record);
-            }}
+            onClick={() => openEditModal(record)}
           />
           <Button
             type="link"
             icon={<InboxOutlined />}
-            onClick={() => {
-              // Логика архивирования задачи
-              archiveTask(record.ID_Task);
-            }}
+            onClick={() => archiveTask(record.ID_Task)}
           />
         </div>
       ),
     },
   ];
+  
 
   const renderTaskTable = () => (
     <>
@@ -1349,9 +1366,10 @@ const ManagerDashboard: React.FC = () => {
         </div>
       </div>
 
-      <h2 style={{ marginTop: "16px", color: "#fff" }}>
-        {showArchive ? "Архивные задачи" : "Активные задачи"}
-      </h2>
+      <h2 style={{ marginTop: "16px", marginBottom: "16px", color: "#fff" }}>
+  {showArchive ? "Архивные задачи" : "Активные задачи"}
+</h2>
+
 
       {filteredTasks.length === 0 ? (
         <p style={{ color: "#aaa" }}>
@@ -1433,7 +1451,7 @@ const ManagerDashboard: React.FC = () => {
           <div className="dashboard-body">
             <SidebarManager />
             <main className="main-content">
-              <h1 style={{ fontSize: "28px", marginBottom: "24px" }}>
+              <h1 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "24px" }}>
                 Доска задач
               </h1>
               {loading ? (
@@ -1492,30 +1510,24 @@ const ManagerDashboard: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item
-              label="Проект"
-              name="ID_Order"
-              rules={[{ required: true, message: "Выберите проект" }]}
-            >
-              <Select
-                key={form.getFieldValue("ID_Team")}
-                placeholder={
-                  filteredProjects.length > 0
-                    ? "Выберите проект"
-                    : "Сначала выберите команду"
-                }
-                disabled={filteredProjects.length === 0}
-                onChange={handleProjectChange}
-              >
-                {filteredProjects.map((project) => (
-                  <Select.Option
-                    key={project.ID_Order}
-                    value={project.ID_Order}
-                  >
-                    {project.Order_Name}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
+  label="Проект"
+  name="ID_Order"
+  rules={[{ required: true, message: "Выберите проект" }]}
+>
+  <Select
+    labelInValue
+    placeholder="Выберите проект"
+    onChange={(option) => {
+      form.setFieldValue("ID_Order", option.value);
+      handleProjectChange(option.value);
+    }}
+    options={filteredProjects.map((project) => ({
+      value: project.ID_Order,
+      label: project.Order_Name,
+    }))}
+  />
+</Form.Item>
+
 
             <Form.Item
               label="Исполнители"

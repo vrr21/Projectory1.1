@@ -85,3 +85,12 @@
 .custom-radio-group .ant-radio-inner::after {
   background-color: var(--card-bg-color);
 }
+
+
+.custom-avatar {
+  background-color: var(--border-color) !important;
+  color: var(--text-color) !important;
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}

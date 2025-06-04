@@ -3,9 +3,13 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 
+// Инициализация переменных окружения
 dotenv.config();
+
+// Подключение к базе данных (уже есть пул в config/db.js)
 require('./config/db');
 
+// Инициализация приложения
 const app = express();
 const PORT = process.env.PORT || 3002;
 
@@ -20,11 +24,13 @@ app.use(express.json());
 // Static
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// API Routes
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/upload', require('./routes/upload.routes'));
 app.use('/api/teams', require('./routes/team.routes'));
 app.use('/api/projects', require('./routes/projects.routes'));
+app.use('/api/projects', require('./routes/projectTasks'));
+
 app.use('/api/tasks', require('./routes/tasks.routes'));
 app.use('/api/taskdetails', require('./routes/tasks.details.routes'));
 app.use('/api/employees', require('./routes/employees.routes'));
@@ -42,7 +48,7 @@ app.use('/api', require('./routes/timeTracking'));
 app.use('/api', require('./routes/notifications'));
 app.use('/api/roles', require('./routes/roles'));
 
-// ✅ Export Routes
+// Export Routes
 app.use('/api/export/employees', require('./routes/ListexportEmployees.routes'));
 app.use('/api/export/reports/employees', require('./routes/exportEmployeeReports.routes'));
 app.use('/api/export/projects', require('./routes/exportProjects.routes'));
