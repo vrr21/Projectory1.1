@@ -11,7 +11,9 @@ import {
   App,
   Tooltip,
   InputNumber,
+  Checkbox,
 } from "antd";
+
 import {
   InboxOutlined,
   EyeOutlined,
@@ -57,7 +59,8 @@ interface Task {
   ID_Task: string;
   Task_Name: string;
   Status: string;
-  ID_Order: string; // Добавлено свойство для связи задачи с проектом
+  ID_Order: string;
+  Time_Norm?: number;
 }
 
 interface TimeTrackingFormValues {
@@ -65,9 +68,10 @@ interface TimeTrackingFormValues {
   taskName: string;
   description: string;
   hours: number;
-  minutes: number; // Добавлено свойство minutes
+  minutes: number;
   date: dayjs.Dayjs;
   file: UploadFile[];
+  isCompleted?: boolean;
 }
 
 interface RawTimeEntry {
@@ -81,8 +85,11 @@ interface RawTimeEntry {
   Description?: string;
   Attachments?: string[];
   ID_User: string;
+  ID_Employee: string;
   link?: string;
   Hours_Spent_Total?: number;
+  Time_Norm?: number; // 🟢 Добавить
+  FitTimeNorm?: boolean; // 🟢 Добавить
 }
 
 interface CommentType {
@@ -173,13 +180,21 @@ const TimeTrackingEmployee: React.FC = () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const userData = await userResponse.json();
+
     const res = await fetch(`${API_URL}/api/time-tracking`, {
       headers: { Authorization: `Bearer ${token}` },
     });
+
     const allEntries: RawTimeEntry[] = await res.json();
+
+    // 🟢 Вставляем логи
+    console.log("Сырые записи учета времени:", allEntries);
+    console.log("user.id:", userData.ID_User);
+
     const userEntries = allEntries.filter(
-      (entry) => entry.ID_User === userData.ID_User
+      (entry) => entry.ID_Employee === userData.ID_User
     );
+
     setTimeEntries(userEntries);
   }, []);
 
@@ -189,38 +204,50 @@ const TimeTrackingEmployee: React.FC = () => {
     fetchTimeEntries();
   }, [fetchProjects, fetchTasks, fetchTimeEntries]);
 
-  const handleEdit = (entry: RawTimeEntry) => {
-    const project = projects.find(
-      (p) => p.Order_Name === entry.Order_Name
-    )?.ID_Order;
 
-    const fileList: UploadFile[] = (entry.Attachments || []).map(
-      (filename, index) => ({
-        uid: `${index}`,
-        name: filename,
-        status: "done",
-        url: `${API_URL}/uploads/${filename}`,
-      })
-    );
+ const handleEdit = (entry: RawTimeEntry) => {
+  const project = projects.find(
+    (p) => p.Order_Name === entry.Order_Name
+  )?.ID_Order;
 
-    setEditingFileList(fileList);
-    setEditingEntry({ ...entry, Attachments: entry.Attachments || [] });
-
-    const hours = Math.floor(entry.Hours_Spent);
-    const minutes = Math.round((entry.Hours_Spent - hours) * 60);
-    form.setFieldsValue({
-      project,
-      taskName: entry.ID_Task,
-      hours,
-      minutes,
-      date: dayjs(entry.Start_Date),
-      description: entry.Description || "",
-      file: fileList,
-      attachmentType: "file",
+  const fileList: UploadFile[] = (entry.Attachments || []).map((filename, index) => ({
+    uid: `${index}`,
+    name: filename,
+    status: "done",
+    url: `${API_URL}/uploads/${filename}`
+  }));
+  if (entry.link) {
+    fileList.push({
+      uid: `link`,
+      name: "Ссылка",
+      status: "done",
+      url: entry.link
     });
+  }
+  setEditingFileList(fileList);
+  
+  setEditingEntry(entry);
 
-    setIsModalVisible(true);
-  };
+  const hours = Math.floor(entry.Hours_Spent);
+  const minutes = Math.round((entry.Hours_Spent - hours) * 60);
+
+  const attachmentType = entry.link ? "link" : "file";
+
+  form.setFieldsValue({
+    project,
+    taskName: entry.ID_Task,
+    hours,
+    minutes,
+    date: dayjs(entry.Start_Date),
+    description: entry.Description || "",
+    attachmentType,
+    file: fileList,
+    link: entry.link || "",
+  });
+
+  setIsModalVisible(true);
+};
+
 
   const handleDelete = async (id: string) => {
     try {
@@ -256,30 +283,38 @@ const TimeTrackingEmployee: React.FC = () => {
     const totalHours = (values.hours || 0) + (values.minutes || 0) / 60;
 
     const selectedTask = tasks.find((t) => t.ID_Task === values.taskName);
-    const projectId = selectedTask?.ID_Order;
 
-    if (!projectId) {
+    if (!selectedTask) {
       api.error({
-        message: "Не удалось определить проект для выбранной задачи.",
+        message: "Выберите корректную задачу.",
       });
       return;
     }
 
+    // 🚀 Добавляем Time_Norm в запись (можно использовать для отчётов или подсказок)
+    const timeNorm = selectedTask?.Time_Norm || 0;
+
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const payload = {
-      project: projectId,
       taskName: values.taskName,
       date: values.date.toISOString(),
       description: values.description,
       hours: parseFloat(totalHours.toFixed(2)),
+      timeNorm,
+      isCompleted: values.isCompleted,
+      ID_User: user?.id,
+      ID_Employee: user?.id,
+      attachments: values.attachmentType === "file"
+        ? editingFileList.map((f) => f.name) // имена файлов, если файлы
+        : [],
+      link: values.attachmentType === "link" ? values.link : "",
     };
+    
 
     const method = editingEntry ? "PUT" : "POST";
     const url = `${API_URL}/api/time-tracking${
       editingEntry ? `/${editingEntry.ID_Execution}` : ""
     }`;
-
-    console.log("Payload отправки:", payload);
-    console.log("URL:", url);
 
     try {
       const res = await fetch(url, {
@@ -307,8 +342,6 @@ const TimeTrackingEmployee: React.FC = () => {
       form.resetFields(); // Очистить форму
       setEditingEntry(null); // Сброс редактирования
       setIsModalVisible(false); // Закрыть модал
-
-      // Остальная часть кода...
     } catch (error: unknown) {
       if (error instanceof Error) {
         api.error({ message: `Ошибка при сохранении: ${error.message}` });
@@ -384,7 +417,6 @@ const TimeTrackingEmployee: React.FC = () => {
 
   const normFile = (e: { fileList: UploadFile[] }) =>
     Array.isArray(e) ? e : e.fileList;
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
   console.log("Активные задачи:", activeTasks);
 
@@ -501,121 +533,156 @@ const TimeTrackingEmployee: React.FC = () => {
               </div>
 
               {/* 👉 Вкладки */}
-              <Tabs defaultActiveKey="cards" type="card">
-                {/* 🗂️ Вкладка Карточки */}
-                <Tabs.TabPane tab="Карточки" key="cards">
-                  <div className="horizontal-columns">
-                    {getWeekDays().map((day) => (
-                      <div key={day.toString()} className="horizontal-column">
-                        <div className="day-header">
-                          {weekDaysRu[day.isoWeekday() - 1]}
-                        </div>
-                        <div className="day-date">{day.format("DD.MM")}</div>
-                        <div className="card-stack">
-                          {getFilteredEntriesByDay(day)
-                            .filter((entry) => entry.ID_User === user?.id)
-                            .map((entry) => (
-                              <div
-                                key={entry.ID_Execution}
-                                className="entry-card"
-                              >
-                                <div>
-                                  <b>{entry.Task_Name}</b>
-                                  <div>Проект: {entry.Order_Name}</div>
-                                  <div>{entry.Hours_Spent} ч</div>
+              <Tabs
+                defaultActiveKey="cards"
+                type="card"
+                items={[
+                  {
+                    key: "cards",
+                    label: "Карточки",
+                    children: (
+                      <div className="horizontal-columns">
+                        {getWeekDays().map((day) => (
+                          <div
+                            key={day.toString()}
+                            className="horizontal-column"
+                          >
+                            <div className="day-header">
+                              {weekDaysRu[day.isoWeekday() - 1]}
+                            </div>
+                            <div className="day-date">
+                              {day.format("DD.MM")}
+                            </div>
+                            <div className="card-stack">
+                              {getFilteredEntriesByDay(day).map((entry) => (
+                                <div
+                                  key={entry.ID_Execution}
+                                  className="entry-card"
+                                >
                                   <div>
-                                    Потрачено всего:{" "}
-                                    {entry.Hours_Spent_Total ?? "-"} ч
+                                    <b>{entry.Task_Name}</b>
+                                    <div>Проект: {entry.Order_Name}</div>
+                                    <div>{entry.Hours_Spent} ч</div>
+                                  </div>
+                                  <div
+                                    style={{
+                                      marginTop: 8,
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                      flexWrap: "wrap",
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", gap: 4 }}>
+                                      <Tooltip title="Просмотр">
+                                        <Button
+                                          size="small"
+                                          icon={<EyeOutlined />}
+                                          onClick={() => handleViewEntry(entry)}
+                                        />
+                                      </Tooltip>
+                                      <Tooltip title="Комментарии">
+                                        <Button
+                                          size="small"
+                                          icon={<MessageOutlined />}
+                                          onClick={() =>
+                                            openCommentsModal(entry)
+                                          }
+                                        />
+                                      </Tooltip>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 4 }}>
+                                      <Tooltip title="Редактировать">
+                                        <Button
+                                          size="small"
+                                          icon={<EditOutlined />}
+                                          onClick={() => handleEdit(entry)}
+                                        />
+                                      </Tooltip>
+                                      <Tooltip title="Удалить">
+                                        <Button
+                                          size="small"
+                                          icon={<DeleteOutlined />}
+                                          danger
+                                          onClick={() =>
+                                            handleDelete(entry.ID_Execution)
+                                          }
+                                        />
+                                      </Tooltip>
+                                    </div>
                                   </div>
                                 </div>
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    display: "flex",
-                                    gap: 8,
-                                    flexWrap: "wrap",
-                                  }}
-                                >
-                                  <Tooltip title="Просмотр">
-                                    <Button
-                                      icon={<EyeOutlined />}
-                                      onClick={() => handleViewEntry(entry)}
-                                    />
-                                  </Tooltip>
-                                  <Tooltip title="Редактировать">
-                                    <Button
-                                      icon={<EditOutlined />}
-                                      onClick={() => handleEdit(entry)}
-                                    />
-                                  </Tooltip>
-                                  <Tooltip title="Удалить">
-                                    <Button
-                                      icon={<DeleteOutlined />}
-                                      danger
-                                      onClick={() =>
-                                        handleDelete(entry.ID_Execution)
-                                      }
-                                    />
-                                  </Tooltip>
-                                  <Tooltip title="Комментарии">
-                                    <Button
-                                      icon={<MessageOutlined />}
-                                      onClick={() => openCommentsModal(entry)}
-                                    />
-                                  </Tooltip>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </Tabs.TabPane>
-
-                {/* 🗂️ Вкладка Таблица */}
-                <Tabs.TabPane tab="Таблица" key="table">
-                  <Table
-                    dataSource={timeEntries.filter(
-                      (entry) => entry.ID_User === user?.id
-                    )}
-                    rowKey="ID_Execution"
-                    pagination={{ pageSize: 10 }}
-                    columns={[
-                      { title: "Задача", dataIndex: "Task_Name", key: "task" },
-                      {
-                        title: "Проект",
-                        dataIndex: "Order_Name",
-                        key: "order",
-                      },
-                      {
-                        title: "Начало",
-                        dataIndex: "Start_Date",
-                        key: "start",
-                        render: (date: string) =>
-                          dayjs(date).format("DD.MM.YYYY HH:mm"),
-                      },
-                      {
-                        title: "Окончание",
-                        dataIndex: "End_Date",
-                        key: "end",
-                        render: (date: string) =>
-                          dayjs(date).format("DD.MM.YYYY HH:mm"),
-                      },
-                      {
-                        title: "Потрачено (запись)",
-                        dataIndex: "Hours_Spent",
-                        key: "hours",
-                      },
-                      {
-                        title: "Потрачено всего",
-                        dataIndex: "Hours_Spent_Total",
-                        key: "total",
-                        render: (val: number | undefined) => (val ? val : "-"),
-                      },
-                    ]}
-                  />
-                </Tabs.TabPane>
-              </Tabs>
+                    ),
+                  },
+                  {
+                    key: "table",
+                    label: "Таблица",
+                    children: (
+                      <Table
+                        dataSource={timeEntries}
+                        rowKey="ID_Execution"
+                        pagination={{ pageSize: 10 }}
+                        columns={[
+                          {
+                            title: "Задача",
+                            dataIndex: "Task_Name",
+                            key: "task",
+                          },
+                          {
+                            title: "Проект",
+                            dataIndex: "Order_Name",
+                            key: "order",
+                          },
+                          {
+                            title: "Начало",
+                            dataIndex: "Start_Date",
+                            key: "start",
+                            render: (date: string) =>
+                              dayjs(date).format("DD.MM.YYYY HH:mm"),
+                          },
+                          {
+                            title: "Окончание",
+                            dataIndex: "End_Date",
+                            key: "end",
+                            render: (date: string) =>
+                              dayjs(date).format("DD.MM.YYYY HH:mm"),
+                          },
+                          {
+                            title: "Потрачено (запись)",
+                            dataIndex: "Hours_Spent",
+                            key: "hours",
+                          },
+                          {
+                            title: "Норма времени",
+                            dataIndex: "Time_Norm",
+                            key: "timeNorm",
+                            render: (val: number | undefined) =>
+                              val ? `${val} ч` : "-",
+                          },
+                          {
+                            title: "Вложился в норму?",
+                            dataIndex: "FitTimeNorm",
+                            key: "fitTimeNorm",
+                            render: (val: boolean | undefined) =>
+                              val === undefined ? "-" : val ? "Да" : "Нет",
+                          },
+                          {
+                            title: "Готовность задачи",
+                            dataIndex: "Is_Completed",
+                            key: "isCompleted",
+                            render: (val) => (val ? "Завершена" : "Не завершена"),
+                          }                          
+                        ]}
+                      />
+                    ),
+                  },
+                ]}
+              />
 
               <Modal
                 title={
@@ -637,23 +704,6 @@ const TimeTrackingEmployee: React.FC = () => {
                 ]}
               >
                 <Form form={form} layout="vertical" onFinish={handleFormSubmit}>
-                  {form.getFieldValue("taskName") && (
-                    <Form.Item label="Проект">
-                      <Input
-                        value={(() => {
-                          const selectedTask = tasks.find(
-                            (t) => t.ID_Task === form.getFieldValue("taskName")
-                          );
-                          const project = projects.find(
-                            (p) => p.ID_Order === selectedTask?.ID_Order
-                          );
-                          return project?.Order_Name || "-";
-                        })()}
-                        readOnly
-                      />
-                    </Form.Item>
-                  )}
-
                   <Form.Item
                     name="taskName"
                     label="Задача"
@@ -747,6 +797,13 @@ const TimeTrackingEmployee: React.FC = () => {
                       }
                     />
                   </Form.Item>
+                  <Form.Item
+                    name="isCompleted"
+                    label="Завершена ли задача?"
+                    valuePropName="checked"
+                  >
+                    <Checkbox>Да</Checkbox>
+                  </Form.Item>
 
                   <Form.Item label="Прикрепление материала" required>
                     <Form.Item
@@ -754,12 +811,21 @@ const TimeTrackingEmployee: React.FC = () => {
                       noStyle
                       initialValue="file"
                     >
-                      <Radio.Group
-                        optionType="button"
-                        buttonStyle="solid"
-                        className="attachment-type-switch"
-                        style={{ marginBottom: 12 }}
-                      >
+<Radio.Group
+  optionType="button"
+  buttonStyle="solid"
+  className="attachment-type-switch"
+  style={{ marginBottom: 12 }}
+  onChange={(e) => {
+    const type = e.target.value;
+    if (type === "file") {
+      form.setFieldsValue({ link: "" });
+    } else {
+      setEditingFileList([]);
+      form.setFieldsValue({ file: [] });
+    }
+  }}
+>
                         <Radio.Button value="file">Файл</Radio.Button>
                         <Radio.Button value="link">Ссылка</Radio.Button>
                       </Radio.Group>
@@ -850,60 +916,62 @@ const TimeTrackingEmployee: React.FC = () => {
                     <p>
                       <b>Потрачено (запись):</b> {viewingEntry.Hours_Spent} ч
                     </p>
+
                     <p>
-                      <b>Потрачено всего:</b>{" "}
-                      {viewingEntry.Hours_Spent_Total ?? "-"} ч
-                    </p>{" "}
-                    {/* 🟢 Добавляем */}
+                      <b>Норма времени:</b>{" "}
+                      {viewingEntry.Time_Norm
+                        ? `${viewingEntry.Time_Norm} ч`
+                        : "-"}
+                    </p>
+                    <p>
+                      <b>Вложился в норму:</b>{" "}
+                      {viewingEntry.FitTimeNorm === undefined
+                        ? "-"
+                        : viewingEntry.FitTimeNorm
+                        ? "Да"
+                        : "Нет"}
+                    </p>
+
                     {viewingEntry.Description && (
                       <p>
                         <b>Описание:</b> {viewingEntry.Description}
                       </p>
                     )}
-                    {viewingEntry.Attachments &&
-                      viewingEntry.Attachments.length > 0 && (
-                        <div>
-                          <p>
-                            <b>Вложения:</b>
-                          </p>
-                          <ul className="attachments-list">
-                            {viewingEntry.Attachments.map((item, idx) => {
-                              const isUrl = /^https?:\/\//.test(item);
-                              const href = isUrl
-                                ? item
-                                : `${API_URL}/uploads/${item}`;
-                              const label = isUrl
-                                ? item
-                                : item.split("/").pop();
-                              return (
-                                <li key={idx}>
-                                  <a
-                                    href={href}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                  >
-                                    {label}
-                                  </a>
-                                </li>
-                              );
-                            })}
-                          </ul>
-                        </div>
-                      )}
-                    {viewingEntry.link && (
-                      <div>
-                        <p>
-                          <b>Ссылка:</b>
-                        </p>
-                        <a
-                          href={viewingEntry.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          {viewingEntry.link}
-                        </a>
-                      </div>
-                    )}
+{(viewingEntry.Attachments || []).length > 0 || viewingEntry.link ? (
+  <div>
+    <p><b>Вложения:</b></p>
+    <ul className="attachments-list">
+      {/* Отображаем Attachments */}
+      {(viewingEntry.Attachments || []).map((item, idx) => {
+        const isUrl = /^https?:\/\//.test(item);
+        const href = isUrl ? item : `${API_URL}/uploads/${item}`;
+        const label = isUrl ? item : item.split("/").pop();
+        return (
+          <li key={`file-${idx}`}>
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {label}
+            </a>
+          </li>
+        );
+      })}
+
+      {/* Отображаем ссылку, если есть */}
+      {viewingEntry.link && (
+        <li key="link">
+          <a
+            href={viewingEntry.link}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {viewingEntry.link}
+          </a>
+        </li>
+      )}
+    </ul>
+  </div>
+) : null}
+
+
                   </div>
                 )}
               </Modal>
