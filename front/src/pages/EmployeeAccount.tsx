@@ -19,8 +19,6 @@ import {
   TeamOutlined,
   ProjectOutlined,
   PushpinOutlined,
-  CheckCircleOutlined,
-  RocketOutlined,
   EditOutlined,
   CheckOutlined,
   CloseOutlined,
@@ -84,16 +82,19 @@ const EmployeeAccount: React.FC = () => {
   const [messageApi, contextHolder] = message.useMessage();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [expandedTeams, setExpandedTeams] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState(false);
+  const [expandedTasks, setExpandedTasks] = useState(false);
 
   const isSelf = !id || Number(id) === user?.id;
   useEffect(() => {
     console.log("Loaded EmployeeAccount with id:", id);
   }, [id]);
-  
+
   useEffect(() => {
     const fetchProfile = async () => {
       if (!id) return;
-  
+
       try {
         const response = await fetch(`${API_URL}/api/employees/${id}`);
         if (!response.ok) {
@@ -121,12 +122,12 @@ const EmployeeAccount: React.FC = () => {
         }
       }
     };
-  
+
     if (!isSelf) {
       fetchProfile();
     }
   }, [id, isSelf, messageApi]);
-  
+
   useEffect(() => {
     if (!isSelf) setIsEditing(false);
   }, [isSelf]);
@@ -135,7 +136,6 @@ const EmployeeAccount: React.FC = () => {
   // Добавить состояние
   const [guestUser, setGuestUser] = useState<GuestUser | null>(null);
 
-
   const displayedUser = isSelf ? user : guestUser;
 
   const [formData, setFormData] = useState({
@@ -143,7 +143,7 @@ const EmployeeAccount: React.FC = () => {
     lastName: "",
     phone: "",
   });
-  
+
   useEffect(() => {
     if (displayedUser) {
       setFormData({
@@ -169,7 +169,7 @@ const EmployeeAccount: React.FC = () => {
 
   useEffect(() => {
     if (!displayedUser) return;
-  
+
     const fetchData = async () => {
       try {
         const teamRes = await fetch(`${API_URL}/api/teams`);
@@ -178,7 +178,7 @@ const EmployeeAccount: React.FC = () => {
           team.members.some((member) => member.email === displayedUser.email)
         );
         setTeams(userTeams);
-  
+
         const projectRes = await fetch(`${API_URL}/api/projects`);
         const allProjects: Project[] = await projectRes.json();
         const userTeamIds = userTeams.map((team) => team.ID_Team);
@@ -186,8 +186,10 @@ const EmployeeAccount: React.FC = () => {
           userTeamIds.includes(project.ID_Team)
         );
         setProjects(userProjects);
-  
-        const taskRes = await fetch(`${API_URL}/api/tasks/employee/${displayedUser.id}`);
+
+        const taskRes = await fetch(
+          `${API_URL}/api/tasks/employee/${displayedUser.id}`
+        );
         const userTasks: Task[] = await taskRes.json();
         setTasks(userTasks);
       } catch (error) {
@@ -195,15 +197,14 @@ const EmployeeAccount: React.FC = () => {
         messageApi.error("Ошибка загрузки данных");
       }
     };
-  
+
     fetchData();
   }, [displayedUser, messageApi]);
-  
 
   const getUserRolesFromTeams = (): string[] => {
     if (!displayedUser) return [];
     const roles: string[] = [];
-  
+
     teams.forEach((team) => {
       team.members.forEach((member) => {
         if (member.email === displayedUser.email && member.role) {
@@ -211,10 +212,9 @@ const EmployeeAccount: React.FC = () => {
         }
       });
     });
-  
+
     return Array.from(new Set(roles));
   };
-  
 
   const getInitials = (fullName: string = "") => {
     const parts = fullName.trim().split(/\s+/);
@@ -347,20 +347,31 @@ const EmployeeAccount: React.FC = () => {
     <App>
       {contextHolder}
       <div className="dashboard">
-      <div style={{
-  position: "absolute",
-  top: "80px",
-  left: "24px",
-  display: "flex",
-  alignItems: "center",
-  cursor: "pointer",
-  zIndex: 1000
-}} onClick={() => navigate(-1)}>
-  <ArrowLeftOutlined style={{ fontSize: "20px", marginRight: "8px", color: "var(--accent-color)" }} />
-  <Text style={{ fontSize: "16px", color: "var(--text-color)" }}>Назад</Text>
-</div>
+        <div
+          style={{
+            position: "absolute",
+            top: "80px",
+            left: "24px",
+            display: "flex",
+            alignItems: "center",
+            cursor: "pointer",
+            zIndex: 1000,
+          }}
+          onClick={() => navigate(-1)}
+        >
+          <ArrowLeftOutlined
+            style={{
+              fontSize: "20px",
+              marginRight: "8px",
+              color: "var(--accent-color)",
+            }}
+          />
+          <Text style={{ fontSize: "16px", color: "var(--text-color)" }}>
+            Назад
+          </Text>
+        </div>
 
-      {user?.role === "Менеджер" ? <HeaderManager /> : <HeaderEmployee />}
+        {user?.role === "Менеджер" ? <HeaderManager /> : <HeaderEmployee />}
 
         <div className="dashboard-body account-page-centered">
           <main className="main-content account-content">
@@ -554,7 +565,9 @@ const EmployeeAccount: React.FC = () => {
                     </div>
                     <div className="info-item">
                       <PhoneOutlined className="icon" />
-                      <Text>{displayedUser?.phone || "+7 (999) 999-99-99"}</Text>
+                      <Text>
+                        {displayedUser?.phone || "+7 (999) 999-99-99"}
+                      </Text>
                     </div>
                   </>
                 )}
@@ -581,7 +594,14 @@ const EmployeeAccount: React.FC = () => {
                         teams,
                         projects,
                         tasks,
-                        "Моя статистика"
+                        "Моя статистика",
+                        false,
+                        expandedTeams,
+                        setExpandedTeams,
+                        expandedProjects,
+                        setExpandedProjects,
+                        expandedTasks,
+                        setExpandedTasks
                       ),
                     },
                     ...(isSelf
@@ -593,7 +613,14 @@ const EmployeeAccount: React.FC = () => {
                               archivedTeams,
                               archivedProjects,
                               archivedTasks,
-                              "Архивная статистика"
+                              "Архивная статистика",
+                              false,
+                              expandedTeams,
+                              setExpandedTeams,
+                              expandedProjects,
+                              setExpandedProjects,
+                              expandedTasks,
+                              setExpandedTasks
                             ),
                           },
                         ]
@@ -602,9 +629,20 @@ const EmployeeAccount: React.FC = () => {
                 />
               </div>
 
-              {/* Принудительное использование переменных */}
               <div style={{ display: "none" }}>
-                {renderSummary(activeTeams, activeProjects, activeTasks)}
+                {renderSummary(
+                  activeTeams,
+                  activeProjects,
+                  activeTasks,
+                  "Сводная информация о сотруднике",
+                  false,
+                  expandedTeams,
+                  setExpandedTeams,
+                  expandedProjects,
+                  setExpandedProjects,
+                  expandedTasks,
+                  setExpandedTasks
+                )}
               </div>
             </div>
           </main>
@@ -618,7 +656,13 @@ const EmployeeAccount: React.FC = () => {
     displayProjects: Project[],
     displayTasks: Task[],
     title: string = "Сводная информация о сотруднике",
-    tightLayout = false
+    tightLayout = false,
+    expandedTeams: boolean,
+    setExpandedTeams: React.Dispatch<React.SetStateAction<boolean>>,
+    expandedProjects: boolean,
+    setExpandedProjects: React.Dispatch<React.SetStateAction<boolean>>,
+    expandedTasks: boolean,
+    setExpandedTasks: React.Dispatch<React.SetStateAction<boolean>>
   ) {
     return (
       <Card
@@ -643,64 +687,110 @@ const EmployeeAccount: React.FC = () => {
           </Title>
         </Divider>
 
+        {/* Teams */}
         <Divider orientation="left" style={{ marginTop: 24 }}>
           <Title level={4} className="text-color" style={{ margin: 0 }}>
             <TeamOutlined style={{ marginRight: 8 }} /> Участие в командах
           </Title>
         </Divider>
         {displayTeams.length > 0 ? (
-          displayTeams.map((team) => (
-            <Text
-              key={team.ID_Team}
-              className="text-color"
-              style={{ display: "block" }}
-            >
-              <CheckCircleOutlined style={{ marginRight: 8 }} />{" "}
-              <strong>{team.Team_Name}</strong>
-            </Text>
-          ))
+          <>
+            {(expandedTeams ? displayTeams : displayTeams.slice(0, 10)).map(
+              (team, index) => (
+                <Text
+                  key={team.ID_Team}
+                  className="text-color"
+                  style={{ display: "block", marginLeft: 24 }}
+                >
+                  {index + 1}. <strong>{team.Team_Name}</strong>
+                </Text>
+              )
+            )}
+            {displayTeams.length > 10 && (
+              <Button
+                type="link"
+                onClick={() => setExpandedTeams(!expandedTeams)}
+                style={{ marginTop: 8 }}
+              >
+                {expandedTeams
+                  ? "Скрыть"
+                  : `Показать ещё (${displayTeams.length - 10})`}
+              </Button>
+            )}
+          </>
         ) : (
           <Text type="secondary">Нет данных о командах.</Text>
         )}
 
+        {/* Projects */}
         <Divider orientation="left" style={{ marginTop: 24 }}>
           <Title level={4} className="text-color" style={{ margin: 0 }}>
             <ProjectOutlined style={{ marginRight: 8 }} /> Проекты
           </Title>
         </Divider>
         {displayProjects.length > 0 ? (
-          displayProjects.map((project) => (
-            <Text
-              key={project.ID_Order}
-              className="text-color"
-              style={{ display: "block" }}
-            >
-              <RocketOutlined style={{ marginRight: 8 }} />{" "}
-              <strong>{project.Order_Name}</strong> (
-              {findTeamNameByProject(project.ID_Team)})
-            </Text>
-          ))
+          <>
+            {(expandedProjects
+              ? displayProjects
+              : displayProjects.slice(0, 10)
+            ).map((project, index) => (
+              <Text
+                key={project.ID_Order}
+                className="text-color"
+                style={{ display: "block", marginLeft: 24 }}
+              >
+                {index + 1}. <strong>{project.Order_Name}</strong> (
+                {findTeamNameByProject(project.ID_Team)})
+              </Text>
+            ))}
+            {displayProjects.length > 10 && (
+              <Button
+                type="link"
+                onClick={() => setExpandedProjects(!expandedProjects)}
+                style={{ marginTop: 8 }}
+              >
+                {expandedProjects
+                  ? "Скрыть"
+                  : `Показать ещё (${displayProjects.length - 10})`}
+              </Button>
+            )}
+          </>
         ) : (
           <Text type="secondary">Нет данных о проектах.</Text>
         )}
 
+        {/* Tasks */}
         <Divider orientation="left" style={{ marginTop: 24 }}>
           <Title level={4} className="text-color" style={{ margin: 0 }}>
             <PushpinOutlined style={{ marginRight: 8 }} /> Задачи
           </Title>
         </Divider>
         {displayTasks.length > 0 ? (
-          displayTasks.map((task, index) => (
-            <Text
-              key={task.ID_Task}
-              className="text-color"
-              style={{ display: "block" }}
-            >
-              {index + 1}. <EditOutlined style={{ marginRight: 8 }} />{" "}
-              <strong>{task.Task_Name}</strong> — Статус:{" "}
-              <em>{task.Status_Name}</em>
-            </Text>
-          ))
+          <>
+            {(expandedTasks ? displayTasks : displayTasks.slice(0, 10)).map(
+              (task, index) => (
+                <Text
+                  key={task.ID_Task}
+                  className="text-color"
+                  style={{ display: "block", marginLeft: 24 }}
+                >
+                  {index + 1}. <strong>{task.Task_Name}</strong> — Статус:{" "}
+                  <em>{task.Status_Name}</em>
+                </Text>
+              )
+            )}
+            {displayTasks.length > 10 && (
+              <Button
+                type="link"
+                onClick={() => setExpandedTasks(!expandedTasks)}
+                style={{ marginTop: 8 }}
+              >
+                {expandedTasks
+                  ? "Скрыть"
+                  : `Показать ещё (${displayTasks.length - 10})`}
+              </Button>
+            )}
+          </>
         ) : (
           <Text type="secondary">Нет данных о задачах.</Text>
         )}
