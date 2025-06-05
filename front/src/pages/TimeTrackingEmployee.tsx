@@ -88,8 +88,9 @@ interface RawTimeEntry {
   ID_Employee: string;
   link?: string;
   Hours_Spent_Total?: number;
-  Time_Norm?: number; // 🟢 Добавить
-  FitTimeNorm?: boolean; // 🟢 Добавить
+  Time_Norm?: number; 
+  FitTimeNorm?: boolean;
+  Employee_Email?: string;
 }
 
 interface CommentType {
@@ -363,7 +364,7 @@ const TimeTrackingEmployee: React.FC = () => {
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !viewingEntry?.ID_Task) return;
-
+  
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/comments`, {
@@ -377,14 +378,30 @@ const TimeTrackingEmployee: React.FC = () => {
           commentText: newComment.trim(),
         }),
       });
-
-      if (!res.ok) throw new Error();
+  
+      if (!res.ok) throw new Error("Ошибка при добавлении комментария");
+  
+      await fetch(`${API_URL}/api/employee/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userEmail: viewingEntry.Employee_Email, // ✅ Теперь email
+          title: `Новый комментарий к задаче: ${viewingEntry.Task_Name}`,
+          description: newComment.trim(),
+        }),
+      });
+      
+  
       setNewComment("");
       fetchComments(viewingEntry.ID_Task);
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
     }
   };
+  
 
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);

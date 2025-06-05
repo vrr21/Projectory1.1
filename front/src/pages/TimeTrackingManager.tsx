@@ -8,6 +8,7 @@ import {
   Tooltip,
   Modal,
   Input,
+  List,  
 } from "antd";
 
 import {
@@ -57,6 +58,14 @@ interface Project {
   Order_Name: string;
 }
 
+interface CommentType {
+  ID_Comment: number;
+  CommentText: string;
+  Created_At: string;
+  AuthorName: string;
+  Avatar?: string;
+}
+
 const TimeTrackingManager: React.FC = () => {
   const [weekStart, setWeekStart] = useState(() => dayjs().startOf("isoWeek"));
   const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
@@ -85,6 +94,67 @@ const TimeTrackingManager: React.FC = () => {
         ? prev.filter((d) => d !== dayKey)
         : [...prev, dayKey]
     );
+  };
+
+  const [comments, setComments] = useState<CommentType[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
+
+  const fetchComments = async (taskId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const data = await res.json();
+      setComments(data);
+    } catch (error) {
+      console.error("Ошибка при получении комментариев:", error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !viewingEntry?.ID_Task) return;
+  
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/api/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          taskId: viewingEntry.ID_Task,
+          commentText: newComment.trim(),
+        }),
+      });
+  
+      if (!res.ok) throw new Error("Ошибка при добавлении комментария");
+  
+      // 👇 Уведомление сотруднику (или менеджеру)
+      await fetch(`${API_URL}/api/employee/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userEmail: viewingEntry.ID_User, // или viewingEntry.Employee_Email
+          title: `Новый комментарий к задаче: ${viewingEntry.Task_Name}`,
+          description: newComment.trim(),
+        }),
+      });
+  
+      setNewComment("");
+      fetchComments(viewingEntry.ID_Task);
+    } catch (error) {
+      console.error("Ошибка при добавлении комментария:", error);
+    }
+  };
+  
+
+  const openCommentsModal = (entry: RawTimeEntry) => {
+    setViewingEntry(entry);
+    setIsCommentsModalVisible(true);
+    fetchComments(entry.ID_Task);
   };
 
   const fetchTimeEntries = useCallback(async () => {
@@ -305,11 +375,7 @@ const TimeTrackingManager: React.FC = () => {
                                           size="small"
                                           icon={<MessageOutlined />}
                                           onClick={() =>
-                                            notification.info({
-                                              message: "Комментарии",
-                                              description:
-                                                "Переход на модуль комментариев в разработке",
-                                            })
+                                            openCommentsModal(entry)
                                           }
                                         />
                                       </Tooltip>
@@ -365,12 +431,12 @@ const TimeTrackingManager: React.FC = () => {
                       </div>
 
                       <Table
-  dataSource={filteredEntries}
-  rowKey="ID_Execution"
-  pagination={{
-    pageSize: 10,
-    showSizeChanger: false, // Отключаем выбор размера страницы
-  }}
+                        dataSource={filteredEntries}
+                        rowKey="ID_Execution"
+                        pagination={{
+                          pageSize: 10,
+                          showSizeChanger: false, // Отключаем выбор размера страницы
+                        }}
                         columns={[
                           {
                             title: "Задача",
@@ -518,6 +584,78 @@ const TimeTrackingManager: React.FC = () => {
                     </div>
                   )}
                 </div>
+              )}
+            </Modal>
+            <Modal
+              title="Комментарии к задаче"
+              open={isCommentsModalVisible}
+              onCancel={() => setIsCommentsModalVisible(false)}
+              footer={null}
+            >
+              {viewingEntry && (
+                <>
+                  <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
+                  <List
+                    className="comment-list"
+                    header={`${comments.length} комментариев`}
+                    itemLayout="horizontal"
+                    dataSource={comments}
+                    renderItem={(item: CommentType) => (
+                      <List.Item>
+                        <List.Item.Meta
+                          avatar={
+                            <span
+                              style={{
+                                backgroundColor: "#777",
+                                borderRadius: "50%",
+                                display: "inline-block",
+                                width: 32,
+                                height: 32,
+                                textAlign: "center",
+                                lineHeight: "32px",
+                                color: "#fff",
+                              }}
+                            >
+                              {item.AuthorName.charAt(0).toUpperCase()}
+                            </span>
+                          }
+                          title={
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                              }}
+                            >
+                              <span>{item.AuthorName}</span>
+                              <span style={{ fontSize: 12, color: "#999" }}>
+                                {dayjs(item.Created_At).format(
+                                  "YYYY-MM-DD HH:mm"
+                                )}
+                              </span>
+                            </div>
+                          }
+                          description={item.CommentText}
+                        />
+                      </List.Item>
+                    )}
+                  />
+                  <Input.TextArea
+                    rows={3}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Введите комментарий..."
+                    style={{ marginTop: 8 }}
+                  />
+                  <Button
+                    type="primary"
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    style={{ marginTop: 8 }}
+                    block
+                  >
+                    Добавить комментарий
+                  </Button>
+                </>
               )}
             </Modal>
           </div>

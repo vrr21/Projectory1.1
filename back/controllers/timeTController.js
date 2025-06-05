@@ -183,22 +183,23 @@ const getTimeEntries = async (req, res) => {
     await poolConnect;
 
     let query = `
-      SELECT 
-        e.ID_Execution,
-        e.ID_Task,
-        t.Task_Name,
-        o.Order_Name,
-        e.Start_Date,
-        e.End_Date,
-        e.Hours_Spent,
-        e.Description,
-        e.Is_Completed,
-        e.ID_Employee,
-        e.Attachments,
-        e.Link,
-        t.Time_Norm,
-        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-        tms.Team_Name,
+    SELECT 
+      e.ID_Execution,
+      e.ID_Task,
+      t.Task_Name,
+      o.Order_Name,
+      e.Start_Date,
+      e.End_Date,
+      e.Hours_Spent,
+      e.Description,
+      e.Is_Completed,
+      e.ID_Employee,
+      e.Attachments,
+      e.Link,
+      t.Time_Norm,
+      u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+      u.Email AS Employee_Email,  -- ✅ добавляем сюда!
+      tms.Team_Name,
         (
           SELECT SUM(e2.Hours_Spent)
           FROM Execution e2
