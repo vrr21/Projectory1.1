@@ -304,7 +304,6 @@ const TeamManagementPage: React.FC = () => {
       messageApi.error("Ошибка при удалении участника");
     }
   };
-
   const handleDeleteTeam = (teamId: number) => {
     showConfirmModal(
       "Внимание! При удалении команды:\n" +
@@ -321,19 +320,21 @@ const TeamManagementPage: React.FC = () => {
           );
           if (!res.ok) throw new Error(await res.text());
           messageApi.success(
-            "Команда и связанные элементы успешно архивированы"
+            "Команда, проекты и задачи успешно архивированы"
           );
-          fetchTeams();
+  
+          await fetchTeams();
+  
         } catch (err) {
           console.error(err);
           messageApi.error(
-            "Ошибка при архивации команды и связанных элементов"
+            "Ошибка при архивировании команды и связанных элементов"
           );
         }
       }
     );
   };
-
+  
   const handleRestoreTeam = (teamId: number) => {
     showConfirmModal(
       "Вы уверены, что хотите восстановить команду?",

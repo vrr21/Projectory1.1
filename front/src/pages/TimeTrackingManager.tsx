@@ -2,38 +2,32 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Layout,
   Button,
-  Select,
   DatePicker,
-  Modal,
-  App,
-  Tooltip,
   notification,
   Dropdown,
+  Tooltip,
+  Modal,
+  Input,
 } from "antd";
+
 import {
-  EyeOutlined,
   LeftOutlined,
   RightOutlined,
   CalendarOutlined,
   FilterOutlined,
+  EyeOutlined,
   MessageOutlined,
-  UserOutlined,
 } from "@ant-design/icons";
+import { Tabs, Table } from "antd";
 import HeaderManager from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
-import "../styles/pages/TimeTrackingEmployee.css";
-import { Tabs, Table } from "antd";
-
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
-import weekday from "dayjs/plugin/weekday";
-import localeData from "dayjs/plugin/localeData";
 import "dayjs/locale/ru";
-import { List, Input, Avatar } from "antd";
+
+import "../styles/pages/TimeTrackingEmployee.css"; // можно использовать те же стили
 
 dayjs.extend(isoWeek);
-dayjs.extend(weekday);
-dayjs.extend(localeData);
 dayjs.locale("ru");
 
 const { Content } = Layout;
@@ -42,53 +36,37 @@ const API_URL = import.meta.env.VITE_API_URL;
 interface RawTimeEntry {
   ID_Execution: string;
   ID_Task: string;
-  ID_User: string;
   Task_Name: string;
   Order_Name: string;
   Start_Date: string;
   End_Date: string;
   Hours_Spent: number;
   Description?: string;
-  Employee_Name: string;
-  Team_Name: string;
-  Hours_Spent_Total: number;
-}
-
-interface Team {
-  ID_Team: string;
-  Team_Name: string;
-}
-
-interface User {
+  Attachments?: string[];
   ID_User: string;
-  First_Name: string;
-  Last_Name: string;
+  ID_Employee: string;
+  link?: string; // уже есть
+  Hours_Spent_Total?: number;
+  Time_Norm?: number;
+  FitTimeNorm?: boolean;
+  Employee_Name?: string; // 🔥 добавил
 }
 
-interface CommentType {
-  ID_Comment: number;
-  CommentText: string;
-  Created_At: string;
-  AuthorName: string;
-  Avatar?: string;
+interface Project {
+  ID_Order: string;
+  Order_Name: string;
 }
 
 const TimeTrackingManager: React.FC = () => {
-  const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
-  const [filteredEntries, setFilteredEntries] = useState<RawTimeEntry[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<string | undefined>();
-  const [selectedUser, setSelectedUser] = useState<string | undefined>();
   const [weekStart, setWeekStart] = useState(() => dayjs().startOf("isoWeek"));
-  const [viewingEntry, setViewingEntry] = useState<RawTimeEntry | null>(null);
-  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
-  const [, contextHolder] = notification.useNotification();
-  const [comments, setComments] = useState<CommentType[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+    null
+  );
+  const [api, contextHolder] = notification.useNotification();
   const [searchQuery, setSearchQuery] = useState<string>("");
+
   const weekDaysRu = [
     "Понедельник",
     "Вторник",
@@ -98,208 +76,112 @@ const TimeTrackingManager: React.FC = () => {
     "Суббота",
     "Воскресенье",
   ];
-
-  const fetchData = useCallback(async () => {
-    const token = localStorage.getItem("token");
-    const userRole = (localStorage.getItem("role") || "").toLowerCase();
-    const headers = { Authorization: `Bearer ${token}` };
-
-    const endpoint =
-      userRole === "менеджер"
-        ? `${API_URL}/api/time-tracking/all`
-        : `${API_URL}/api/time-tracking`;
-
-    const [entriesRes, teamsRes, usersRes] = await Promise.all([
-      fetch(endpoint, { headers }),
-      fetch(`${API_URL}/api/teams`, { headers }),
-      fetch(`${API_URL}/api/employees`, { headers }),
-    ]);
-
-    if (!entriesRes.ok) {
-      const errorData = await entriesRes.json();
-      notification.error({
-        message: errorData.message || "Ошибка загрузки данных",
-      });
-      setTimeEntries([]);
-      return;
-    }
-
-    const [entries, teamList, userList] = await Promise.all([
-      entriesRes.json(),
-      teamsRes.json(),
-      usersRes.json(),
-    ]);
-
-    setTimeEntries(entries);
-    setTeams(teamList);
-    setUsers(userList);
-  }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    let filtered = timeEntries;
-
-    if (selectedTeam) {
-      filtered = filtered.filter((e) => e.Team_Name === selectedTeam);
-    }
-
-    if (selectedUser) {
-      filtered = filtered.filter((e) => e.ID_User === selectedUser);
-    }
-
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filtered = filtered.filter((e) =>
-        `${e.Task_Name} ${e.Order_Name} ${e.Employee_Name}`
-          .toLowerCase()
-          .includes(query)
-      );
-    }
-
-    setFilteredEntries(filtered);
-  }, [selectedTeam, selectedUser, timeEntries, searchQuery]);
-
-  const fetchComments = async (taskId: string) => {
-    try {
-      const response = await fetch(`${API_URL}/api/comments/${taskId}`);
-      const data = await response.json();
-      setComments(data);
-    } catch (error) {
-      console.error("Ошибка при получении комментариев:", error);
-    }
+  const [viewingEntry, setViewingEntry] = useState<RawTimeEntry | null>(null);
+  const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [expandedDays, setExpandedDays] = useState<string[]>([]);
+  const toggleDayExpansion = (dayKey: string) => {
+    setExpandedDays((prev) =>
+      prev.includes(dayKey)
+        ? prev.filter((d) => d !== dayKey)
+        : [...prev, dayKey]
+    );
   };
 
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !viewingEntry?.ID_Task) return;
-
+  const fetchTimeEntries = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/api/comments`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          taskId: viewingEntry.ID_Task,
-          commentText: newComment.trim(),
-        }),
+      const res = await fetch(`${API_URL}/api/time-tracking/all`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
+      const allEntries: RawTimeEntry[] = await res.json();
+      setTimeEntries(allEntries);
 
-      if (!response.ok) throw new Error();
-      setNewComment("");
-      fetchComments(viewingEntry.ID_Task);
+      // Собираем проекты
+      const uniqueProjects = Array.from(
+        new Set(allEntries.map((e) => e.Order_Name))
+      ).map((name, index) => ({
+        ID_Order: `P-${index}`, // фиктивный ID для фильтрации
+        Order_Name: name,
+      }));
+      setProjects(uniqueProjects);
     } catch (error) {
-      console.error("Ошибка при добавлении комментария:", error);
+      console.error("Ошибка при загрузке данных:", error);
+      api.error({ message: "Ошибка загрузки данных" });
     }
-  };
+  }, [api]);
 
-  const openCommentsModal = (entry: RawTimeEntry) => {
-    setViewingEntry(entry);
-    setIsCommentsModalVisible(true);
-    fetchComments(entry.ID_Task);
-  };
+  useEffect(() => {
+    fetchTimeEntries();
+  }, [fetchTimeEntries]);
+
+  const getFilteredEntriesByDay = (day: dayjs.Dayjs) =>
+    filteredEntries.filter((entry) =>
+      dayjs(entry.Start_Date).isSame(day, "day")
+    );
+
+  const filteredEntries = timeEntries
+    .filter((entry) =>
+      selectedProjectId
+        ? entry.Order_Name ===
+          projects.find((p) => p.ID_Order === selectedProjectId)?.Order_Name
+        : true
+    )
+    .filter((entry) => {
+      const query = searchQuery.trim().toLowerCase();
+      return (
+        entry.Task_Name.toLowerCase().includes(query) ||
+        entry.Order_Name.toLowerCase().includes(query) ||
+        (entry.Employee_Name?.toLowerCase().includes(query) ?? false)
+      );
+    });
 
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, "day"));
 
-  const getEntriesByDay = (day: dayjs.Dayjs) =>
-    filteredEntries.filter((entry) =>
-      dayjs(entry.Start_Date).format('YYYY-MM-DD') === day.format('YYYY-MM-DD')
-    );
-  
-  
-  const filterMenu = (
-    <div style={{ padding: 8, minWidth: 220 }}>
-      <Select
-        allowClear
-        placeholder="Фильтр по команде"
-        style={{ width: "100%", marginBottom: 8 }}
-        onChange={(val) => setSelectedTeam(val)}
-        value={selectedTeam}
-      >
-        {teams.map((team) => (
-          <Select.Option key={team.ID_Team} value={team.Team_Name}>
-            {team.Team_Name}
-          </Select.Option>
-        ))}
-      </Select>
-
-      <Select
-        allowClear
-        placeholder="Фильтр по сотруднику"
-        style={{ width: "100%" }}
-        onChange={(val) => setSelectedUser(val)}
-        value={selectedUser}
-      >
-        {users.map((u) => (
-          <Select.Option key={u.ID_User} value={u.ID_User}>
-            {u.First_Name} {u.Last_Name}
-          </Select.Option>
-        ))}
-      </Select>
-
-      <Button
-        onClick={() => {
-          setSelectedTeam(undefined);
-          setSelectedUser(undefined);
-        }}
-        style={{
-          width: "100%",
-          fontSize: "12px",
-          padding: "4px 0",
-          marginTop: 8,
-          backgroundColor: "#f5f5f5",
-          color: "#000",
-          border: "1px solid #ccc",
-        }}
-      >
-        Сбросить фильтры
-      </Button>
-    </div>
-  );
-
   return (
-    <App>
+    <Layout className="layout">
       {contextHolder}
-      <Layout className="layout">
-        <SidebarManager />
-        <Layout className="main-layout">
-          <HeaderManager />
-          <Content className="content">
-            <div className="page-content">
-              {/* Заголовок */}
-              <h1
-                style={{
-                  fontSize: "28px",
-                  fontWeight: 600,
-                  flexBasis: "100%",
-                  marginTop: "32px",
-                  marginBottom: "24px",
-                }}
-              >
-                Учёт времени сотрудников
-              </h1>
+      <SidebarManager />
+      <Layout className="main-layout">
+        <HeaderManager />
+        <Content className="content">
+          <div className="page-content">
+            <h1
+              style={{
+                fontSize: "28px",
+                fontWeight: 600,
+                flexBasis: "100%",
+                marginTop: "32px",
+                marginBottom: "24px",
+              }}
+            >
+              Учёт времени сотрудников
+            </h1>
 
-              {/* Вкладки */}
-              <Tabs
-                defaultActiveKey="tracking"
-                type="card"
-                items={[
-                  {
-                    key: "tracking",
-                    label: "Учёт времени",
-                    children: (
-                      <>
+            <Tabs
+              defaultActiveKey="cards"
+              type="card"
+              items={[
+                {
+                  key: "cards",
+                  label: "Карточки",
+                  children: (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end", // 👈 Переносим всё вправо
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: "1rem",
+                          width: "100%",
+                          padding: "24px 0",
+                        }}
+                      >
                         <div
-                          className="time-tracking-header"
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            marginBottom: 24,
                             flexWrap: "wrap",
                             gap: "1rem",
                           }}
@@ -309,7 +191,6 @@ const TimeTrackingManager: React.FC = () => {
                             onClick={() =>
                               setWeekStart(weekStart.subtract(1, "week"))
                             }
-                            className="arrow-button"
                           />
                           <h2 style={{ margin: "0 1rem" }}>
                             {weekStart.format("D MMMM")} –{" "}
@@ -320,7 +201,6 @@ const TimeTrackingManager: React.FC = () => {
                             onClick={() =>
                               setWeekStart(weekStart.add(1, "week"))
                             }
-                            className="arrow-button"
                           />
                           <DatePicker
                             value={weekStart}
@@ -334,45 +214,48 @@ const TimeTrackingManager: React.FC = () => {
                                 setWeekStart(date.startOf("isoWeek"));
                               }
                             }}
-                            disabledDate={(current) =>
-                              current &&
-                              (current.year() < 2000 || current.year() > 2100)
-                            }
                           />
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              marginLeft: "auto",
-                              gap: "8px",
+                          <Dropdown
+                            menu={{
+                              items: [
+                                ...projects.map((p) => ({
+                                  key: p.ID_Order,
+                                  label: p.Order_Name,
+                                  onClick: () =>
+                                    setSelectedProjectId(p.ID_Order),
+                                })),
+                                { type: "divider" },
+                                {
+                                  key: "reset",
+                                  label: "Сбросить фильтр",
+                                  onClick: () => setSelectedProjectId(null),
+                                },
+                              ],
                             }}
+                            placement="bottomRight"
+                            arrow
                           >
-                            <Input
-                              placeholder="Поиск по всем данным..."
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              allowClear
-                              style={{ width: 250 }}
-                            />
-                            <Dropdown
-                              menu={{ items: [] }}
-                              open={isDropdownOpen}
-                              onOpenChange={setIsDropdownOpen}
-                              popupRender={() => filterMenu}
-                            >
-                              <Button
-                                icon={<FilterOutlined />}
-                                className="filter-button"
-                              >
-                                Фильтры
-                              </Button>
-                            </Dropdown>
-                          </div>
+                            <Button icon={<FilterOutlined />}>
+                              {selectedProjectId
+                                ? projects.find(
+                                    (p) => p.ID_Order === selectedProjectId
+                                  )?.Order_Name
+                                : "Фильтр по проекту"}
+                            </Button>
+                          </Dropdown>
                         </div>
+                      </div>
 
-                        {/* Сетка карточек */}
-                        <div className="horizontal-columns">
-                          {getWeekDays().map((day) => (
+                      <div className="horizontal-columns">
+                        {getWeekDays().map((day) => {
+                          const dayKey = day.format("YYYY-MM-DD");
+                          const entriesForDay = getFilteredEntriesByDay(day);
+                          const isExpanded = expandedDays.includes(dayKey);
+                          const entriesToShow = isExpanded
+                            ? entriesForDay
+                            : entriesForDay.slice(0, 4);
+
+                          return (
                             <div
                               key={day.toString()}
                               className="horizontal-column"
@@ -384,24 +267,31 @@ const TimeTrackingManager: React.FC = () => {
                                 {day.format("DD.MM")}
                               </div>
                               <div className="card-stack">
-                                {getEntriesByDay(day).map((entry) => (
+                                {entriesToShow.map((entry) => (
                                   <div
                                     key={entry.ID_Execution}
                                     className="entry-card"
                                   >
-                                    <b>{entry.Task_Name}</b>
-                                    <div>Проект: {entry.Order_Name}</div>
-                                    <div>Сотрудник: {entry.Employee_Name}</div>
                                     <div>
-                                      Потрачено (запись): {entry.Hours_Spent} ч
+                                      <b>{entry.Task_Name}</b>
+                                      <div>Проект: {entry.Order_Name}</div>
+                                      <div>
+                                        Сотрудник: {entry.Employee_Name}
+                                      </div>
+                                      <div>{entry.Hours_Spent} ч</div>
                                     </div>
-                                    <div>
-                                      Потрачено всего: {entry.Hours_Spent_Total}{" "}
-                                      ч
-                                    </div>
-                                    <div style={{ marginTop: 8 }}>
+                                    <div
+                                      style={{
+                                        marginTop: 8,
+                                        display: "flex",
+                                        justifyContent: "flex-start",
+                                        alignItems: "center",
+                                        gap: 4,
+                                      }}
+                                    >
                                       <Tooltip title="Просмотр">
                                         <Button
+                                          size="small"
                                           icon={<EyeOutlined />}
                                           onClick={() => {
                                             setViewingEntry(entry);
@@ -409,32 +299,78 @@ const TimeTrackingManager: React.FC = () => {
                                           }}
                                         />
                                       </Tooltip>
+
                                       <Tooltip title="Комментарии">
                                         <Button
+                                          size="small"
                                           icon={<MessageOutlined />}
                                           onClick={() =>
-                                            openCommentsModal(entry)
+                                            notification.info({
+                                              message: "Комментарии",
+                                              description:
+                                                "Переход на модуль комментариев в разработке",
+                                            })
                                           }
                                         />
                                       </Tooltip>
                                     </div>
                                   </div>
                                 ))}
+                                {entriesForDay.length > 4 && (
+                                  <Button
+                                    size="small"
+                                    style={{
+                                      marginTop: "8px",
+                                      width: "100%",
+                                      backgroundColor: "#1f1f1f",
+                                      color: "#f0f0f0",
+                                      border: "1px solid #444",
+                                    }}
+                                    onClick={() => toggleDayExpansion(dayKey)}
+                                  >
+                                    {isExpanded
+                                      ? "Свернуть"
+                                      : `Смотреть ещё (${
+                                          entriesForDay.length - 4
+                                        })`}
+                                  </Button>
+                                )}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      </>
-                    ),
-                  },
-                  {
-                    key: "table",
-                    label: "Таблица учёта времени",
-                    children: (
+                          );
+                        })}
+                      </div>
+                    </>
+                  ),
+                },
+                {
+                  key: "table",
+                  label: "Таблица",
+                  children: (
+                    <>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          alignItems: "center",
+                          marginBottom: "16px",
+                        }}
+                      >
+                        <Input
+                          placeholder="Поиск задач..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          style={{ width: 250 }}
+                        />
+                      </div>
+
                       <Table
-                        dataSource={timeEntries}
-                        rowKey="ID_Execution"
-                        pagination={{ pageSize: 10 }}
+  dataSource={filteredEntries}
+  rowKey="ID_Execution"
+  pagination={{
+    pageSize: 10,
+    showSizeChanger: false, // Отключаем выбор размера страницы
+  }}
                         columns={[
                           {
                             title: "Задача",
@@ -466,147 +402,128 @@ const TimeTrackingManager: React.FC = () => {
                               dayjs(date).format("DD.MM.YYYY HH:mm"),
                           },
                           {
-                            title: "Потрачено (запись)",
+                            title: "Потрачено (ч)",
                             dataIndex: "Hours_Spent",
                             key: "hours",
                           },
                           {
-                            title: "Потрачено всего",
-                            dataIndex: "Hours_Spent_Total",
-                            key: "total",
+                            title: "Норма времени",
+                            dataIndex: "Time_Norm",
+                            key: "timeNorm",
+                            render: (val) => (val ? `${val} ч` : "-"),
+                          },
+                          {
+                            title: "Вложился в норму?",
+                            dataIndex: "FitTimeNorm",
+                            key: "fitTimeNorm",
+                            render: (val) =>
+                              val === undefined ? "-" : val ? "Да" : "Нет",
                           },
                         ]}
                       />
-                    ),
-                  },
-                ]}
-              />
+                    </>
+                  ),
+                },
+              ]}
+            />
+            <Modal
+              title="Просмотр записи"
+              open={isViewModalVisible}
+              onCancel={() => setIsViewModalVisible(false)}
+              footer={[
+                <Button
+                  key="close"
+                  onClick={() => setIsViewModalVisible(false)}
+                >
+                  Закрыть
+                </Button>,
+              ]}
+            >
+              {viewingEntry && (
+                <div style={{ lineHeight: 1.8 }}>
+                  <p>
+                    <b>Задача:</b> {viewingEntry.Task_Name}
+                  </p>
+                  <p>
+                    <b>Проект:</b> {viewingEntry.Order_Name}
+                  </p>
+                  <p>
+                    <b>Сотрудник:</b> {viewingEntry.Employee_Name}
+                  </p>
+                  <p>
+                    <b>Дата начала:</b>{" "}
+                    {dayjs(viewingEntry.Start_Date).format("DD.MM.YYYY HH:mm")}
+                  </p>
+                  <p>
+                    <b>Дата окончания:</b>{" "}
+                    {dayjs(viewingEntry.End_Date).format("DD.MM.YYYY HH:mm")}
+                  </p>
+                  <p>
+                    <b>Потрачено:</b> {viewingEntry.Hours_Spent} ч
+                  </p>
+                  <p>
+                    <b>Норма времени:</b>{" "}
+                    {viewingEntry.Time_Norm !== null &&
+                    viewingEntry.Time_Norm !== undefined
+                      ? `${viewingEntry.Time_Norm} ч`
+                      : "-"}
+                  </p>
+                  <p>
+                    <b>Вложился в норму:</b>{" "}
+                    {viewingEntry.FitTimeNorm !== null &&
+                    viewingEntry.FitTimeNorm !== undefined
+                      ? viewingEntry.FitTimeNorm
+                        ? "Да"
+                        : "Нет"
+                      : "-"}
+                  </p>
 
-              {/* Модальные окна */}
-              <Modal
-                title="Просмотр записи"
-                open={isViewModalVisible}
-                onCancel={() => setIsViewModalVisible(false)}
-                footer={
-                  <Button onClick={() => setIsViewModalVisible(false)}>
-                    Закрыть
-                  </Button>
-                }
-              >
-                {viewingEntry && (
-                  <div style={{ lineHeight: 1.8 }}>
+                  {viewingEntry.Description && (
                     <p>
-                      <b>Задача:</b> {viewingEntry.Task_Name}
+                      <b>Описание:</b> {viewingEntry.Description}
                     </p>
-                    <p>
-                      <b>Проект:</b> {viewingEntry.Order_Name}
-                    </p>
-                    <p>
-                      <b>Сотрудник:</b> {viewingEntry.Employee_Name}
-                    </p>
-                    <p>
-                      <b>Дата начала:</b>{" "}
-                      {dayjs(viewingEntry.Start_Date).format(
-                        "DD.MM.YYYY HH:mm"
-                      )}
-                    </p>
-                    <p>
-                      <b>Дата окончания:</b>{" "}
-                      {dayjs(viewingEntry.End_Date).format("DD.MM.YYYY HH:mm")}
-                    </p>
-                    <p>
-                      <b>Потрачено:</b> {viewingEntry.Hours_Spent} ч
-                    </p>
-                    <p>
-                      <b>Потрачено всего:</b> {viewingEntry.Hours_Spent_Total} ч
-                    </p>
-                    {viewingEntry.Description && (
+                  )}
+                  {(viewingEntry.Attachments || []).length > 0 && (
+                    <div>
                       <p>
-                        <b>Описание:</b> {viewingEntry.Description}
+                        <b>Вложения:</b>
                       </p>
-                    )}
-                  </div>
-                )}
-              </Modal>
-
-              <Modal
-                title="Комментарии к задаче"
-                open={isCommentsModalVisible}
-                onCancel={() => setIsCommentsModalVisible(false)}
-                footer={null}
-              >
-                {viewingEntry && (
-                  <>
-                    <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
-                    <List
-                      className="comment-list"
-                      header={`${comments.length} комментариев`}
-                      itemLayout="horizontal"
-                      dataSource={comments}
-                      renderItem={(item: CommentType) => (
-                        <List.Item>
-                          <List.Item.Meta
-                            avatar={
-                              <Avatar
-                                src={
-                                  item.Avatar
-                                    ? `${API_URL}/uploads/${item.Avatar}`
-                                    : undefined
-                                }
-                                icon={
-                                  !item.Avatar ? <UserOutlined /> : undefined
-                                }
-                                style={{
-                                  backgroundColor: item.Avatar
-                                    ? "transparent"
-                                    : "#777",
-                                }}
-                              />
-                            }
-                            title={
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                }}
-                              >
-                                <span>{item.AuthorName}</span>
-                                <span style={{ fontSize: 12, color: "#999" }}>
-                                  {dayjs(item.Created_At).format(
-                                    "YYYY-MM-DD HH:mm"
-                                  )}
-                                </span>
-                              </div>
-                            }
-                            description={item.CommentText}
-                          />
-                        </List.Item>
-                      )}
-                    />
-                    <Input.TextArea
-                      rows={3}
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Введите комментарий..."
-                      style={{ marginTop: 8 }}
-                    />
-                    <Button
-                      type="primary"
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim()}
-                      style={{ marginTop: 8 }}
-                      block
-                    >
-                      Добавить комментарий
-                    </Button>
-                  </>
-                )}
-              </Modal>
-            </div>
-          </Content>
-        </Layout>
+                      <ul className="attachments-list">
+                        {viewingEntry.Attachments!.map((file, idx) => (
+                          <li key={`file-${idx}`}>
+                            <a
+                              href={`${API_URL}/uploads/${file}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {file}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {viewingEntry.link && (
+                    <div>
+                      <p>
+                        <b>Ссылка:</b>{" "}
+                        <a
+                          href={viewingEntry.link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {viewingEntry.link}
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Modal>
+          </div>
+        </Content>
       </Layout>
-    </App>
+    </Layout>
   );
 };
 

@@ -118,7 +118,7 @@ const TimeTrackingEmployee: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
-
+  const [searchQuery, setSearchQuery] = useState<string>("");
   const getFilteredEntriesByDay = (day: dayjs.Dayjs) =>
     filteredEntries.filter((entry) =>
       dayjs(entry.Start_Date).isSame(day, "day")
@@ -453,16 +453,17 @@ const TimeTrackingEmployee: React.FC = () => {
                       <>
                         {/* 👉 Фильтры и кнопки */}
                         <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            flexWrap: "wrap",
-                            gap: "1rem",
-                            width: "100%",
-                            padding: "24px 0",
-                          }}
-                        >
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: "1rem",
+          width: "100%",
+          marginTop: "24px",       // уменьшили отступ сверху
+          marginBottom: "24px",    // уменьшили отступ снизу
+        }}
+      >
                           {/* Левая часть — кнопка добавления */}
                           <Button
                             className="dark-action-button"
@@ -636,16 +637,14 @@ const TimeTrackingEmployee: React.FC = () => {
                     label: "Таблица",
                     children: (
                       <>
-                        {/* 👉 Фильтры и кнопки */}
+                        {/* 👉 Верхняя панель: кнопка + поисковая строка */}
                         <div
                           style={{
                             display: "flex",
                             justifyContent: "space-between",
                             alignItems: "center",
-                            flexWrap: "wrap",
-                            gap: "1rem",
-                            width: "100%",
-                            padding: "24px 0",
+                            marginTop: "24px",       // увеличиваем отступ сверху
+                            marginBottom: "24px",    // увеличиваем отступ снизу
                           }}
                         >
                           {/* Левая часть — кнопка добавления */}
@@ -660,83 +659,26 @@ const TimeTrackingEmployee: React.FC = () => {
                           >
                             Добавить потраченное время
                           </Button>
-
-                          {/* Правая часть — фильтры и навигация */}
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              flexWrap: "wrap",
-                              gap: "1rem",
-                            }}
-                          >
-                            <Button
-                              icon={<LeftOutlined />}
-                              onClick={() =>
-                                setWeekStart(weekStart.subtract(1, "week"))
-                              }
-                            />
-                            <h2 style={{ margin: "0 1rem" }}>
-                              {weekStart.format("D MMMM")} –{" "}
-                              {weekStart.add(6, "day").format("D MMMM YYYY")}
-                            </h2>
-                            <Button
-                              icon={<RightOutlined />}
-                              onClick={() =>
-                                setWeekStart(weekStart.add(1, "week"))
-                              }
-                            />
-                            <DatePicker
-                              value={weekStart}
-                              format="DD.MM.YYYY"
-                              allowClear={false}
-                              suffixIcon={<CalendarOutlined />}
-                              style={{ marginLeft: 12 }}
-                              inputReadOnly
-                              onChange={(date) => {
-                                if (date && dayjs.isDayjs(date)) {
-                                  setWeekStart(date.startOf("isoWeek"));
-                                }
-                              }}
-                              disabledDate={(current) =>
-                                current &&
-                                (current.year() < 2000 || current.year() > 2100)
-                              }
-                            />
-                            <Dropdown
-                              menu={{
-                                items: [
-                                  ...projects.map((p) => ({
-                                    key: p.ID_Order,
-                                    label: p.Order_Name,
-                                    onClick: () =>
-                                      setSelectedProjectId(p.ID_Order),
-                                  })),
-                                  { type: "divider" },
-                                  {
-                                    key: "reset",
-                                    label: "Сбросить фильтр",
-                                    onClick: () => setSelectedProjectId(null),
-                                  },
-                                ],
-                              }}
-                              placement="bottomRight"
-                              arrow
-                            >
-                              <Button icon={<FilterOutlined />}>
-                                {selectedProjectId
-                                  ? projects.find(
-                                      (p) => p.ID_Order === selectedProjectId
-                                    )?.Order_Name
-                                  : "Фильтр по проекту"}
-                              </Button>
-                            </Dropdown>
-                          </div>
+                  
+                          {/* Правая часть — поисковая строка */}
+                          <Input
+                            placeholder="Поиск задач или проектов..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            style={{ width: 250 }}
+                          />
                         </div>
-
+                  
                         {/* 👉 Таблица */}
                         <Table
-                          dataSource={timeEntries}
+                          dataSource={timeEntries.filter((entry) => {
+                            const query = searchQuery.trim().toLowerCase();
+                            return (
+                              !query ||
+                              entry.Task_Name.toLowerCase().includes(query) ||
+                              entry.Order_Name.toLowerCase().includes(query)
+                            );
+                          })}
                           rowKey="ID_Execution"
                           pagination={{ pageSize: 10 }}
                           columns={[
@@ -787,14 +729,14 @@ const TimeTrackingEmployee: React.FC = () => {
                               title: "Готовность задачи",
                               dataIndex: "Is_Completed",
                               key: "isCompleted",
-                              render: (val) =>
-                                val ? "Завершена" : "Не завершена",
+                              render: (val) => (val ? "Завершена" : "Не завершена"),
                             },
                           ]}
                         />
                       </>
                     ),
-                  },
+                  }
+                  ,
                 ]}
               />
 

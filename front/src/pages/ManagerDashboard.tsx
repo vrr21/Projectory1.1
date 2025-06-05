@@ -72,11 +72,10 @@ interface Task {
   Time_Norm?: number;
   Team_Name?: string;
   Is_Archived?: boolean;
-  attachments?: string[]; 
+  attachments?: string[];
   OverdueCompleted?: number;
-  ID_Status?: number; 
+  ID_Status?: number;
 }
-
 
 interface CreateTaskFormValues {
   ID_Team: number;
@@ -391,20 +390,23 @@ const ManagerDashboard: React.FC = () => {
   const openEditModal = async (task: Task) => {
     try {
       await loadTeams();
-  
+
       if (task.ID_Team) {
         await loadProjectsAndEmployees(task.ID_Team);
       }
-  
+
       setTimeout(() => {
         const selectedProject = filteredProjects.find(
           (proj) => proj.ID_Order === task.ID_Order
         );
-  
+
         form.setFieldsValue({
           ID_Team: task.ID_Team,
           ID_Order: selectedProject
-            ? { value: selectedProject.ID_Order, label: selectedProject.Order_Name }
+            ? {
+                value: selectedProject.ID_Order,
+                label: selectedProject.Order_Name,
+              }
             : undefined,
           Employees: task.Employees.map((emp) => ({
             value: emp.ID_Employee,
@@ -417,7 +419,7 @@ const ManagerDashboard: React.FC = () => {
           ID_Manager: task.Employees[0]?.ID_Manager,
         });
       }, 0);
-  
+
       setEditingTaskId(task.ID_Task);
       setIsModalVisible(true);
     } catch (error) {
@@ -425,7 +427,6 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Не удалось открыть задачу для редактирования");
     }
   };
-  
 
   const closeModal = () => {
     form.resetFields();
@@ -433,27 +434,28 @@ const ManagerDashboard: React.FC = () => {
     setIsModalVisible(false);
   };
 
-
   const handleFinish = async (values: CreateTaskFormValues) => {
     if (submitting) return;
     setSubmitting(true);
-  
+
     try {
       // Проверка на дублирование имени задачи
       const duplicateTask = tasks.find(
-        (task) => task.Task_Name.trim().toLowerCase() === values.Task_Name.trim().toLowerCase()
+        (task) =>
+          task.Task_Name.trim().toLowerCase() ===
+          values.Task_Name.trim().toLowerCase()
       );
-  
+
       if (!editingTaskId && duplicateTask) {
         messageApi.error("Задача с таким названием уже существует!");
         setSubmitting(false);
         return;
       }
-  
+
       if (editingTaskId) {
         // Режим редактирования
         const existingTask = tasks.find((t) => t.ID_Task === editingTaskId);
-  
+
         const updatedTaskPayload = {
           ...values,
           ID_Status: existingTask?.ID_Status ?? 1,
@@ -461,18 +463,18 @@ const ManagerDashboard: React.FC = () => {
             ? dayjs(values.Deadline).toISOString()
             : null,
         };
-  
+
         const response = await fetch(`${API_URL}/api/tasks/${editingTaskId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updatedTaskPayload),
         });
-  
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Ошибка API: ${response.status} ${errorText}`);
         }
-  
+
         messageApi.success("Задача успешно обновлена");
       } else {
         // Режим создания
@@ -492,21 +494,21 @@ const ManagerDashboard: React.FC = () => {
             return emp ? emp.Full_Name : null;
           }).filter((name) => name !== null),
         };
-  
+
         const response = await fetch(`${API_URL}/api/tasks`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(parentTaskPayload),
         });
-  
+
         if (!response.ok) {
           const errorText = await response.text();
           throw new Error(`Ошибка API: ${response.status} ${errorText}`);
         }
-  
+
         messageApi.success("Задача успешно создана");
       }
-  
+
       setIsModalVisible(false);
       setEditingTaskId(null);
       await loadTasks();
@@ -517,7 +519,6 @@ const ManagerDashboard: React.FC = () => {
       setSubmitting(false);
     }
   };
-  
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -678,14 +679,38 @@ const ManagerDashboard: React.FC = () => {
         return task.Status_Name !== "Архив" && !task.Is_Archived;
       }
     })
-    .filter((task) => task.Assigned_Employee_Id)
+    .filter((task) => {
+      // Если задача в статусе "Выполнена", показываем её всегда
+      if (task.Status_Name === "Выполнена") {
+        return true;
+      }
+      // Для остальных — проверяем, есть ли основной исполнитель
+      return !!task.Assigned_Employee_Id;
+    })
     .filter((task) => {
       const query = searchQuery.toLowerCase().trim();
+      if (!query) return true;
+
+      // Основной исполнитель
+      const assignedEmployee = task.Employees.find(
+        (emp) =>
+          emp.ID_User === task.Assigned_Employee_Id ||
+          emp.ID_Employee === task.Assigned_Employee_Id
+      );
+      const assignedEmployeeName = assignedEmployee?.Full_Name || "";
+
+      // Все назначенные сотрудники (AlsoAssignedEmployees)
+      const alsoAssignedEmployeesNames = (task.AlsoAssignedEmployees || [])
+        .map((emp) => emp.EmployeeName)
+        .join(" ")
+        .toLowerCase();
+
       return (
-        !query ||
         task.Task_Name.toLowerCase().includes(query) ||
         task.Description.toLowerCase().includes(query) ||
-        task.Order_Name.toLowerCase().includes(query)
+        task.Order_Name.toLowerCase().includes(query) ||
+        assignedEmployeeName.toLowerCase().includes(query) ||
+        alsoAssignedEmployeesNames.includes(query)
       );
     })
     .filter((task) =>
@@ -724,7 +749,13 @@ const ManagerDashboard: React.FC = () => {
     const sourceStatusName = source.droppableId;
     const targetStatusName = destination.droppableId;
 
-    // 🔒 Блокируем перенос из "Выполнена" во все остальные статусы
+    const task = tasks.find((t) => t.ID_Task === taskId);
+    if (!task) {
+      messageApi.error("Задача не найдена");
+      return;
+    }
+
+    // 🔒 Запретить перенос из "Выполнена" в любой другой, кроме "Выполнена"
     if (sourceStatusName === "Выполнена" && targetStatusName !== "Выполнена") {
       messageApi.warning(
         "Нельзя перемещать задачу из статуса 'Выполнена' обратно в другие статусы."
@@ -732,18 +763,21 @@ const ManagerDashboard: React.FC = () => {
       return;
     }
 
-    const isFinalStatus = ["Завершена", "Выполнена"].includes(targetStatusName);
-    const isSourceFinal = ["Завершена", "Выполнена"].includes(sourceStatusName);
-
-    // 🔒 Блокируем перенос обратно из финального статуса
-    if (isSourceFinal && !isFinalStatus) {
+    // 🔒 Запретить перенос из "Завершена" обратно в статусы "Новая" или "В работе"
+    if (
+      sourceStatusName === "Завершена" &&
+      !["Завершена", "Выполнена"].includes(targetStatusName)
+    ) {
       messageApi.warning(
-        "Нельзя перемещать задачу обратно из финального статуса."
+        "Нельзя перемещать задачу обратно из статуса 'Завершена' в другие статусы."
       );
       return;
     }
 
-    if (isFinalStatus) {
+    // ✅ Разрешить любые переходы из "Завершена" в "Выполнена"
+    // Никаких дополнительных ограничений
+
+    if (["Завершена", "Выполнена"].includes(targetStatusName)) {
       setConfirmationModal({
         visible: true,
         taskId,
@@ -760,13 +794,33 @@ const ManagerDashboard: React.FC = () => {
       if (!response.ok) throw new Error("Ошибка при получении задачи");
       const taskData = await response.json();
 
-      // Используем внешнюю STATUS_MAP
       const statusId = STATUS_MAP[targetStatusName];
 
+      // ⚡️ Собираем все обязательные поля
       const updatedTask = {
-        ...taskData,
+        Task_Name: taskData.Task_Name,
+        Description: taskData.Description,
+        Time_Norm: taskData.Time_Norm,
+        ID_Order: taskData.ID_Order,
+        Deadline: taskData.Deadline
+          ? new Date(taskData.Deadline).toISOString()
+          : null,
         ID_Status: statusId,
+        onlyStatusUpdate: true, // <-- Добавляем флаг!
       };
+
+      // Проверка на наличие всех обязательных полей
+      if (
+        !updatedTask.Task_Name ||
+        !updatedTask.Description ||
+        updatedTask.Time_Norm === undefined ||
+        !updatedTask.ID_Order ||
+        !updatedTask.Deadline
+      ) {
+        throw new Error(
+          "Ошибка: отсутствуют обязательные поля для обновления задачи"
+        );
+      }
 
       const updateResponse = await fetch(`${API_URL}/api/tasks/${taskId}`, {
         method: "PUT",
@@ -774,7 +828,10 @@ const ManagerDashboard: React.FC = () => {
         body: JSON.stringify(updatedTask),
       });
 
-      if (!updateResponse.ok) throw new Error("Ошибка при обновлении задачи");
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        throw new Error(`Ошибка при обновлении задачи: ${errorText}`);
+      }
 
       messageApi.success(`Статус задачи обновлён на "${targetStatusName}"`);
       await loadTasks();
@@ -796,7 +853,7 @@ const ManagerDashboard: React.FC = () => {
         color: "#aaa",
       };
     }
-  
+
     if (status === "Завершена" || status === "Выполнена") {
       // Без иконки для статусов Завершена и Выполнена
       return {
@@ -804,10 +861,10 @@ const ManagerDashboard: React.FC = () => {
         color: "#aaa",
       };
     }
-  
+
     const now = dayjs();
     const end = dayjs(deadline);
-  
+
     if (end.isBefore(now)) {
       return {
         label: (
@@ -819,10 +876,10 @@ const ManagerDashboard: React.FC = () => {
         color: "#f44336",
       };
     }
-  
+
     const diffMinutes = end.diff(now, "minute");
     const diffDays = end.diff(now, "day");
-  
+
     if (diffDays < 1) {
       const hours = Math.floor(diffMinutes / 60);
       const minutes = diffMinutes % 60;
@@ -1106,19 +1163,36 @@ const ManagerDashboard: React.FC = () => {
                                   }}
                                 >
                                   Дедлайн:{" "}
-                                  <span
-                                    style={{
-                                      color: "#52c41a",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    {task.Deadline
-                                      ? dayjs(task.Deadline).format(
-                                          "DD.MM.YYYY HH:mm"
+                                  {task.Status_Name === "Завершена" &&
+                                  task.OverdueCompleted === 1 ? (
+                                    <span
+                                      style={{
+                                        color: "#f44336",
+                                        fontWeight: "bold",
+                                      }}
+                                    >
+                                      срок истёк
+                                    </span>
+                                  ) : (
+                                    <span
+                                      style={{
+                                        color: ["Новая", "В работе"].includes(
+                                          task.Status_Name
                                         )
-                                      : "Без срока"}
-                                  </span>
+                                          ? "#52c41a"
+                                          : "#bbb",
+                                        fontWeight: "bold",
+                                      }}
+                                    >
+                                      {task.Deadline
+                                        ? dayjs(task.Deadline).format(
+                                            "DD.MM.YYYY HH:mm"
+                                          )
+                                        : "Без срока"}
+                                    </span>
+                                  )}
                                 </div>
+
                                 {/* Футер задачи */}
                                 <div
                                   className="task-footer"
@@ -1195,27 +1269,54 @@ const ManagerDashboard: React.FC = () => {
                         </Draggable>
                       );
                     })}
-                    {tasksForStatus.length > 5 && !isExpanded && (
-                      <Button
-                        className="show-more-button"
-                        onClick={() =>
-                          setExpandedStatuses([...expandedStatuses, status])
-                        }
-                        style={{
-                          backgroundColor: "#1f1f1f",
-                          color: "#f0f0f0",
-                          border: "1px solid #444",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          fontWeight: 500,
-                          textAlign: "center",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                        }}
-                      >
-                        Смотреть далее ({tasksForStatus.length - 5} ещё)
-                      </Button>
+                    {tasksForStatus.length > 5 && (
+                      <>
+                        {!isExpanded ? (
+                          <Button
+                            className="show-more-button"
+                            onClick={() =>
+                              setExpandedStatuses([...expandedStatuses, status])
+                            }
+                            style={{
+                              backgroundColor: "#1f1f1f",
+                              color: "#f0f0f0",
+                              border: "1px solid #444",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontWeight: 500,
+                              textAlign: "center",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
+                            }}
+                          >
+                            Смотреть далее ({tasksForStatus.length - 5} ещё)
+                          </Button>
+                        ) : (
+                          <Button
+                            className="show-more-button"
+                            onClick={() =>
+                              setExpandedStatuses(
+                                expandedStatuses.filter((s) => s !== status)
+                              )
+                            }
+                            style={{
+                              backgroundColor: "#1f1f1f",
+                              color: "#f0f0f0",
+                              border: "1px solid #444",
+                              padding: "6px 12px",
+                              borderRadius: "6px",
+                              fontWeight: 500,
+                              textAlign: "center",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
+                            }}
+                          >
+                            Свернуть
+                          </Button>
+                        )}
+                      </>
                     )}
+
                     {provided.placeholder}
                   </div>
                 )}
@@ -1229,45 +1330,45 @@ const ManagerDashboard: React.FC = () => {
 
   const columns: ColumnsType<Task> = [
     {
-      title: "Проект",
+      title: <div style={{ textAlign: "center" }}>Проект</div>,
       dataIndex: "Order_Name",
       key: "Order_Name",
-      align: "center", // <-- изменил
+      align: "left",
       render: (text: string) => <span>{text}</span>,
     },
     {
-      title: "Название задачи",
+      title: <div style={{ textAlign: "center" }}>Название задачи</div>,
       dataIndex: "Task_Name",
       key: "Task_Name",
-      align: "center", // <-- изменил
+      align: "left",
       render: (text: string) => <span>{text}</span>,
     },
     {
-      title: "Описание",
+      title: <div style={{ textAlign: "center" }}>Описание</div>,
       dataIndex: "Description",
       key: "Description",
-      align: "center", // <-- изменил
+      align: "left",
       render: (text: string) => <span>{text}</span>,
     },
     {
-      title: "Сотрудник",
+      title: <div style={{ textAlign: "center" }}>Сотрудник</div>,
       dataIndex: "Assigned_Employee_Id",
       key: "Assigned_Employee_Id",
-      align: "center",
+      align: "left",
       render: (_, record) => {
         const assignedEmployee = record.Employees.find(
           (emp) =>
             emp.ID_User === record.Assigned_Employee_Id ||
             emp.ID_Employee === record.Assigned_Employee_Id
         );
-      
+
         const employeeId =
           assignedEmployee?.ID_User && assignedEmployee.ID_User > 0
             ? assignedEmployee.ID_User
             : assignedEmployee?.ID_Employee && assignedEmployee.ID_Employee > 0
             ? assignedEmployee.ID_Employee
             : null;
-      
+
         return (
           <span
             style={{
@@ -1286,19 +1387,17 @@ const ManagerDashboard: React.FC = () => {
             {assignedEmployee?.Full_Name || "–"}
           </span>
         );
-      }
-      ,
+      },
     },
-    
     {
-      title: "Статус",
+      title: <div style={{ textAlign: "center" }}>Статус</div>,
       dataIndex: "Status_Name",
       key: "Status_Name",
       align: "center",
       render: (text: string) => <span>{text}</span>,
     },
     {
-      title: "Дедлайн",
+      title: <div style={{ textAlign: "center" }}>Дедлайн</div>,
       dataIndex: "Deadline",
       key: "Deadline",
       align: "center",
@@ -1309,7 +1408,7 @@ const ManagerDashboard: React.FC = () => {
       ),
     },
     {
-      title: "Действия",
+      title: <div style={{ textAlign: "center" }}>Действия</div>,
       key: "actions",
       align: "center",
       render: (_, record) => (
@@ -1328,7 +1427,6 @@ const ManagerDashboard: React.FC = () => {
       ),
     },
   ];
-  
 
   const renderTaskTable = () => (
     <>
@@ -1373,9 +1471,8 @@ const ManagerDashboard: React.FC = () => {
       </div>
 
       <h2 style={{ marginTop: "16px", marginBottom: "16px", color: "#fff" }}>
-  {showArchive ? "Архивные задачи" : "Активные задачи"}
-</h2>
-
+        {showArchive ? "Архивные задачи" : "Активные задачи"}
+      </h2>
 
       {filteredTasks.length === 0 ? (
         <p style={{ color: "#aaa" }}>
@@ -1457,7 +1554,13 @@ const ManagerDashboard: React.FC = () => {
           <div className="dashboard-body">
             <SidebarManager />
             <main className="main-content">
-              <h1 style={{ fontSize: "28px", fontWeight: "600", marginBottom: "24px" }}>
+              <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "600",
+                  marginBottom: "24px",
+                }}
+              >
                 Доска задач
               </h1>
               {loading ? (
@@ -1516,24 +1619,23 @@ const ManagerDashboard: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item
-  label="Проект"
-  name="ID_Order"
-  rules={[{ required: true, message: "Выберите проект" }]}
->
-  <Select
-    labelInValue
-    placeholder="Выберите проект"
-    onChange={(option) => {
-      form.setFieldValue("ID_Order", option.value);
-      handleProjectChange(option.value);
-    }}
-    options={filteredProjects.map((project) => ({
-      value: project.ID_Order,
-      label: project.Order_Name,
-    }))}
-  />
-</Form.Item>
-
+              label="Проект"
+              name="ID_Order"
+              rules={[{ required: true, message: "Выберите проект" }]}
+            >
+              <Select
+                labelInValue
+                placeholder="Выберите проект"
+                onChange={(option) => {
+                  form.setFieldValue("ID_Order", option.value);
+                  handleProjectChange(option.value);
+                }}
+                options={filteredProjects.map((project) => ({
+                  value: project.ID_Order,
+                  label: project.Order_Name,
+                }))}
+              />
+            </Form.Item>
 
             <Form.Item
               label="Исполнители"

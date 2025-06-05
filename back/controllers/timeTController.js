@@ -252,45 +252,50 @@ const getAllTimeEntries = async (req, res) => {
     if (!tokenUser?.id || (tokenUser.role || '').toLowerCase() !== 'менеджер') {
       return res.status(403).json({ message: "Доступ запрещён" });
     }
-
     const result = await pool.request().query(`
       SELECT 
-  e.ID_Execution,
-  e.ID_Task,
-  e.ID_Employee AS ID_User,
-  t.Task_Name,
-  o.Order_Name,
-  e.Start_Date,
-  e.End_Date,
-  e.Hours_Spent,
-  e.Description,
-  e.Attachments,
-  e.Link,
-  e.Is_Completed,          -- 🟢 Добавить!
-  u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-  tms.Team_Name,
-  (
-    SELECT SUM(e2.Hours_Spent)
-    FROM Execution e2
-    WHERE e2.ID_Task = e.ID_Task 
-      AND e2.ID_Employee = e.ID_Employee
-      AND e2.Is_Completed = 1
-  ) AS Hours_Spent_Total
-FROM Execution e
-JOIN Tasks t ON e.ID_Task = t.ID_Task
-JOIN Orders o ON t.ID_Order = o.ID_Order
-JOIN Users u ON e.ID_Employee = u.ID_User
-LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
-LEFT JOIN Teams tms ON tm.ID_Team = tms.ID_Team
-ORDER BY e.Start_Date DESC
-
+        e.ID_Execution,
+        e.ID_Task,
+        e.ID_Employee AS ID_User,
+        t.Task_Name,
+        o.Order_Name,
+        e.Start_Date,
+        e.End_Date,
+        e.Hours_Spent,
+        e.Description,
+        e.Attachments,
+        e.Link,
+        e.Is_Completed,
+        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+        tms.Team_Name,
+        t.Time_Norm,  -- добавляем!
+        CASE 
+          WHEN t.Time_Norm IS NOT NULL AND
+               (
+                 SELECT SUM(e2.Hours_Spent)
+                 FROM Execution e2
+                 WHERE e2.ID_Task = e.ID_Task 
+                   AND e2.ID_Employee = e.ID_Employee
+               ) <= t.Time_Norm THEN 1
+          ELSE 0
+        END AS FitTimeNorm
+      FROM Execution e
+      JOIN Tasks t ON e.ID_Task = t.ID_Task
+      JOIN Orders o ON t.ID_Order = o.ID_Order
+      JOIN Users u ON e.ID_Employee = u.ID_User
+      LEFT JOIN TeamMembers tm ON u.ID_User = tm.ID_User
+      LEFT JOIN Teams tms ON tm.ID_Team = tms.ID_Team
+      ORDER BY e.Start_Date DESC
     `);
-
+    
+    
     const records = result.recordset.map((entry) => ({
       ...entry,
       Attachments: entry.Attachments
         ? entry.Attachments.split(",").map((s) => s.trim())
         : [],
+      Time_Norm: entry.Time_Norm,  // добавлено!
+      FitTimeNorm: entry.FitTimeNorm === 1  // приводим к boolean
     }));
     
 

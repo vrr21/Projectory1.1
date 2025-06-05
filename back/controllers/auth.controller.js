@@ -129,14 +129,14 @@ router.post('/login', async (req, res) => {
       .input('roleId', sql.Int, user.ID_Role)
       .query('SELECT Role_Name FROM Roles WHERE ID_Role = @roleId');
 
-    const roleName = roleResult.recordset[0].Role_Name;
+      const roleName = roleResult.recordset[0].Role_Name.toLowerCase(); // 🔥 привести к нижнему регистру
 
-    const token = jwt.sign(
-      { id: user.ID_User, email: user.Email, role: roleName },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
+      const token = jwt.sign(
+        { id: user.ID_User, email: user.Email, role: roleName }, // 🔥 роль в нижнем регистре
+        process.env.JWT_SECRET,
+        { expiresIn: '1d' }
+      );
+      
     res.json({
       token,
       user: {

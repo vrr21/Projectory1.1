@@ -250,6 +250,7 @@
 .confirm-logout-modal .ant-modal-footer {
   background-color: var(--card-bg-color) !important;
   border-top: 1px solid var(--border-color) !important;
+  padding-top: 16px !important;  /* Добавляем вертикальный отступ */
 }
 
 .confirm-logout-modal .ant-btn {

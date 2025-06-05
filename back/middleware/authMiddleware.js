@@ -9,15 +9,17 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(' ')[1];
 
-  // ✅ Добавляем защиту от пустых или невалидных токенов
   if (!token || token === 'null' || token === 'undefined' || token.trim() === '') {
     return res.status(401).json({ message: 'Токен отсутствует или повреждён' });
   }
-  
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    req.user = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role  // 🔥 добавляем роль
+    };
     next();
   } catch (error) {
     console.error('Ошибка при проверке токена:', error.message);

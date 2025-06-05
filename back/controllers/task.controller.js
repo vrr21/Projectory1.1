@@ -656,6 +656,7 @@ exports.deleteAllArchivedTasks = async (req, res) => {
   }
 };
 
+
 exports.updateTask = async (req, res) => {
   const { id } = req.params;
   const {
@@ -670,34 +671,73 @@ exports.updateTask = async (req, res) => {
   try {
     await poolConnect;
 
+    // Проверка обязательных полей
     if (
       !Task_Name ||
       !Description ||
       Time_Norm === undefined ||
       !ID_Order ||
-      !Deadline
+      !Deadline ||
+      !ID_Status
     ) {
       return res.status(400).json({ message: "Все поля обязательны" });
     }
 
-    // Проверка на дубликат названия задачи в проекте (исключая текущую задачу)
-    const duplicateCheck = await pool
+    // 1️⃣ Получить текущее название задачи
+    const currentTaskResult = await pool
       .request()
-      .input("Task_Name", sql.NVarChar, Task_Name)
-      .input("ID_Order", sql.Int, ID_Order)
       .input("ID_Task", sql.Int, id)
       .query(`
-        SELECT COUNT(*) as DuplicateCount
-        FROM Tasks
-        WHERE Task_Name = @Task_Name 
-          AND ID_Order = @ID_Order 
-          AND ID_Task != @ID_Task
+        SELECT Task_Name 
+        FROM Tasks 
+        WHERE ID_Task = @ID_Task
       `);
 
-    if (duplicateCheck.recordset[0].DuplicateCount > 0) {
-      return res.status(400).json({
-        message: `Задача с названием "${Task_Name}" уже существует в этом проекте`
-      });
+    if (!currentTaskResult.recordset.length) {
+      return res.status(404).json({ message: "Задача не найдена" });
+    }
+
+    const currentTaskName = currentTaskResult.recordset[0].Task_Name;
+
+    // 2️⃣ Если название изменилось, проверить на дубликат
+    if (currentTaskName !== Task_Name) {
+      const duplicateCheck = await pool
+        .request()
+        .input("Task_Name", sql.NVarChar, Task_Name)
+        .input("ID_Order", sql.Int, ID_Order)
+        .input("ID_Task", sql.Int, id)
+        .query(`
+          SELECT COUNT(*) as DuplicateCount
+          FROM Tasks
+          WHERE Task_Name = @Task_Name 
+            AND ID_Order = @ID_Order 
+            AND ID_Task != @ID_Task
+        `);
+
+      if (duplicateCheck.recordset[0].DuplicateCount > 0) {
+        return res.status(400).json({
+          message: `Задача с названием "${Task_Name}" уже существует в этом проекте`
+        });
+      }
+    }
+
+    // Приведение даты
+    const parsedDeadline = new Date(Deadline);
+    if (isNaN(parsedDeadline.getTime())) {
+      return res.status(400).json({ message: "Некорректный формат даты дедлайна" });
+    }
+
+    // Проверка ID статуса
+    const statusCheck = await pool
+      .request()
+      .input("ID_Status", sql.Int, ID_Status)
+      .query(`
+        SELECT ID_Status 
+        FROM Statuses 
+        WHERE ID_Status = @ID_Status
+      `);
+    if (!statusCheck.recordset.length) {
+      return res.status(400).json({ message: "Неверный ID статуса" });
     }
 
     // Обновляем задачу
@@ -708,7 +748,7 @@ exports.updateTask = async (req, res) => {
       .input("Description", sql.NVarChar, Description)
       .input("Time_Norm", sql.Int, Time_Norm)
       .input("ID_Order", sql.Int, ID_Order)
-      .input("Deadline", sql.DateTime, new Date(Deadline))
+      .input("Deadline", sql.DateTime, parsedDeadline)
       .input("ID_Status", sql.Int, ID_Status)
       .query(`
         UPDATE Tasks
