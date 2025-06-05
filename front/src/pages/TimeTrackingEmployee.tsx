@@ -433,104 +433,13 @@ const TimeTrackingEmployee: React.FC = () => {
                 style={{
                   fontSize: "28px",
                   fontWeight: 600,
-                  marginBottom: 0,
                   flexBasis: "100%",
+                  marginTop: "32px", 
+                  marginBottom: "24px",
                 }}
               >
                 Учёт времени
               </h1>
-
-              {/* 👉 Фильтры и кнопки */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "1rem",
-                  width: "100%",
-                  padding: "24px 0",
-                }}
-              >
-                {/* Левая часть — кнопка добавления */}
-                <Button
-                  className="dark-action-button"
-                  icon={<PlusOutlined style={{ color: "inherit" }} />}
-                  onClick={() => {
-                    form.resetFields();
-                    setEditingEntry(null);
-                    setIsModalVisible(true);
-                  }}
-                >
-                  Добавить потраченное время
-                </Button>
-
-                {/* Правая часть — фильтры и навигация */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    gap: "1rem",
-                  }}
-                >
-                  <Button
-                    icon={<LeftOutlined />}
-                    onClick={() => setWeekStart(weekStart.subtract(1, "week"))}
-                  />
-                  <h2 style={{ margin: "0 1rem" }}>
-                    {weekStart.format("D MMMM")} –{" "}
-                    {weekStart.add(6, "day").format("D MMMM YYYY")}
-                  </h2>
-                  <Button
-                    icon={<RightOutlined />}
-                    onClick={() => setWeekStart(weekStart.add(1, "week"))}
-                  />
-                  <DatePicker
-                    value={weekStart}
-                    format="DD.MM.YYYY"
-                    allowClear={false}
-                    suffixIcon={<CalendarOutlined />}
-                    style={{ marginLeft: 12 }}
-                    inputReadOnly
-                    onChange={(date) => {
-                      if (date && dayjs.isDayjs(date)) {
-                        setWeekStart(date.startOf("isoWeek"));
-                      }
-                    }}
-                    disabledDate={(current) =>
-                      current &&
-                      (current.year() < 2000 || current.year() > 2100)
-                    }
-                  />
-                  <Dropdown
-                    menu={{
-                      items: [
-                        ...projects.map((p) => ({
-                          key: p.ID_Order,
-                          label: p.Order_Name,
-                          onClick: () => setSelectedProjectId(p.ID_Order),
-                        })),
-                        { type: "divider" },
-                        {
-                          key: "reset",
-                          label: "Сбросить фильтр",
-                          onClick: () => setSelectedProjectId(null),
-                        },
-                      ],
-                    }}
-                    placement="bottomRight"
-                    arrow
-                  >
-                    <Button icon={<FilterOutlined />}>
-                      {selectedProjectId
-                        ? projects.find((p) => p.ID_Order === selectedProjectId)
-                            ?.Order_Name
-                        : "Фильтр по проекту"}
-                    </Button>
-                  </Dropdown>
-                </div>
-              </div>
 
               {/* 👉 Вкладки */}
               <Tabs
@@ -541,145 +450,349 @@ const TimeTrackingEmployee: React.FC = () => {
                     key: "cards",
                     label: "Карточки",
                     children: (
-                      <div className="horizontal-columns">
-                        {getWeekDays().map((day) => (
-                          <div
-                            key={day.toString()}
-                            className="horizontal-column"
+                      <>
+                        {/* 👉 Фильтры и кнопки */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: "1rem",
+                            width: "100%",
+                            padding: "24px 0",
+                          }}
+                        >
+                          {/* Левая часть — кнопка добавления */}
+                          <Button
+                            className="dark-action-button"
+                            icon={<PlusOutlined style={{ color: "inherit" }} />}
+                            onClick={() => {
+                              form.resetFields();
+                              setEditingEntry(null);
+                              setIsModalVisible(true);
+                            }}
                           >
-                            <div className="day-header">
-                              {weekDaysRu[day.isoWeekday() - 1]}
-                            </div>
-                            <div className="day-date">
-                              {day.format("DD.MM")}
-                            </div>
-                            <div className="card-stack">
-                              {getFilteredEntriesByDay(day).map((entry) => (
-                                <div
-                                  key={entry.ID_Execution}
-                                  className="entry-card"
-                                >
-                                  <div>
-                                    <b>{entry.Task_Name}</b>
-                                    <div>Проект: {entry.Order_Name}</div>
-                                    <div>{entry.Hours_Spent} ч</div>
-                                  </div>
-                                  <div
-                                    style={{
-                                      marginTop: 8,
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                      flexWrap: "wrap",
-                                    }}
-                                  >
-                                    <div style={{ display: "flex", gap: 4 }}>
-                                      <Tooltip title="Просмотр">
-                                        <Button
-                                          size="small"
-                                          icon={<EyeOutlined />}
-                                          onClick={() => handleViewEntry(entry)}
-                                        />
-                                      </Tooltip>
-                                      <Tooltip title="Комментарии">
-                                        <Button
-                                          size="small"
-                                          icon={<MessageOutlined />}
-                                          onClick={() =>
-                                            openCommentsModal(entry)
-                                          }
-                                        />
-                                      </Tooltip>
-                                    </div>
-                                    <div style={{ display: "flex", gap: 4 }}>
-                                      <Tooltip title="Редактировать">
-                                        <Button
-                                          size="small"
-                                          icon={<EditOutlined />}
-                                          onClick={() => handleEdit(entry)}
-                                        />
-                                      </Tooltip>
-                                      <Tooltip title="Удалить">
-                                        <Button
-                                          size="small"
-                                          icon={<DeleteOutlined />}
-                                          danger
-                                          onClick={() =>
-                                            handleDelete(entry.ID_Execution)
-                                          }
-                                        />
-                                      </Tooltip>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                            Добавить потраченное время
+                          </Button>
+
+                          {/* Правая часть — фильтры и навигация */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: "1rem",
+                            }}
+                          >
+                            <Button
+                              icon={<LeftOutlined />}
+                              onClick={() =>
+                                setWeekStart(weekStart.subtract(1, "week"))
+                              }
+                            />
+                            <h2 style={{ margin: "0 1rem" }}>
+                              {weekStart.format("D MMMM")} –{" "}
+                              {weekStart.add(6, "day").format("D MMMM YYYY")}
+                            </h2>
+                            <Button
+                              icon={<RightOutlined />}
+                              onClick={() =>
+                                setWeekStart(weekStart.add(1, "week"))
+                              }
+                            />
+                            <DatePicker
+                              value={weekStart}
+                              format="DD.MM.YYYY"
+                              allowClear={false}
+                              suffixIcon={<CalendarOutlined />}
+                              style={{ marginLeft: 12 }}
+                              inputReadOnly
+                              onChange={(date) => {
+                                if (date && dayjs.isDayjs(date)) {
+                                  setWeekStart(date.startOf("isoWeek"));
+                                }
+                              }}
+                              disabledDate={(current) =>
+                                current &&
+                                (current.year() < 2000 || current.year() > 2100)
+                              }
+                            />
+                            <Dropdown
+                              menu={{
+                                items: [
+                                  ...projects.map((p) => ({
+                                    key: p.ID_Order,
+                                    label: p.Order_Name,
+                                    onClick: () =>
+                                      setSelectedProjectId(p.ID_Order),
+                                  })),
+                                  { type: "divider" },
+                                  {
+                                    key: "reset",
+                                    label: "Сбросить фильтр",
+                                    onClick: () => setSelectedProjectId(null),
+                                  },
+                                ],
+                              }}
+                              placement="bottomRight"
+                              arrow
+                            >
+                              <Button icon={<FilterOutlined />}>
+                                {selectedProjectId
+                                  ? projects.find(
+                                      (p) => p.ID_Order === selectedProjectId
+                                    )?.Order_Name
+                                  : "Фильтр по проекту"}
+                              </Button>
+                            </Dropdown>
                           </div>
-                        ))}
-                      </div>
+                        </div>
+
+                        {/* 👉 Карточки */}
+                        <div className="horizontal-columns">
+                          {getWeekDays().map((day) => (
+                            <div
+                              key={day.toString()}
+                              className="horizontal-column"
+                            >
+                              <div className="day-header">
+                                {weekDaysRu[day.isoWeekday() - 1]}
+                              </div>
+                              <div className="day-date">
+                                {day.format("DD.MM")}
+                              </div>
+                              <div className="card-stack">
+                                {getFilteredEntriesByDay(day).map((entry) => (
+                                  <div
+                                    key={entry.ID_Execution}
+                                    className="entry-card"
+                                  >
+                                    <div>
+                                      <b>{entry.Task_Name}</b>
+                                      <div>Проект: {entry.Order_Name}</div>
+                                      <div>{entry.Hours_Spent} ч</div>
+                                    </div>
+                                    <div
+                                      style={{
+                                        marginTop: 8,
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        flexWrap: "wrap",
+                                      }}
+                                    >
+                                      <div style={{ display: "flex", gap: 4 }}>
+                                        <Tooltip title="Просмотр">
+                                          <Button
+                                            size="small"
+                                            icon={<EyeOutlined />}
+                                            onClick={() =>
+                                              handleViewEntry(entry)
+                                            }
+                                          />
+                                        </Tooltip>
+                                        <Tooltip title="Комментарии">
+                                          <Button
+                                            size="small"
+                                            icon={<MessageOutlined />}
+                                            onClick={() =>
+                                              openCommentsModal(entry)
+                                            }
+                                          />
+                                        </Tooltip>
+                                      </div>
+                                      <div style={{ display: "flex", gap: 4 }}>
+                                        <Tooltip title="Редактировать">
+                                          <Button
+                                            size="small"
+                                            icon={<EditOutlined />}
+                                            onClick={() => handleEdit(entry)}
+                                          />
+                                        </Tooltip>
+                                        <Tooltip title="Удалить">
+                                          <Button
+                                            size="small"
+                                            icon={<DeleteOutlined />}
+                                            danger
+                                            onClick={() =>
+                                              handleDelete(entry.ID_Execution)
+                                            }
+                                          />
+                                        </Tooltip>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     ),
                   },
                   {
                     key: "table",
                     label: "Таблица",
                     children: (
-                      <Table
-                        dataSource={timeEntries}
-                        rowKey="ID_Execution"
-                        pagination={{ pageSize: 10 }}
-                        columns={[
-                          {
-                            title: "Задача",
-                            dataIndex: "Task_Name",
-                            key: "task",
-                          },
-                          {
-                            title: "Проект",
-                            dataIndex: "Order_Name",
-                            key: "order",
-                          },
-                          {
-                            title: "Начало",
-                            dataIndex: "Start_Date",
-                            key: "start",
-                            render: (date: string) =>
-                              dayjs(date).format("DD.MM.YYYY HH:mm"),
-                          },
-                          {
-                            title: "Окончание",
-                            dataIndex: "End_Date",
-                            key: "end",
-                            render: (date: string) =>
-                              dayjs(date).format("DD.MM.YYYY HH:mm"),
-                          },
-                          {
-                            title: "Потрачено (запись)",
-                            dataIndex: "Hours_Spent",
-                            key: "hours",
-                          },
-                          {
-                            title: "Норма времени",
-                            dataIndex: "Time_Norm",
-                            key: "timeNorm",
-                            render: (val: number | undefined) =>
-                              val ? `${val} ч` : "-",
-                          },
-                          {
-                            title: "Вложился в норму?",
-                            dataIndex: "FitTimeNorm",
-                            key: "fitTimeNorm",
-                            render: (val: boolean | undefined) =>
-                              val === undefined ? "-" : val ? "Да" : "Нет",
-                          },
-                          {
-                            title: "Готовность задачи",
-                            dataIndex: "Is_Completed",
-                            key: "isCompleted",
-                            render: (val) =>
-                              val ? "Завершена" : "Не завершена",
-                          },
-                        ]}
-                      />
+                      <>
+                        {/* 👉 Фильтры и кнопки */}
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            gap: "1rem",
+                            width: "100%",
+                            padding: "24px 0",
+                          }}
+                        >
+                          {/* Левая часть — кнопка добавления */}
+                          <Button
+                            className="dark-action-button"
+                            icon={<PlusOutlined style={{ color: "inherit" }} />}
+                            onClick={() => {
+                              form.resetFields();
+                              setEditingEntry(null);
+                              setIsModalVisible(true);
+                            }}
+                          >
+                            Добавить потраченное время
+                          </Button>
+
+                          {/* Правая часть — фильтры и навигация */}
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: "1rem",
+                            }}
+                          >
+                            <Button
+                              icon={<LeftOutlined />}
+                              onClick={() =>
+                                setWeekStart(weekStart.subtract(1, "week"))
+                              }
+                            />
+                            <h2 style={{ margin: "0 1rem" }}>
+                              {weekStart.format("D MMMM")} –{" "}
+                              {weekStart.add(6, "day").format("D MMMM YYYY")}
+                            </h2>
+                            <Button
+                              icon={<RightOutlined />}
+                              onClick={() =>
+                                setWeekStart(weekStart.add(1, "week"))
+                              }
+                            />
+                            <DatePicker
+                              value={weekStart}
+                              format="DD.MM.YYYY"
+                              allowClear={false}
+                              suffixIcon={<CalendarOutlined />}
+                              style={{ marginLeft: 12 }}
+                              inputReadOnly
+                              onChange={(date) => {
+                                if (date && dayjs.isDayjs(date)) {
+                                  setWeekStart(date.startOf("isoWeek"));
+                                }
+                              }}
+                              disabledDate={(current) =>
+                                current &&
+                                (current.year() < 2000 || current.year() > 2100)
+                              }
+                            />
+                            <Dropdown
+                              menu={{
+                                items: [
+                                  ...projects.map((p) => ({
+                                    key: p.ID_Order,
+                                    label: p.Order_Name,
+                                    onClick: () =>
+                                      setSelectedProjectId(p.ID_Order),
+                                  })),
+                                  { type: "divider" },
+                                  {
+                                    key: "reset",
+                                    label: "Сбросить фильтр",
+                                    onClick: () => setSelectedProjectId(null),
+                                  },
+                                ],
+                              }}
+                              placement="bottomRight"
+                              arrow
+                            >
+                              <Button icon={<FilterOutlined />}>
+                                {selectedProjectId
+                                  ? projects.find(
+                                      (p) => p.ID_Order === selectedProjectId
+                                    )?.Order_Name
+                                  : "Фильтр по проекту"}
+                              </Button>
+                            </Dropdown>
+                          </div>
+                        </div>
+
+                        {/* 👉 Таблица */}
+                        <Table
+                          dataSource={timeEntries}
+                          rowKey="ID_Execution"
+                          pagination={{ pageSize: 10 }}
+                          columns={[
+                            {
+                              title: "Задача",
+                              dataIndex: "Task_Name",
+                              key: "task",
+                            },
+                            {
+                              title: "Проект",
+                              dataIndex: "Order_Name",
+                              key: "order",
+                            },
+                            {
+                              title: "Начало",
+                              dataIndex: "Start_Date",
+                              key: "start",
+                              render: (date: string) =>
+                                dayjs(date).format("DD.MM.YYYY HH:mm"),
+                            },
+                            {
+                              title: "Окончание",
+                              dataIndex: "End_Date",
+                              key: "end",
+                              render: (date: string) =>
+                                dayjs(date).format("DD.MM.YYYY HH:mm"),
+                            },
+                            {
+                              title: "Потрачено (запись)",
+                              dataIndex: "Hours_Spent",
+                              key: "hours",
+                            },
+                            {
+                              title: "Норма времени",
+                              dataIndex: "Time_Norm",
+                              key: "timeNorm",
+                              render: (val: number | undefined) =>
+                                val ? `${val} ч` : "-",
+                            },
+                            {
+                              title: "Вложился в норму?",
+                              dataIndex: "FitTimeNorm",
+                              key: "fitTimeNorm",
+                              render: (val: boolean | undefined) =>
+                                val === undefined ? "-" : val ? "Да" : "Нет",
+                            },
+                            {
+                              title: "Готовность задачи",
+                              dataIndex: "Is_Completed",
+                              key: "isCompleted",
+                              render: (val) =>
+                                val ? "Завершена" : "Не завершена",
+                            },
+                          ]}
+                        />
+                      </>
                     ),
                   },
                 ]}

@@ -1253,37 +1253,43 @@ const ManagerDashboard: React.FC = () => {
       title: "Сотрудник",
       dataIndex: "Assigned_Employee_Id",
       key: "Assigned_Employee_Id",
-      align: "center", // <-- изменил
+      align: "center",
       render: (_, record) => {
         const assignedEmployee = record.Employees.find(
           (emp) =>
             emp.ID_User === record.Assigned_Employee_Id ||
             emp.ID_Employee === record.Assigned_Employee_Id
         );
-  
-        const profileId =
-          assignedEmployee?.ID_User ?? assignedEmployee?.ID_Employee;
-  
+      
+        const employeeId =
+          assignedEmployee?.ID_User && assignedEmployee.ID_User > 0
+            ? assignedEmployee.ID_User
+            : assignedEmployee?.ID_Employee && assignedEmployee.ID_Employee > 0
+            ? assignedEmployee.ID_Employee
+            : null;
+      
         return (
           <span
             style={{
               fontStyle: "italic",
-              textDecoration: "underline",
-              cursor: profileId ? "pointer" : "not-allowed",
+              textDecoration: assignedEmployee ? "underline" : "none",
+              cursor: assignedEmployee && employeeId ? "pointer" : "default",
             }}
             onClick={() => {
-              if (profileId) {
-                navigate(`/employee/${profileId}`);
+              if (employeeId) {
+                navigate(`/employee/${employeeId}`);
               } else {
                 messageApi.warning("Профиль сотрудника не найден");
               }
             }}
           >
-            {assignedEmployee?.Full_Name || "Не назначено"}
+            {assignedEmployee?.Full_Name || "–"}
           </span>
         );
-      },
+      }
+      ,
     },
+    
     {
       title: "Статус",
       dataIndex: "Status_Name",

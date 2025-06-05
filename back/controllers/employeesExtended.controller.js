@@ -60,3 +60,28 @@ exports.getExtendedEmployees = async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при получении сотрудников' });
   }
 };
+
+
+// controllers/employeesExtended.controller.js (пример)
+exports.getEmployeesExtended = async (req, res) => {
+  try {
+    const employees = await db.query(`
+      SELECT 
+        u.ID_User,
+        u.First_Name,
+        u.Last_Name,
+        u.Email,
+        u.Phone,
+        u.Avatar,
+        u.ID_Role,
+        r.Role_Name AS Roles -- <-- добавляем колонку Roles
+      FROM Users u
+      JOIN Roles r ON u.ID_Role = r.ID_Role
+    `);
+
+    res.json(employees.recordset); // или res.json(employees)
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Ошибка загрузки сотрудников" });
+  }
+};

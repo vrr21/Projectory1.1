@@ -234,6 +234,7 @@ exports.getAllEmployeesFull = async (req, res) => {
   }
 };
 
+
 exports.getAllEmployeesExtended = async (req, res) => {
   try {
     await poolConnect;

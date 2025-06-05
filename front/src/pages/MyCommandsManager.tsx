@@ -5,8 +5,7 @@ import type { ColumnsType } from 'antd/es/table';
 import HeaderManager from '../components/HeaderManager';
 import SidebarManager from '../components/SidebarManager';
 import '../styles/pages/TeamManagementPage.css';
-import { Button, Dropdown } from 'antd';
-import { DownloadOutlined } from '@ant-design/icons';
+
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -117,49 +116,6 @@ const MyCommandsManager: React.FC = () => {
     ).values()
   );
 
-  const renderExportMenu = () => (
-    <Dropdown
-      menu={{
-        items: [
-          { key: 'docx', label: 'Экспорт в Word (.docx)', onClick: () => exportHandler('teams', 'docx')},
-          { key: 'xlsx', label: 'Экспорт в Excel (.xlsx)', onClick: () => exportHandler('teams', 'xlsx')},
-          { key: 'pdf', label: 'Экспорт в PDF (.pdf)', onClick: () => exportHandler('teams', 'pdf')},
-        ],
-      }}
-    >
-      <Button icon={<DownloadOutlined />}>Экспорт</Button>
-    </Dropdown>
-  );
-
-  const exportHandler = async (
-    type: "teams",
-    format: "xlsx" | "pdf" | "docx"
-  ) => {
-    try {
-      const res = await fetch(`${API_URL}/api/export/${type}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          format: format === "xlsx" ? "excel" : format,
-          teams,  // всегда только команды
-        }),
-      });
-      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
-  
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${type}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error("Ошибка при экспорте:", error);
-      messageApi.error("Ошибка экспорта данных");
-    }
-  };
-  
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
       {contextHolder}
@@ -172,30 +128,44 @@ const MyCommandsManager: React.FC = () => {
               Мои команды
             </h1>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: -20, marginBottom: -30 }}>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                {allUniqueMembers.map((m, index) => (
-                  <Tooltip key={m.id} title={m.fullName}>
-                    <Avatar
-                      src={m.avatar && m.avatar !== 'null' ? `${API_URL}/uploads/${encodeURIComponent(m.avatar)}` : undefined}
-                      size={40}
-                      style={{
-                        marginLeft: index === 0 ? 0 : -10,
-                        zIndex: 100 - index,
-                        border: '2px solid #1f1f1f',
-                        cursor: 'pointer',
-                        backgroundColor: !m.avatar || m.avatar === 'null' ? '#777' : 'transparent',
-                      }}
-                      onClick={() => handleAvatarClick(m.id)}
-                    >
-                      {!m.avatar || m.avatar === 'null'
-                        ? m.fullName.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
-                        : null}
-                    </Avatar>
-                  </Tooltip>
-                ))}
-              </div>
-              {renderExportMenu()}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginTop: -20,
+                marginBottom: -30,
+              }}
+            >
+              {allUniqueMembers.map((m, index) => (
+                <Tooltip key={m.id} title={m.fullName}>
+                  <Avatar
+                    src={
+                      m.avatar && m.avatar !== 'null'
+                        ? `${API_URL}/uploads/${encodeURIComponent(m.avatar)}`
+                        : undefined
+                    }
+                    size={40}
+                    style={{
+                      marginLeft: index === 0 ? 0 : -10,
+                      zIndex: 100 - index,
+                      border: '2px solid #1f1f1f',
+                      cursor: 'pointer',
+                      backgroundColor:
+                        !m.avatar || m.avatar === 'null' ? '#777' : 'transparent',
+                    }}
+                    onClick={() => handleAvatarClick(m.id)}
+                  >
+                    {!m.avatar || m.avatar === 'null'
+                      ? m.fullName
+                          .split(' ')
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join('')
+                          .toUpperCase()
+                      : null}
+                  </Avatar>
+                </Tooltip>
+              ))}
             </div>
 
             <Table

@@ -103,68 +103,64 @@ const TimeTrackingManager: React.FC = () => {
     const token = localStorage.getItem("token");
     const userRole = (localStorage.getItem("role") || "").toLowerCase();
     const headers = { Authorization: `Bearer ${token}` };
-    
-    const endpoint = userRole === "менеджер"
-      ? `${API_URL}/api/time-tracking/all`
-      : `${API_URL}/api/time-tracking`;
-    
-  
-  
+
+    const endpoint =
+      userRole === "менеджер"
+        ? `${API_URL}/api/time-tracking/all`
+        : `${API_URL}/api/time-tracking`;
+
     const [entriesRes, teamsRes, usersRes] = await Promise.all([
       fetch(endpoint, { headers }),
       fetch(`${API_URL}/api/teams`, { headers }),
       fetch(`${API_URL}/api/employees`, { headers }),
     ]);
-  
+
     if (!entriesRes.ok) {
       const errorData = await entriesRes.json();
-      notification.error({ message: errorData.message || "Ошибка загрузки данных" });
+      notification.error({
+        message: errorData.message || "Ошибка загрузки данных",
+      });
       setTimeEntries([]);
       return;
     }
-  
+
     const [entries, teamList, userList] = await Promise.all([
       entriesRes.json(),
       teamsRes.json(),
       usersRes.json(),
     ]);
-  
+
     setTimeEntries(entries);
     setTeams(teamList);
     setUsers(userList);
   }, []);
-  
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   useEffect(() => {
-    if (!Array.isArray(timeEntries)) {
-      setFilteredEntries([]);
-      return;
-    }
-  
     let filtered = timeEntries;
-  
+
     if (selectedTeam) {
       filtered = filtered.filter((e) => e.Team_Name === selectedTeam);
     }
-  
+
     if (selectedUser) {
       filtered = filtered.filter((e) => e.ID_User === selectedUser);
     }
-  
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((e) =>
-        `${e.Task_Name} ${e.Order_Name} ${e.Employee_Name}`.toLowerCase().includes(query)
+        `${e.Task_Name} ${e.Order_Name} ${e.Employee_Name}`
+          .toLowerCase()
+          .includes(query)
       );
     }
-  
+
     setFilteredEntries(filtered);
   }, [selectedTeam, selectedUser, timeEntries, searchQuery]);
-  
 
   const fetchComments = async (taskId: string) => {
     try {
@@ -212,9 +208,10 @@ const TimeTrackingManager: React.FC = () => {
 
   const getEntriesByDay = (day: dayjs.Dayjs) =>
     filteredEntries.filter((entry) =>
-      dayjs(entry.Start_Date).isSame(day, "day")
+      dayjs(entry.Start_Date).format('YYYY-MM-DD') === day.format('YYYY-MM-DD')
     );
-
+  
+  
   const filterMenu = (
     <div style={{ padding: 8, minWidth: 220 }}>
       <Select
@@ -266,317 +263,350 @@ const TimeTrackingManager: React.FC = () => {
   );
 
   return (
-<App>
-  {contextHolder}
-  <Layout className="layout">
-    <SidebarManager />
-    <Layout className="main-layout">
-      <HeaderManager />
-      <Content className="content">
-        <div className="page-content">
-          {/* Заголовок */}
-          <h1
-            style={{
-              fontSize: "28px",
-              fontWeight: 600,
-              marginBottom: "64px",
-            }}
-          >
-            Учёт времени сотрудников
-          </h1>
-
-          {/* Вкладки */}
-          <Tabs
-  defaultActiveKey="tracking"
-  type="card"
-  items={[
-    {
-      key: "tracking",
-      label: "Учёт времени",
-      children: (
-        <>
-          <div
-            className="time-tracking-header"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginBottom: 24,
-              flexWrap: "wrap",
-              gap: "1rem",
-            }}
-          >
-            <Button
-              icon={<LeftOutlined />}
-              onClick={() => setWeekStart(weekStart.subtract(1, "week"))}
-              className="arrow-button"
-            />
-            <h2 style={{ margin: "0 1rem" }}>
-              {weekStart.format("D MMMM")} –{" "}
-              {weekStart.add(6, "day").format("D MMMM YYYY")}
-            </h2>
-            <Button
-              icon={<RightOutlined />}
-              onClick={() => setWeekStart(weekStart.add(1, "week"))}
-              className="arrow-button"
-            />
-            <DatePicker
-              value={weekStart}
-              format="DD.MM.YYYY"
-              allowClear={false}
-              suffixIcon={<CalendarOutlined />}
-              style={{ marginLeft: 12 }}
-              inputReadOnly
-              onChange={(date) => {
-                if (date && dayjs.isDayjs(date)) {
-                  setWeekStart(date.startOf("isoWeek"));
-                }
-              }}
-              disabledDate={(current) =>
-                current && (current.year() < 2000 || current.year() > 2100)
-              }
-            />
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginLeft: "auto",
-                gap: "8px",
-              }}
-            >
-              <Input
-                placeholder="Поиск по всем данным..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                allowClear
-                style={{ width: 250 }}
-              />
-              <Dropdown
-                menu={{ items: [] }}
-                open={isDropdownOpen}
-                onOpenChange={setIsDropdownOpen}
-                popupRender={() => filterMenu}
+    <App>
+      {contextHolder}
+      <Layout className="layout">
+        <SidebarManager />
+        <Layout className="main-layout">
+          <HeaderManager />
+          <Content className="content">
+            <div className="page-content">
+              {/* Заголовок */}
+              <h1
+                style={{
+                  fontSize: "28px",
+                  fontWeight: 600,
+                  flexBasis: "100%",
+                  marginTop: "32px",
+                  marginBottom: "24px",
+                }}
               >
-                <Button icon={<FilterOutlined />} className="filter-button">
-                  Фильтры
-                </Button>
-              </Dropdown>
-            </div>
-          </div>
+                Учёт времени сотрудников
+              </h1>
 
-          {/* Сетка карточек */}
-          <div className="horizontal-columns">
-            {getWeekDays().map((day) => (
-              <div key={day.toString()} className="horizontal-column">
-                <div className="day-header">
-                  {weekDaysRu[day.isoWeekday() - 1]}
-                </div>
-                <div className="day-date">{day.format("DD.MM")}</div>
-                <div className="card-stack">
-                  {getEntriesByDay(day).map((entry) => (
-                    <div key={entry.ID_Execution} className="entry-card">
-                      <b>{entry.Task_Name}</b>
-                      <div>Проект: {entry.Order_Name}</div>
-                      <div>Сотрудник: {entry.Employee_Name}</div>
-                      <div>Потрачено (запись): {entry.Hours_Spent} ч</div>
-                      <div>Потрачено всего: {entry.Hours_Spent_Total} ч</div>
-                      <div style={{ marginTop: 8 }}>
-                        <Tooltip title="Просмотр">
+              {/* Вкладки */}
+              <Tabs
+                defaultActiveKey="tracking"
+                type="card"
+                items={[
+                  {
+                    key: "tracking",
+                    label: "Учёт времени",
+                    children: (
+                      <>
+                        <div
+                          className="time-tracking-header"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            marginBottom: 24,
+                            flexWrap: "wrap",
+                            gap: "1rem",
+                          }}
+                        >
                           <Button
-                            icon={<EyeOutlined />}
-                            onClick={() => {
-                              setViewingEntry(entry);
-                              setIsViewModalVisible(true);
-                            }}
+                            icon={<LeftOutlined />}
+                            onClick={() =>
+                              setWeekStart(weekStart.subtract(1, "week"))
+                            }
+                            className="arrow-button"
                           />
-                        </Tooltip>
-                        <Tooltip title="Комментарии">
+                          <h2 style={{ margin: "0 1rem" }}>
+                            {weekStart.format("D MMMM")} –{" "}
+                            {weekStart.add(6, "day").format("D MMMM YYYY")}
+                          </h2>
                           <Button
-                            icon={<MessageOutlined />}
-                            onClick={() => openCommentsModal(entry)}
+                            icon={<RightOutlined />}
+                            onClick={() =>
+                              setWeekStart(weekStart.add(1, "week"))
+                            }
+                            className="arrow-button"
                           />
-                        </Tooltip>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ),
-    },
-    {
-      key: "table",
-      label: "Таблица учёта времени",
-      children: (
-        <Table
-          dataSource={timeEntries}
-          rowKey="ID_Execution"
-          pagination={{ pageSize: 10 }}
-          columns={[
-            { title: "Задача", dataIndex: "Task_Name", key: "task" },
-            { title: "Проект", dataIndex: "Order_Name", key: "order" },
-            {
-              title: "Сотрудник",
-              dataIndex: "Employee_Name",
-              key: "employee",
-            },
-            {
-              title: "Начало",
-              dataIndex: "Start_Date",
-              key: "start",
-              render: (date: string) =>
-                dayjs(date).format("DD.MM.YYYY HH:mm"),
-            },
-            {
-              title: "Окончание",
-              dataIndex: "End_Date",
-              key: "end",
-              render: (date: string) =>
-                dayjs(date).format("DD.MM.YYYY HH:mm"),
-            },
-            {
-              title: "Потрачено (запись)",
-              dataIndex: "Hours_Spent",
-              key: "hours",
-            },
-            {
-              title: "Потрачено всего",
-              dataIndex: "Hours_Spent_Total",
-              key: "total",
-            },
-          ]}
-        />
-      ),
-    },
-  ]}
-/>
-
-
-          {/* Модальные окна */}
-          <Modal
-            title="Просмотр записи"
-            open={isViewModalVisible}
-            onCancel={() => setIsViewModalVisible(false)}
-            footer={
-              <Button onClick={() => setIsViewModalVisible(false)}>
-                Закрыть
-              </Button>
-            }
-          >
-            {viewingEntry && (
-              <div style={{ lineHeight: 1.8 }}>
-                <p>
-                  <b>Задача:</b> {viewingEntry.Task_Name}
-                </p>
-                <p>
-                  <b>Проект:</b> {viewingEntry.Order_Name}
-                </p>
-                <p>
-                  <b>Сотрудник:</b> {viewingEntry.Employee_Name}
-                </p>
-                <p>
-                  <b>Дата начала:</b>{" "}
-                  {dayjs(viewingEntry.Start_Date).format("DD.MM.YYYY HH:mm")}
-                </p>
-                <p>
-                  <b>Дата окончания:</b>{" "}
-                  {dayjs(viewingEntry.End_Date).format("DD.MM.YYYY HH:mm")}
-                </p>
-                <p>
-                  <b>Потрачено:</b> {viewingEntry.Hours_Spent} ч
-                </p>
-                <p>
-                  <b>Потрачено всего:</b> {viewingEntry.Hours_Spent_Total} ч
-                </p>
-                {viewingEntry.Description && (
-                  <p>
-                    <b>Описание:</b> {viewingEntry.Description}
-                  </p>
-                )}
-              </div>
-            )}
-          </Modal>
-
-          <Modal
-            title="Комментарии к задаче"
-            open={isCommentsModalVisible}
-            onCancel={() => setIsCommentsModalVisible(false)}
-            footer={null}
-          >
-            {viewingEntry && (
-              <>
-                <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
-                <List
-                  className="comment-list"
-                  header={`${comments.length} комментариев`}
-                  itemLayout="horizontal"
-                  dataSource={comments}
-                  renderItem={(item: CommentType) => (
-                    <List.Item>
-                      <List.Item.Meta
-                        avatar={
-                          <Avatar
-                            src={
-                              item.Avatar
-                                ? `${API_URL}/uploads/${item.Avatar}`
-                                : undefined
-                            }
-                            icon={
-                              !item.Avatar ? <UserOutlined /> : undefined
-                            }
-                            style={{
-                              backgroundColor: item.Avatar
-                                ? "transparent"
-                                : "#777",
+                          <DatePicker
+                            value={weekStart}
+                            format="DD.MM.YYYY"
+                            allowClear={false}
+                            suffixIcon={<CalendarOutlined />}
+                            style={{ marginLeft: 12 }}
+                            inputReadOnly
+                            onChange={(date) => {
+                              if (date && dayjs.isDayjs(date)) {
+                                setWeekStart(date.startOf("isoWeek"));
+                              }
                             }}
+                            disabledDate={(current) =>
+                              current &&
+                              (current.year() < 2000 || current.year() > 2100)
+                            }
                           />
-                        }
-                        title={
                           <div
                             style={{
                               display: "flex",
-                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginLeft: "auto",
+                              gap: "8px",
                             }}
                           >
-                            <span>{item.AuthorName}</span>
-                            <span style={{ fontSize: 12, color: "#999" }}>
-                              {dayjs(item.Created_At).format(
-                                "YYYY-MM-DD HH:mm"
-                              )}
-                            </span>
+                            <Input
+                              placeholder="Поиск по всем данным..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              allowClear
+                              style={{ width: 250 }}
+                            />
+                            <Dropdown
+                              menu={{ items: [] }}
+                              open={isDropdownOpen}
+                              onOpenChange={setIsDropdownOpen}
+                              popupRender={() => filterMenu}
+                            >
+                              <Button
+                                icon={<FilterOutlined />}
+                                className="filter-button"
+                              >
+                                Фильтры
+                              </Button>
+                            </Dropdown>
                           </div>
-                        }
-                        description={item.CommentText}
-                      />
-                    </List.Item>
-                  )}
-                />
-                <Input.TextArea
-                  rows={3}
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Введите комментарий..."
-                  style={{ marginTop: 8 }}
-                />
-                <Button
-                  type="primary"
-                  onClick={handleAddComment}
-                  disabled={!newComment.trim()}
-                  style={{ marginTop: 8 }}
-                  block
-                >
-                  Добавить комментарий
-                </Button>
-              </>
-            )}
-          </Modal>
-        </div>
-      </Content>
-    </Layout>
-  </Layout>
-</App>
+                        </div>
 
+                        {/* Сетка карточек */}
+                        <div className="horizontal-columns">
+                          {getWeekDays().map((day) => (
+                            <div
+                              key={day.toString()}
+                              className="horizontal-column"
+                            >
+                              <div className="day-header">
+                                {weekDaysRu[day.isoWeekday() - 1]}
+                              </div>
+                              <div className="day-date">
+                                {day.format("DD.MM")}
+                              </div>
+                              <div className="card-stack">
+                                {getEntriesByDay(day).map((entry) => (
+                                  <div
+                                    key={entry.ID_Execution}
+                                    className="entry-card"
+                                  >
+                                    <b>{entry.Task_Name}</b>
+                                    <div>Проект: {entry.Order_Name}</div>
+                                    <div>Сотрудник: {entry.Employee_Name}</div>
+                                    <div>
+                                      Потрачено (запись): {entry.Hours_Spent} ч
+                                    </div>
+                                    <div>
+                                      Потрачено всего: {entry.Hours_Spent_Total}{" "}
+                                      ч
+                                    </div>
+                                    <div style={{ marginTop: 8 }}>
+                                      <Tooltip title="Просмотр">
+                                        <Button
+                                          icon={<EyeOutlined />}
+                                          onClick={() => {
+                                            setViewingEntry(entry);
+                                            setIsViewModalVisible(true);
+                                          }}
+                                        />
+                                      </Tooltip>
+                                      <Tooltip title="Комментарии">
+                                        <Button
+                                          icon={<MessageOutlined />}
+                                          onClick={() =>
+                                            openCommentsModal(entry)
+                                          }
+                                        />
+                                      </Tooltip>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "table",
+                    label: "Таблица учёта времени",
+                    children: (
+                      <Table
+                        dataSource={timeEntries}
+                        rowKey="ID_Execution"
+                        pagination={{ pageSize: 10 }}
+                        columns={[
+                          {
+                            title: "Задача",
+                            dataIndex: "Task_Name",
+                            key: "task",
+                          },
+                          {
+                            title: "Проект",
+                            dataIndex: "Order_Name",
+                            key: "order",
+                          },
+                          {
+                            title: "Сотрудник",
+                            dataIndex: "Employee_Name",
+                            key: "employee",
+                          },
+                          {
+                            title: "Начало",
+                            dataIndex: "Start_Date",
+                            key: "start",
+                            render: (date: string) =>
+                              dayjs(date).format("DD.MM.YYYY HH:mm"),
+                          },
+                          {
+                            title: "Окончание",
+                            dataIndex: "End_Date",
+                            key: "end",
+                            render: (date: string) =>
+                              dayjs(date).format("DD.MM.YYYY HH:mm"),
+                          },
+                          {
+                            title: "Потрачено (запись)",
+                            dataIndex: "Hours_Spent",
+                            key: "hours",
+                          },
+                          {
+                            title: "Потрачено всего",
+                            dataIndex: "Hours_Spent_Total",
+                            key: "total",
+                          },
+                        ]}
+                      />
+                    ),
+                  },
+                ]}
+              />
+
+              {/* Модальные окна */}
+              <Modal
+                title="Просмотр записи"
+                open={isViewModalVisible}
+                onCancel={() => setIsViewModalVisible(false)}
+                footer={
+                  <Button onClick={() => setIsViewModalVisible(false)}>
+                    Закрыть
+                  </Button>
+                }
+              >
+                {viewingEntry && (
+                  <div style={{ lineHeight: 1.8 }}>
+                    <p>
+                      <b>Задача:</b> {viewingEntry.Task_Name}
+                    </p>
+                    <p>
+                      <b>Проект:</b> {viewingEntry.Order_Name}
+                    </p>
+                    <p>
+                      <b>Сотрудник:</b> {viewingEntry.Employee_Name}
+                    </p>
+                    <p>
+                      <b>Дата начала:</b>{" "}
+                      {dayjs(viewingEntry.Start_Date).format(
+                        "DD.MM.YYYY HH:mm"
+                      )}
+                    </p>
+                    <p>
+                      <b>Дата окончания:</b>{" "}
+                      {dayjs(viewingEntry.End_Date).format("DD.MM.YYYY HH:mm")}
+                    </p>
+                    <p>
+                      <b>Потрачено:</b> {viewingEntry.Hours_Spent} ч
+                    </p>
+                    <p>
+                      <b>Потрачено всего:</b> {viewingEntry.Hours_Spent_Total} ч
+                    </p>
+                    {viewingEntry.Description && (
+                      <p>
+                        <b>Описание:</b> {viewingEntry.Description}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </Modal>
+
+              <Modal
+                title="Комментарии к задаче"
+                open={isCommentsModalVisible}
+                onCancel={() => setIsCommentsModalVisible(false)}
+                footer={null}
+              >
+                {viewingEntry && (
+                  <>
+                    <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
+                    <List
+                      className="comment-list"
+                      header={`${comments.length} комментариев`}
+                      itemLayout="horizontal"
+                      dataSource={comments}
+                      renderItem={(item: CommentType) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            avatar={
+                              <Avatar
+                                src={
+                                  item.Avatar
+                                    ? `${API_URL}/uploads/${item.Avatar}`
+                                    : undefined
+                                }
+                                icon={
+                                  !item.Avatar ? <UserOutlined /> : undefined
+                                }
+                                style={{
+                                  backgroundColor: item.Avatar
+                                    ? "transparent"
+                                    : "#777",
+                                }}
+                              />
+                            }
+                            title={
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                }}
+                              >
+                                <span>{item.AuthorName}</span>
+                                <span style={{ fontSize: 12, color: "#999" }}>
+                                  {dayjs(item.Created_At).format(
+                                    "YYYY-MM-DD HH:mm"
+                                  )}
+                                </span>
+                              </div>
+                            }
+                            description={item.CommentText}
+                          />
+                        </List.Item>
+                      )}
+                    />
+                    <Input.TextArea
+                      rows={3}
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Введите комментарий..."
+                      style={{ marginTop: 8 }}
+                    />
+                    <Button
+                      type="primary"
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      style={{ marginTop: 8 }}
+                      block
+                    >
+                      Добавить комментарий
+                    </Button>
+                  </>
+                )}
+              </Modal>
+            </div>
+          </Content>
+        </Layout>
+      </Layout>
+    </App>
   );
 };
 
