@@ -11,18 +11,19 @@ const getNotifications = async (req, res) => {
     }
 
     const result = await pool.request()
-      .input('Email', sql.NVarChar, email)
-      .query(`
-        SELECT 
-          ID_Notification AS id, 
-          Title AS title, 
-          Description AS description, 
-          Created_At
-        FROM Notifications
-        WHERE UserEmail = @Email
-        ORDER BY Created_At DESC
-      `);
-
+    .input('Email', sql.NVarChar, email)
+    .query(`
+      SELECT 
+        ID_Notification AS id, 
+        Title AS title, 
+        Description AS description, 
+        Created_At,
+        Is_Read AS isRead  -- ✅ добавляем это!
+      FROM Notifications
+      WHERE UserEmail = @Email
+      ORDER BY Created_At DESC
+    `);
+  
     res.status(200).json(result.recordset);
   } catch (error) {
     console.error('❌ Ошибка при получении уведомлений:', error);
@@ -82,8 +83,66 @@ const createNotification = async (req, res) => {
   }
 };
 
+// 🔹 Пометить уведомление как прочитанное
+const markNotificationAsRead = async (req, res) => {
+  try {
+    await poolConnect;
+    const id = parseInt(req.params.id, 10);
+
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Неверный ID уведомления' });
+    }
+
+    await pool
+      .request()
+      .input('ID', sql.Int, id)
+      .query(`
+        UPDATE Notifications
+        SET Is_Read = 1
+        WHERE ID_Notification = @ID
+      `);
+
+    res.status(200).json({ message: 'Уведомление отмечено как прочитанное' });
+  } catch (error) {
+    console.error('❌ Ошибка при отметке уведомления как прочитанного:', error);
+    res.status(500).json({ message: 'Ошибка сервера при отметке уведомления' });
+  }
+};
+
+const getManagerNotifications = async (req, res) => {
+  try {
+    await poolConnect;
+    const email = req.query.managerEmail;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email обязателен' });
+    }
+
+    const result = await pool.request()
+      .input('Email', sql.NVarChar, email)
+      .query(`
+        SELECT 
+          ID_Notification AS id, 
+          Title AS title, 
+          Description AS description, 
+          Created_At,
+          Is_Read AS isRead
+        FROM Notifications
+        WHERE UserEmail = @Email
+        ORDER BY Created_At DESC
+      `);
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error('❌ Ошибка при получении уведомлений для менеджера:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении уведомлений' });
+  }
+};
+
 module.exports = {
   getNotifications,
+  getManagerNotifications, 
   deleteNotificationById,
   createNotification,
+  markNotificationAsRead
 };

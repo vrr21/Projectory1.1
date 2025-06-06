@@ -36,8 +36,8 @@ const createTimeEntry = async (req, res) => {
       .input("Hours_Spent", sql.Decimal(5, 2), hours)
       .input("Time_Norm", sql.Int, timeNorm)
       .input("Is_Completed", sql.Bit, isCompleted ? 1 : 0)
-      .input("Link", sql.NVarChar(sql.MAX), link || null) // 🔥 Добавил ссылку
-      .input("Attachments", sql.NVarChar(sql.MAX), attachments ? attachments.join(",") : null) // 🔥 Добавил вложения
+      .input("Link", sql.NVarChar(sql.MAX), link || null)
+      .input("Attachments", sql.NVarChar(sql.MAX), attachments ? attachments.join(",") : null)
       .query(`
         INSERT INTO Execution 
           (ID_Task, ID_Employee, Start_Date, End_Date, Description, Hours_Spent, Time_Norm, Is_Completed, Link, Attachments)
@@ -56,7 +56,6 @@ const createTimeEntry = async (req, res) => {
       .query(`
         SELECT 
           t.Task_Name,
-          o.Order_Name,
           o.ID_Team,
           u.First_Name + ' ' + u.Last_Name AS EmployeeName
         FROM Tasks t
@@ -67,7 +66,7 @@ const createTimeEntry = async (req, res) => {
 
     const taskInfo = infoResult.recordset[0];
 
-    // 4. Поиск email менеджера команды
+    // 4. Отправка уведомления менеджеру
     if (taskInfo) {
       const managerResult = await pool
         .request()
@@ -86,7 +85,7 @@ const createTimeEntry = async (req, res) => {
         await createNotification({
           userEmail: managerEmail,
           title: "Добавлена карточка времени",
-          description: `Сотрудник ${taskInfo.EmployeeName} добавил время к задаче "${taskInfo.Task_Name}".`,
+          description: `Сотрудник ${taskInfo.EmployeeName} добавил время к задаче "${taskInfo.Task_Name}".`
         });
       }
     }
@@ -101,6 +100,7 @@ const createTimeEntry = async (req, res) => {
   }
 };
 
+// 🔹 Обновить запись учета времени
 const updateTimeEntry = async (req, res) => {
   const { id } = req.params;
   const { taskName, description, hours, date, link, attachments } = req.body;
@@ -135,13 +135,52 @@ const updateTimeEntry = async (req, res) => {
         WHERE ID_Execution = @ID_Execution AND ID_Employee = ${tokenUser.id}
       `);
 
+    // 📝 Отправка уведомления менеджеру после обновления
+    const taskInfoResult = await pool
+      .request()
+      .input("ID_Task", sql.Int, taskName)
+      .input("ID_User", sql.Int, tokenUser.id)
+      .query(`
+        SELECT 
+          t.Task_Name,
+          o.ID_Team,
+          u.First_Name + ' ' + u.Last_Name AS EmployeeName
+        FROM Tasks t
+        JOIN Orders o ON t.ID_Order = o.ID_Order
+        JOIN Users u ON u.ID_User = @ID_User
+        WHERE t.ID_Task = @ID_Task
+      `);
+
+    const taskInfo = taskInfoResult.recordset[0];
+    if (taskInfo) {
+      const managerResult = await pool
+        .request()
+        .input("ID_Team", sql.Int, taskInfo.ID_Team)
+        .query(`
+          SELECT TOP 1 u.Email
+          FROM TeamMembers tm
+          JOIN Users u ON tm.ID_User = u.ID_User
+          WHERE tm.ID_Team = @ID_Team AND u.ID_Role IN (
+            SELECT ID_Role FROM Roles WHERE Role_Name LIKE N'%менеджер%'
+          )
+        `);
+
+      const managerEmail = managerResult.recordset[0]?.Email;
+      if (managerEmail) {
+        await createNotification({
+          userEmail: managerEmail,
+          title: "Карточка времени обновлена",
+          description: `Сотрудник ${taskInfo.EmployeeName} обновил время к задаче "${taskInfo.Task_Name}".`
+        });
+      }
+    }
+
     res.status(200).json({ message: "Запись обновлена" });
   } catch (error) {
     console.error("Ошибка при обновлении:", error);
     res.status(500).json({ message: "Ошибка сервера" });
   }
 };
-
 
 // 🔹 Удалить запись учета времени
 const deleteTimeEntry = async (req, res) => {
@@ -158,7 +197,8 @@ const deleteTimeEntry = async (req, res) => {
     await pool
       .request()
       .input("ID_Execution", sql.Int, id)
-      .input("ID_Employee", sql.Int, tokenUser.id).query(`
+      .input("ID_Employee", sql.Int, tokenUser.id)
+      .query(`
         DELETE FROM Execution WHERE ID_Execution = @ID_Execution AND ID_Employee = @ID_Employee
       `);
 
@@ -169,12 +209,11 @@ const deleteTimeEntry = async (req, res) => {
   }
 };
 
+// 🔹 Получить записи учета времени сотрудника
 const getTimeEntries = async (req, res) => {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
-
-    console.log("👉 userId:", userId, "👉 userRole:", userRole);
 
     if (!userId) {
       return res.status(401).json({ message: "Не авторизован" });
@@ -183,23 +222,23 @@ const getTimeEntries = async (req, res) => {
     await poolConnect;
 
     let query = `
-    SELECT 
-      e.ID_Execution,
-      e.ID_Task,
-      t.Task_Name,
-      o.Order_Name,
-      e.Start_Date,
-      e.End_Date,
-      e.Hours_Spent,
-      e.Description,
-      e.Is_Completed,
-      e.ID_Employee,
-      e.Attachments,
-      e.Link,
-      t.Time_Norm,
-      u.First_Name + ' ' + u.Last_Name AS Employee_Name,
-      u.Email AS Employee_Email,  -- ✅ добавляем сюда!
-      tms.Team_Name,
+      SELECT 
+        e.ID_Execution,
+        e.ID_Task,
+        t.Task_Name,
+        o.Order_Name,
+        e.Start_Date,
+        e.End_Date,
+        e.Hours_Spent,
+        e.Description,
+        e.Is_Completed,
+        e.ID_Employee,
+        e.Attachments,
+        e.Link,
+        t.Time_Norm,
+        u.First_Name + ' ' + u.Last_Name AS Employee_Name,
+        u.Email AS Employee_Email,
+        tms.Team_Name,
         (
           SELECT SUM(e2.Hours_Spent)
           FROM Execution e2
@@ -234,9 +273,9 @@ const getTimeEntries = async (req, res) => {
       .input("ID_User", sql.Int, userId)
       .query(query);
 
-    const timeEntries = result.recordset.map((row) => ({
+    const timeEntries = result.recordset.map(row => ({
       ...row,
-      Attachments: row.Attachments ? row.Attachments.split(",") : [],
+      Attachments: row.Attachments ? row.Attachments.split(",") : []
     }));
 
     res.status(200).json(timeEntries);
@@ -246,13 +285,16 @@ const getTimeEntries = async (req, res) => {
   }
 };
 
+// 🔹 Получить все записи для менеджера
 const getAllTimeEntries = async (req, res) => {
   try {
     await poolConnect;
+
     const tokenUser = req.user;
     if (!tokenUser?.id || (tokenUser.role || '').toLowerCase() !== 'менеджер') {
       return res.status(403).json({ message: "Доступ запрещён" });
     }
+
     const result = await pool.request().query(`
       SELECT 
         e.ID_Execution,
@@ -269,7 +311,7 @@ const getAllTimeEntries = async (req, res) => {
         e.Is_Completed,
         u.First_Name + ' ' + u.Last_Name AS Employee_Name,
         tms.Team_Name,
-        t.Time_Norm,  -- добавляем!
+        t.Time_Norm,
         CASE 
           WHEN t.Time_Norm IS NOT NULL AND
                (
@@ -288,17 +330,13 @@ const getAllTimeEntries = async (req, res) => {
       LEFT JOIN Teams tms ON tm.ID_Team = tms.ID_Team
       ORDER BY e.Start_Date DESC
     `);
-    
-    
-    const records = result.recordset.map((entry) => ({
+
+    const records = result.recordset.map(entry => ({
       ...entry,
-      Attachments: entry.Attachments
-        ? entry.Attachments.split(",").map((s) => s.trim())
-        : [],
-      Time_Norm: entry.Time_Norm,  // добавлено!
-      FitTimeNorm: entry.FitTimeNorm === 1  // приводим к boolean
+      Attachments: entry.Attachments ? entry.Attachments.split(",").map(s => s.trim()) : [],
+      Time_Norm: entry.Time_Norm,
+      FitTimeNorm: entry.FitTimeNorm === 1
     }));
-    
 
     res.status(200).json(records);
   } catch (error) {
@@ -307,12 +345,10 @@ const getAllTimeEntries = async (req, res) => {
   }
 };
 
-
-
 module.exports = {
   createTimeEntry,
   updateTimeEntry,
   deleteTimeEntry,
   getTimeEntries,
-  getAllTimeEntries  
+  getAllTimeEntries
 };

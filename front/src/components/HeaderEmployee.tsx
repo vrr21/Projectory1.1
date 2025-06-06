@@ -28,8 +28,9 @@ interface NotificationItem {
   id: number;
   title: string;
   description: string;
-  Created_At: string; // 🔥 Добавь это поле
-  datetime?: string; // ⚠️ опционально, если ты потом форматируешь
+  Created_At: string;
+  datetime?: string;
+  isRead?: boolean;  
 }
 
 const HeaderEmployee: React.FC = () => {
@@ -65,11 +66,29 @@ const HeaderEmployee: React.FC = () => {
     navigate("/login");
   };
 
-  const handleDrawerOpen = () => {
+  const handleDrawerOpen = async () => {
     setIsDrawerVisible(true);
-    setUnreadCount(0); // ✅ Убираем счётчик при открытии
-    localStorage.setItem("notificationsRead", "true");
+    for (const notif of notifications) {
+      if (!notif.isRead) {
+        await markAsRead(notif.id);
+      }
+    }
+    setUnreadCount(0);
+    localStorage.setItem('notificationsReadManager', 'true');
   };
+  
+  const markAsRead = async (id: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch(`${API_URL}/api/employee/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (err) {
+      console.error('Ошибка при отметке уведомления как прочитанного:', err);
+    }
+  };
+  
 
   const handleDeleteNotification = async (id: number) => {
     try {
@@ -96,7 +115,7 @@ const HeaderEmployee: React.FC = () => {
         `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+  
       if (!res.ok) throw new Error("Ошибка при загрузке уведомлений");
       const data: NotificationItem[] = await res.json();
       setNotifications(
@@ -111,11 +130,11 @@ const HeaderEmployee: React.FC = () => {
           }),
         }))
       );
-
-      if (!localStorage.getItem("notificationsRead")) {
-        setUnreadCount(data.length);
-      }
-
+  
+      // 🟢 Подсчет непрочитанных
+      const unread = data.filter((n) => !n.isRead).length;
+      setUnreadCount(unread);
+  
       const modalAlreadyShown = localStorage.getItem("notificationsModalShown");
       if (!modalAlreadyShown && !location.pathname.includes("/notifications")) {
         localStorage.setItem("notificationsModalShown", "true");
@@ -156,6 +175,7 @@ const HeaderEmployee: React.FC = () => {
       console.error("Ошибка при загрузке уведомлений:", error);
     }
   }, [theme, navigate, location.pathname]);
+  
 
   useEffect(() => {
     fetchNotifications();

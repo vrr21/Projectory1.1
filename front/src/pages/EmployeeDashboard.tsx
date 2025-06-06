@@ -121,42 +121,45 @@ const EmployeeDashboard = () => {
 
   const fetchComments = async (taskId: number) => {
     try {
-      const response = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const response = await fetch(
+        `${API_URL}/api/comments/${taskId}?entityType=task`
+      );
       const data = await response.json();
       setComments(data);
     } catch (error) {
       console.error("Ошибка при получении комментариев:", error);
     }
   };
-
+  
   const handleAddComment = async () => {
     if (!newComment.trim() || !viewingTask || !user?.id) {
       messageApi.error("Комментарий пустой или пользователь не найден.");
       return;
     }
-
+  
     const token = localStorage.getItem("token");
     if (!token) {
       messageApi.error("Токен авторизации отсутствует.");
       return;
     }
-
+  
     try {
       const response = await fetch(`${API_URL}/api/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // <-- добавлено
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           taskId: viewingTask.ID_Task,
           userId: user.id,
           commentText: newComment.trim(),
+          entityType: "task", // 👈 добавляем entityType
         }),
       });
-
+  
       const result = await response.json();
-
+  
       if (!response.ok) {
         console.error("Ошибка:", result);
         messageApi.error(
@@ -164,7 +167,7 @@ const EmployeeDashboard = () => {
         );
         return;
       }
-
+  
       setNewComment("");
       fetchComments(viewingTask.ID_Task);
       messageApi.success("Комментарий добавлен");
@@ -173,6 +176,7 @@ const EmployeeDashboard = () => {
       messageApi.error("Ошибка при добавлении комментария.");
     }
   };
+  
 
   const handleUpdateComment = async () => {
     const token = localStorage.getItem("token");

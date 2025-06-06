@@ -8,6 +8,7 @@ import {
   Tooltip,
   Modal,
   Input,
+  Avatar, 
   List,  
 } from "antd";
 
@@ -18,15 +19,19 @@ import {
   FilterOutlined,
   EyeOutlined,
   MessageOutlined,
+  DeleteOutlined,
+  EditOutlined 
 } from "@ant-design/icons";
+
 import { Tabs, Table } from "antd";
 import HeaderManager from "../components/HeaderManager";
 import SidebarManager from "../components/SidebarManager";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "dayjs/locale/ru";
-
+import { useAuth } from "../contexts/useAuth";
 import "../styles/pages/TimeTrackingEmployee.css"; // можно использовать те же стили
+import { useNavigate } from "react-router-dom";
 
 dayjs.extend(isoWeek);
 dayjs.locale("ru");
@@ -64,9 +69,12 @@ interface CommentType {
   Created_At: string;
   AuthorName: string;
   Avatar?: string;
+  ID_User: number;
 }
 
 const TimeTrackingManager: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [weekStart, setWeekStart] = useState(() => dayjs().startOf("isoWeek"));
   const [timeEntries, setTimeEntries] = useState<RawTimeEntry[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -100,21 +108,23 @@ const TimeTrackingManager: React.FC = () => {
   const [newComment, setNewComment] = useState("");
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
 
-  const fetchComments = async (taskId: string) => {
+  const fetchComments = async (executionId: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/comments/${taskId}`);
+      const res = await fetch(`${API_URL}/api/comments/${executionId}?entityType=execution`);
       const data = await res.json();
       setComments(data);
     } catch (error) {
       console.error("Ошибка при получении комментариев:", error);
     }
   };
-
+  
   const handleAddComment = async () => {
-    if (!newComment.trim() || !viewingEntry?.ID_Task) return;
+    if (!newComment.trim() || !viewingEntry?.ID_Execution) return;
   
     try {
       const token = localStorage.getItem("token");
+  
+      // Шаг 1. Сохраняем комментарий
       const res = await fetch(`${API_URL}/api/comments`, {
         method: "POST",
         headers: {
@@ -122,40 +132,30 @@ const TimeTrackingManager: React.FC = () => {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          taskId: viewingEntry.ID_Task,
+          taskId: viewingEntry.ID_Execution, // 👈 Execution ID
           commentText: newComment.trim(),
+          entityType: "execution", // 👈 Добавляем entityType
         }),
       });
   
       if (!res.ok) throw new Error("Ошибка при добавлении комментария");
   
-      // 👇 Уведомление сотруднику (или менеджеру)
-      await fetch(`${API_URL}/api/employee/notifications`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          userEmail: viewingEntry.ID_User, // или viewingEntry.Employee_Email
-          title: `Новый комментарий к задаче: ${viewingEntry.Task_Name}`,
-          description: newComment.trim(),
-        }),
-      });
+      // Шаг 2. Уведомление (если нужно) — можешь оставить без изменений или доработать
   
+      // Шаг 3. Обновляем UI
       setNewComment("");
-      fetchComments(viewingEntry.ID_Task);
+      fetchComments(viewingEntry.ID_Execution);
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
     }
   };
   
-
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);
     setIsCommentsModalVisible(true);
-    fetchComments(entry.ID_Task);
+    fetchComments(entry.ID_Execution);
   };
+  
 
   const fetchTimeEntries = useCallback(async () => {
     try {
@@ -207,7 +207,65 @@ const TimeTrackingManager: React.FC = () => {
 
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, "day"));
-
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState<string>("");
+  
+  const handleUpdateComment = async () => {
+    if (!editingCommentId) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+  
+    try {
+      const cleanedCommentText = editingCommentText
+        .replace(/(\r\n|\n|\r)/g, " ")
+        .trim();
+  
+      const response = await fetch(
+        `${API_URL}/api/comments/${editingCommentId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ commentText: cleanedCommentText }),
+        }
+      );
+  
+      if (!response.ok) throw new Error("Ошибка при обновлении комментария");
+  
+      setEditingCommentId(null);
+      setEditingCommentText("");
+      if (viewingEntry) fetchComments(viewingEntry.ID_Execution);
+      api.success({ message: "Комментарий обновлен" });
+    } catch (error) {
+      console.error(error);
+      api.error({ message: "Не удалось обновить комментарий" });
+    }
+  };
+  
+  const handleDeleteComment = async (commentId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+  
+    try {
+      const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
+      if (!response.ok) throw new Error("Ошибка при удалении комментария");
+  
+      if (viewingEntry) fetchComments(viewingEntry.ID_Execution);
+      api.success({ message: "Комментарий удален" });
+    } catch (error) {
+      console.error(error);
+      api.error({ message: "Не удалось удалить комментарий" });
+    }
+  };
+  
   return (
     <Layout className="layout">
       {contextHolder}
@@ -596,49 +654,134 @@ const TimeTrackingManager: React.FC = () => {
                 <>
                   <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
                   <List
-                    className="comment-list"
-                    header={`${comments.length} комментариев`}
-                    itemLayout="horizontal"
-                    dataSource={comments}
-                    renderItem={(item: CommentType) => (
-                      <List.Item>
-                        <List.Item.Meta
-                          avatar={
-                            <span
-                              style={{
-                                backgroundColor: "#777",
-                                borderRadius: "50%",
-                                display: "inline-block",
-                                width: 32,
-                                height: 32,
-                                textAlign: "center",
-                                lineHeight: "32px",
-                                color: "#fff",
-                              }}
-                            >
-                              {item.AuthorName.charAt(0).toUpperCase()}
-                            </span>
-                          }
-                          title={
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                              }}
-                            >
-                              <span>{item.AuthorName}</span>
-                              <span style={{ fontSize: 12, color: "#999" }}>
-                                {dayjs(item.Created_At).format(
-                                  "YYYY-MM-DD HH:mm"
-                                )}
-                              </span>
-                            </div>
-                          }
-                          description={item.CommentText}
-                        />
-                      </List.Item>
-                    )}
-                  />
+  dataSource={comments}
+  renderItem={(item) => (
+    <List.Item
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        paddingRight: "8px",
+      }}
+    >
+      {/* Левая часть — аватар, имя и комментарий */}
+      <List.Item.Meta
+        avatar={
+          <Tooltip title="Перейти в профиль">
+            <div
+              onClick={() => {
+                if (item.ID_User) {
+                  navigate(`/employee/${item.ID_User}`);
+                }
+              }}
+              style={{ cursor: item.ID_User ? "pointer" : "default" }}
+            >
+              <Avatar
+                src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+                style={{
+                  backgroundColor: item.Avatar ? "transparent" : "#777",
+                }}
+              >
+                {!item.Avatar &&
+                  (item.AuthorName?.split(" ")
+                    .map((n) => n[0])
+                    .slice(0, 2)
+                    .join("")
+                    .toUpperCase() || "–")}
+              </Avatar>
+            </div>
+          </Tooltip>
+        }
+        title={
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              width: "100%",
+            }}
+          >
+            <span style={{ fontWeight: "bold", color: "#fff" }}>
+              {item.AuthorName}
+            </span>
+            <span style={{ fontSize: 12, color: "#999" }}>
+              {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
+            </span>
+          </div>
+        }
+        description={
+          <div style={{ color: "#fff", wordBreak: "break-word" }}>
+            {editingCommentId === item.ID_Comment ? (
+              <Input.TextArea
+                value={editingCommentText}
+                onChange={(e) => setEditingCommentText(e.target.value)}
+                autoSize
+              />
+            ) : (
+              <p style={{ margin: 0 }}>{item.CommentText}</p>
+            )}
+          </div>
+        }
+      />
+
+      {/* Правая часть — кнопки */}
+      {item.ID_User === user?.id && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            marginLeft: "auto",
+          }}
+        >
+          {editingCommentId === item.ID_Comment ? (
+            <>
+              <Button
+                type="primary"
+                size="small"
+                onClick={handleUpdateComment}
+                style={{ border: "none", boxShadow: "none" }}
+              >
+                Сохранить
+              </Button>
+              <Button
+                size="small"
+                onClick={() => {
+                  setEditingCommentId(null);
+                  setEditingCommentText("");
+                }}
+                style={{ border: "none", boxShadow: "none" }}
+              >
+                Отмена
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                type="link"
+                size="small"
+                style={{ color: "#fff", border: "none", boxShadow: "none" }}
+                onClick={() => {
+                  setEditingCommentId(item.ID_Comment);
+                  setEditingCommentText(item.CommentText);
+                }}
+                icon={<EditOutlined />}
+              />
+              <Button
+                type="link"
+                size="small"
+                style={{ color: "#fff", border: "none", boxShadow: "none" }}
+                danger
+                onClick={() => handleDeleteComment(item.ID_Comment)}
+                icon={<DeleteOutlined />}
+              />
+            </>
+          )}
+        </div>
+      )}
+    </List.Item>
+  )}
+/>
                   <Input.TextArea
                     rows={3}
                     value={newComment}

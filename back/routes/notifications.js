@@ -1,20 +1,27 @@
-// back/routes/notifications.js
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/authMiddleware');
 const {
   getNotifications,
+  getManagerNotifications,
   deleteNotificationById,
-  createNotification, // 👈 Добавили
+  createNotification,
+  markNotificationAsRead 
 } = require('../controllers/notificationController');
 
-// Получить уведомления
+// 🔹 Получить уведомления сотрудника
 router.get('/employee/notifications', verifyToken, getNotifications);
 
-// Удалить уведомление
+// 🔹 Получить уведомления менеджера
+router.get('/manager/notifications', verifyToken, getManagerNotifications);
+
+// 🔹 Удалить уведомление
 router.delete('/employee/notifications/:id', verifyToken, deleteNotificationById);
 
-// Создать уведомление
-router.post('/employee/notifications', verifyToken, createNotification); // 👈 Добавили
+// 🔹 Создать уведомление
+router.post('/employee/notifications', verifyToken, createNotification);
+
+// 🔹 Отметить уведомление как прочитанное
+router.put('/employee/notifications/:id/read', verifyToken, markNotificationAsRead);
 
 module.exports = router;
