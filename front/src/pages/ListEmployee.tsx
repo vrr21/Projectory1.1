@@ -94,62 +94,56 @@ const ListEmployee: React.FC = () => {
 
   const handleSave = async (values: Partial<User> & { ID_Role: number }) => {
     try {
+      // Если роль не указана, ставим роль по умолчанию (31 - Сотрудник)
+      if (!values.ID_Role) {
+        values.ID_Role = 31;  // Устанавливаем роль по умолчанию
+      }
+  
       // Проверка: email уже существует?
-      if (
-        !editingEmployee &&
-        employees.some((emp) => emp.Email === values.Email)
-      ) {
+      if (!editingEmployee && employees.some((emp) => emp.Email === values.Email)) {
         messageApi.error("Пользователь с таким email уже существует");
         return;
       }
-
+  
       // Проверка: пароль существует?
-      if (
-        values.Password &&
-        employees.some((emp) => emp.Password === values.Password)
-      ) {
+      if (values.Password && employees.some((emp) => emp.Password === values.Password)) {
         messageApi.error("Пароль уже используется другим сотрудником");
         return;
       }
-
+  
       // Проверка: длина и состав пароля
-      if (
-        values.Password &&
-        !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password)
-      ) {
-        messageApi.error(
-          "Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру"
-        );
+      if (values.Password && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password)) {
+        messageApi.error("Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру");
         return;
       }
-
+  
+      // Создание нового сотрудника
       if (!editingEmployee) {
         const res = await fetch(`${API_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(values),
         });
-
+  
         if (!res.ok) throw new Error("Ошибка при создании пользователя");
         messageApi.success("Сотрудник создан");
       } else {
+        // Обновление данных существующего сотрудника
         if (!values.Password) {
-          delete values.Password;
+          delete values.Password;  // Если пароль не указан, удалить его из данных
         }
-
-        const res = await fetch(
-          `${API_URL}/api/users/${editingEmployee.ID_User}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(values),
-          }
-        );
-
+  
+        const res = await fetch(`${API_URL}/api/users/${editingEmployee.ID_User}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        });
+  
         if (!res.ok) throw new Error("Ошибка при обновлении данных");
         messageApi.success("Сотрудник обновлён");
       }
-
+  
+      // Перезагрузка списка сотрудников
       fetchEmployees();
       setIsModalVisible(false);
       setEditingEmployee(null);
@@ -158,6 +152,7 @@ const ListEmployee: React.FC = () => {
       messageApi.error((err as Error).message);
     }
   };
+  
 
   const handleArchive = async (id: number, archive: boolean) => {
     try {
@@ -675,15 +670,18 @@ const ListEmployee: React.FC = () => {
                 </Form.Item>
 
                 <Form.Item
-                  name="ID_Role"
-                  label="Роль"
-                  initialValue={2} // Сотрудник по умолчанию
-                >
-                  <Radio.Group className="custom-radio-group">
-                    <Radio value={2}>Сотрудник</Radio>
-                    <Radio value={1}>Менеджер</Radio>
-                  </Radio.Group>
-                </Form.Item>
+  name="ID_Role"
+  label="Роль"
+  initialValue={31} // Сотрудник по умолчанию
+>
+  <Radio.Group className="custom-radio-group">
+    <Radio value={31}>Сотрудник</Radio>
+    <Radio value={1}>Менеджер</Radio>
+    <Radio value={16}>Backend-разработчик</Radio>
+    {/* Добавьте другие роли */}
+  </Radio.Group>
+</Form.Item>
+
               </Form>
             </Modal>
 

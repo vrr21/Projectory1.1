@@ -82,6 +82,8 @@ const AnimatedRoutes: React.FC = () => {
         <Route path="/employee-reports" element={<PageWrapper><EmployeeReportsPage /></PageWrapper>} />
         <Route path="/employee-management" element={<ListEmployee />} />
         <Route path="/employee/:id" element={<PageWrapper><EmployeeAccountWrapper /></PageWrapper>} />
+        <Route path="/time-tracking/:executionId" element={<PageWrapper><TimeTrackingEmployee /></PageWrapper>} />
+
       </Routes>
     </AnimatePresence>
   );

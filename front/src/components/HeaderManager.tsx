@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   Layout,
   Badge,
@@ -9,17 +9,17 @@ import {
   Drawer,
   List,
   MenuProps,
-} from 'antd';
-import { BellOutlined, BulbOutlined } from '@ant-design/icons';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/useAuth';
-import { useTheme } from '../contexts/ThemeContext';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import '../styles/components/Header.css';
-import logoDark from '../assets/лого.png';
-import logoLight from '../assets/лого2.png';
-
+} from "antd";
+import { BellOutlined, BulbOutlined } from "@ant-design/icons";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/useAuth";
+import { useTheme } from "../contexts/ThemeContext";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import "../styles/components/Header.css";
+import logoDark from "../assets/лого.png";
+import logoLight from "../assets/лого2.png";
+import { CloseOutlined } from "@ant-design/icons";
 const { Header } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -30,6 +30,7 @@ interface NotificationItem {
   Created_At: string;
   datetime?: string;
   isRead?: boolean;
+  link?: string; // Добавляем поле!
 }
 
 const HeaderManager: React.FC = () => {
@@ -47,21 +48,21 @@ const HeaderManager: React.FC = () => {
   const profileMenu: MenuProps = {
     items: [
       {
-        key: '1',
-        label: <span onClick={() => navigate('/profile')}>Профиль</span>,
+        key: "1",
+        label: <span onClick={() => navigate("/profile")}>Профиль</span>,
       },
       {
-        key: '2',
+        key: "2",
         label: <span onClick={() => setIsModalVisible(true)}>Выйти</span>,
       },
     ],
   };
 
   const handleConfirmLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
     setUser(null);
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleDrawerOpen = async () => {
@@ -72,93 +73,98 @@ const HeaderManager: React.FC = () => {
       }
     }
     setUnreadCount(0);
-    localStorage.setItem('notificationsReadManager', 'true');
+    localStorage.setItem("notificationsReadManager", "true");
   };
 
   const markAsRead = async (id: number) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       await fetch(`${API_URL}/api/employee/notifications/${id}/read`, {
-        method: 'PUT',
+        method: "PUT",
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err) {
-      console.error('Ошибка при отметке уведомления как прочитанного:', err);
+      console.error("Ошибка при отметке уведомления как прочитанного:", err);
     }
   };
 
   const handleDeleteNotification = async (id: number) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/employee/notifications/${id}`, {
-        method: 'DELETE',
+        method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!res.ok) throw new Error('Ошибка при удалении уведомления');
+      if (!res.ok) throw new Error("Ошибка при удалении уведомления");
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       setUnreadCount((prev) => Math.max(prev - 1, 0));
-      toast.success('Уведомление удалено');
+      toast.success("Уведомление удалено");
     } catch (error) {
-      console.error('Ошибка при удалении уведомлений:', error);
+      console.error("Ошибка при удалении уведомлений:", error);
     }
   };
 
   const fetchNotifications = useCallback(async () => {
     try {
-      const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-      const token = localStorage.getItem('token');
-  
+      const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const token = localStorage.getItem("token");
+
       if (!currentUser.email || !token) {
-        console.error('Ошибка: отсутствует email или токен');
+        console.error("Ошибка: отсутствует email или токен");
         return;
       }
-  
+
       const res = await fetch(
         `${API_URL}/api/manager/notifications?managerEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       if (!res.ok) {
-        console.error(`Ошибка при загрузке уведомлений: ${res.status} ${res.statusText}`);
+        console.error(
+          `Ошибка при загрузке уведомлений: ${res.status} ${res.statusText}`
+        );
         return;
       }
-  
+
       const data: NotificationItem[] = await res.json();
-  
+
       setNotifications(
         data.map((n) => ({
           ...n,
-          datetime: new Date(n.Created_At).toLocaleString('ru-RU', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
+          datetime: new Date(n.Created_At).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
           }),
+          link: n.link && n.link.trim() !== "" ? n.link : `/tasks/${n.id}`,
         }))
       );
-  
+
       const unread = data.filter((n) => !n.isRead).length;
       setUnreadCount(unread);
-  
-      const modalAlreadyShown = localStorage.getItem('notificationsModalShownManager');
-      if (!modalAlreadyShown && !location.pathname.includes('/notifications')) {
-        localStorage.setItem('notificationsModalShownManager', 'true');
+
+      const modalAlreadyShown = localStorage.getItem(
+        "notificationsModalShownManager"
+      );
+      if (!modalAlreadyShown && !location.pathname.includes("/notifications")) {
+        localStorage.setItem("notificationsModalShownManager", "true");
         data.forEach((notif) => {
           if (!shownModalsRef.current.has(notif.id)) {
             shownModalsRef.current.add(notif.id);
             toast.info(
               () => (
                 <div
-                  style={{ cursor: 'pointer', padding: '4px 8px' }}
+                  style={{ cursor: "pointer", padding: "4px 8px" }}
                   onClick={() => {
                     toast.dismiss(`notif-modal-${notif.id}`);
-                    navigate('/notifications');
+                    navigate("/notifications");
                   }}
                 >
                   <strong>{notif.title}</strong>
-                  <div style={{ fontSize: '13px' }}>{notif.description}</div>
+                  <div style={{ fontSize: "13px" }}>{notif.description}</div>
                 </div>
               ),
               {
@@ -168,8 +174,8 @@ const HeaderManager: React.FC = () => {
                 pauseOnHover: true,
                 draggable: true,
                 style: {
-                  backgroundColor: theme === 'dark' ? '#2c2c2c' : '#ffffff',
-                  color: theme === 'dark' ? '#ffffff' : '#000000',
+                  backgroundColor: theme === "dark" ? "#2c2c2c" : "#ffffff",
+                  color: theme === "dark" ? "#ffffff" : "#000000",
                   border: `1px solid var(--border-color)`,
                   borderLeft: `4px solid var(--accent-color)`,
                 },
@@ -179,19 +185,18 @@ const HeaderManager: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Ошибка при загрузке уведомлений:', error);
+      console.error("Ошибка при загрузке уведомлений:", error);
     }
   }, [theme, navigate, location.pathname]);
-  
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
   const getInitials = (fullName: string) => {
-    const parts = fullName.trim().split(' ');
-    const first = parts[0]?.[0] || '';
-    const last = parts[1]?.[0] || '';
+    const parts = fullName.trim().split(" ");
+    const first = parts[0]?.[0] || "";
+    const last = parts[1]?.[0] || "";
     return `${first}${last}`.toUpperCase();
   };
 
@@ -200,21 +205,21 @@ const HeaderManager: React.FC = () => {
       <Header className="header">
         <div
           className="logo"
-          onClick={() => navigate('/manager')}
+          onClick={() => navigate("/manager")}
           style={{
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '20px',
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "20px",
             fontWeight: 600,
-            color: 'var(--text-color)',
+            color: "var(--text-color)",
           }}
         >
           <img
-            src={theme === 'dark' ? logoDark : logoLight}
+            src={theme === "dark" ? logoDark : logoLight}
             alt="Logo"
-            style={{ height: '1.6em', objectFit: 'contain' }}
+            style={{ height: "1.6em", objectFit: "contain" }}
           />
           Projectory
         </div>
@@ -222,7 +227,11 @@ const HeaderManager: React.FC = () => {
         <div className="right-section">
           <Badge count={unreadCount} className="icon">
             <BellOutlined
-              style={{ fontSize: '20px', color: 'var(--text-color)', cursor: 'pointer' }}
+              style={{
+                fontSize: "20px",
+                color: "var(--text-color)",
+                cursor: "pointer",
+              }}
               onClick={handleDrawerOpen}
             />
           </Badge>
@@ -230,30 +239,37 @@ const HeaderManager: React.FC = () => {
           <Tooltip title="Переключить тему">
             <BulbOutlined
               style={{
-                fontSize: '24px',
-                color: theme === 'dark' ? '#00bcd4' : '#555',
-                transform: theme === 'dark' ? 'rotate(0deg)' : 'rotate(180deg)',
-                marginLeft: '16px',
-                cursor: 'pointer',
-                transition: 'transform 0.4s ease, color 0.4s ease',
+                fontSize: "24px",
+                color: theme === "dark" ? "#00bcd4" : "#555",
+                transform: theme === "dark" ? "rotate(0deg)" : "rotate(180deg)",
+                marginLeft: "16px",
+                cursor: "pointer",
+                transition: "transform 0.4s ease, color 0.4s ease",
               }}
               onClick={toggleTheme}
             />
           </Tooltip>
 
-          <Tooltip title={`${user?.lastName || ''} ${user?.firstName || ''}`}>
-            <Dropdown menu={profileMenu} placement="bottomRight" trigger={['click']}>
+          <Tooltip title={`${user?.lastName || ""} ${user?.firstName || ""}`}>
+            <Dropdown
+              menu={profileMenu}
+              placement="bottomRight"
+              trigger={["click"]}
+            >
               <Avatar
-                src={user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined}
+                src={
+                  user?.avatar ? `${API_URL}/uploads/${user.avatar}` : undefined
+                }
                 style={{
-                  backgroundColor: '#555',
-                  marginLeft: '16px',
-                  cursor: 'pointer',
-                  color: '#fff',
+                  backgroundColor: "#555",
+                  marginLeft: "16px",
+                  cursor: "pointer",
+                  color: "#fff",
                   fontWeight: 600,
                 }}
               >
-                {!user?.avatar && getInitials(`${user?.lastName} ${user?.firstName}`)}
+                {!user?.avatar &&
+                  getInitials(`${user?.lastName} ${user?.firstName}`)}
               </Avatar>
             </Dropdown>
           </Tooltip>
@@ -285,16 +301,58 @@ const HeaderManager: React.FC = () => {
           dataSource={notifications}
           style={{ marginTop: 0, paddingTop: 0 }}
           renderItem={(item) => (
-            <List.Item className="notification-item" key={item.id}>
-              <span
-                className="notification-close"
-                onClick={() => handleDeleteNotification(item.id)}
-              >
-                ×
-              </span>
-              <div className="notification-title">{item.title}</div>
-              <div className="notification-description">{item.description}</div>
-              <div className="notification-time">{item.datetime}</div>
+            <List.Item
+              className={`notification-item ${item.link ? "clickable" : ""}`}
+              key={item.id}
+              onClick={() => {
+                if (item.link) {
+                  setIsDrawerVisible(false);
+
+                  const [routePart] = item.link.split("#");
+                  const isTaskLink = routePart.includes("/tasks/");
+                  const isExecutionLink = routePart.includes("/executions/");
+
+                  if (isTaskLink) {
+                    navigate("/employee");
+                  } else if (isExecutionLink) {
+                    navigate("/time-tracking");
+                  } else {
+                    navigate(
+                      routePart.startsWith("/") ? routePart : `/${routePart}`
+                    );
+                  }
+
+                  const hash = item.link.split("#")[1];
+                  if (hash) {
+                    setTimeout(() => {
+                      const target = document.getElementById(hash);
+                      if (target) {
+                        target.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                      }
+                    }, 500);
+                  }
+                }
+              }}
+            >
+              <div className="notification-content">
+                <div className="notification-header">
+                  <div className="notification-title">{item.title}</div>
+                  <CloseOutlined
+                    className="notification-close"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNotification(item.id);
+                    }}
+                  />
+                </div>
+                <div className="notification-description">
+                  {item.description}
+                </div>
+                <div className="notification-time">{item.datetime}</div>
+              </div>
             </List.Item>
           )}
         />

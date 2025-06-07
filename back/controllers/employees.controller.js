@@ -91,15 +91,20 @@ exports.fullSearchEmployeeData = async (req, res) => {
   }
 };
 
-// Обновить профиль сотрудника
 exports.updateEmployeeProfile = async (req, res) => {
   const { id, firstName, lastName, phone, ID_Role } = req.body;
 
-  if (!id || !firstName || !lastName || !ID_Role) {
+  if (!id || !firstName || !lastName || (ID_Role === undefined)) {
     return res.status(400).json({ message: "Некорректные данные" });
   }
 
   try {
+    // Если роль не указана, ставим роль по умолчанию (31 - Сотрудник)
+    const role = ID_Role || 31;  // Если роль не передана, ставим роль 31
+
+    // Логирование данных для отладки
+    console.log(`Updating user ${id} with role ${role}`);
+
     await poolConnect;
     await pool
       .request()
@@ -107,7 +112,7 @@ exports.updateEmployeeProfile = async (req, res) => {
       .input("firstName", sql.NVarChar(255), firstName)
       .input("lastName", sql.NVarChar(255), lastName)
       .input("phone", sql.NVarChar(50), phone || null)
-      .input("ID_Role", sql.Int, ID_Role)
+      .input("ID_Role", sql.Int, role)
       .query(`
         UPDATE Users
         SET First_Name = @firstName,

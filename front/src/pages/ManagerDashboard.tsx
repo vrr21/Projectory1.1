@@ -1959,135 +1959,142 @@ const ManagerDashboard: React.FC = () => {
           }}
           footer={null}
         >
-<List
-  dataSource={comments}
-  renderItem={(item) => (
-    <List.Item
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        paddingRight: "8px",
-      }}
-    >
-      {/* Левая часть — аватар, имя и комментарий */}
-      <List.Item.Meta
-        avatar={
-          <Tooltip title="Перейти в профиль">
-            <div
-              onClick={() => {
-                if (item.ID_User) {
-                  navigate(`/employee/${item.ID_User}`);
-                }
-              }}
-              style={{ cursor: item.ID_User ? "pointer" : "default" }}
-            >
-              <Avatar
-                src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+          <List
+            dataSource={comments}
+            renderItem={(item) => (
+              <List.Item
                 style={{
-                  backgroundColor: item.Avatar ? "transparent" : "#777",
+                  justifyContent: "flex-start",
+                  alignItems: "flex-start",
+                  textAlign: "left",
                 }}
               >
-                {!item.Avatar &&
-                  (item.AuthorName?.split(" ")
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase() || "–")}
-              </Avatar>
-            </div>
-          </Tooltip>
-        }
-        title={
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              width: "100%",
-            }}
-          >
-            <span style={{ fontWeight: "bold", color: "#fff" }}>
-              {item.AuthorName}
-            </span>
-            <span style={{ fontSize: 12, color: "#999" }}>
-              {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
-            </span>
-          </div>
-        }
-        description={
-          <div style={{ color: "#fff", wordBreak: "break-word" }}>
-            {editingCommentId === item.ID_Comment ? (
-              <Input.TextArea
-                value={editingCommentText}
-                onChange={(e) => setEditingCommentText(e.target.value)}
-                autoSize
-              />
-            ) : (
-              <p style={{ margin: 0 }}>{item.CommentText}</p>
-            )}
-          </div>
-        }
-      />
+                <List.Item.Meta
+                  avatar={
+                    <Avatar
+                      src={
+                        item.Avatar
+                          ? `${API_URL}/uploads/${item.Avatar}`
+                          : undefined
+                      }
+                      style={{
+                        backgroundColor: item.Avatar ? "transparent" : "#777",
+                      }}
+                    >
+                      {!item.Avatar &&
+                        item.AuthorName?.split(" ")
+                          .map((n) => n[0])
+                          .slice(0, 2)
+                          .join("")
+                          .toUpperCase()}
+                    </Avatar>
+                  }
+                  title={
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        whiteSpace: "nowrap",
+                        gap: "8px",
+                      }}
+                    >
+                      <span style={{ fontWeight: "bold", color: "#fff" }}>
+                        {item.AuthorName}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#999" }}>
+                        {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
+                      </span>
+                    </div>
+                  }
+                  description={
+                    <>
+                      <div
+                        className="comment-text-container"
+                        style={{
+                          color: "#fff",
+                          textAlign: "left",
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          overflowWrap: "break-word",
+                        }}
+                      >
+                        {editingCommentId === item.ID_Comment ? (
+                          <Input.TextArea
+                            value={editingCommentText}
+                            onChange={(e) =>
+                              setEditingCommentText(e.target.value)
+                            }
+                            autoSize
+                          />
+                        ) : (
+                          <p
+                            className="comment-text"
+                            style={{
+                              margin: 0,
+                              whiteSpace: "normal",
+                              wordBreak: "break-word",
+                              overflowWrap: "break-word",
+                            }}
+                          >
+                            {item.CommentText.replace(
+                              /(\r\n|\n|\r)/g,
+                              " "
+                            ).trim()}
+                          </p>
+                        )}
+                      </div>
 
-      {/* Правая часть — кнопки */}
-      {item.ID_User === user?.id && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            marginLeft: "auto",
-          }}
+                      {item.ID_User === user?.id && (
+  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+    {editingCommentId === item.ID_Comment ? (
+      <>
+        <Button
+          size="small"
+          type="primary"
+          onClick={handleUpdateComment}
+          style={{ border: "none", boxShadow: "none" }}
         >
-          {editingCommentId === item.ID_Comment ? (
-            <>
-              <Button
-                type="primary"
-                size="small"
-                onClick={handleUpdateComment}
-                style={{ border: "none", boxShadow: "none" }}
-              >
-                Сохранить
-              </Button>
-              <Button
-                size="small"
-                onClick={() => {
-                  setEditingCommentId(null);
-                  setEditingCommentText("");
-                }}
-                style={{ border: "none", boxShadow: "none" }}
-              >
-                Отмена
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                type="link"
-                size="small"
-                style={{ color: "#fff", border: "none", boxShadow: "none" }}
-                onClick={() => {
-                  setEditingCommentId(item.ID_Comment);
-                  setEditingCommentText(item.CommentText);
-                }}
-                icon={<EditOutlined />}
-              />
-              <Button
-                type="link"
-                size="small"
-                style={{ color: "#fff", border: "none", boxShadow: "none" }}
-                danger
-                onClick={() => handleDeleteComment(item.ID_Comment)}
-                icon={<DeleteOutlined />}
-              />
-            </>
-          )}
-        </div>
-      )}
-    </List.Item>
-  )}
-/>
+          Сохранить
+        </Button>
+        <Button
+          size="small"
+          onClick={() => {
+            setEditingCommentId(null);
+            setEditingCommentText("");
+          }}
+          style={{ border: "none", boxShadow: "none" }}
+        >
+          Отмена
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => {
+            setEditingCommentId(item.ID_Comment);
+            setEditingCommentText(item.CommentText);
+          }}
+        />
+        <Button
+          size="small"
+          icon={<DeleteOutlined />}
+          danger
+          onClick={() => handleDeleteComment(item.ID_Comment)}
+        />
+      </>
+    )}
+  </div>
+)}
+
+                    </>
+                  }
+                />
+              </List.Item>
+            )}
+          />
 
           <Input.TextArea
             rows={3}

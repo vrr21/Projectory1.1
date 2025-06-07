@@ -5,8 +5,8 @@ import { loginUser } from "../api/auth";
 import { useAuth } from "../contexts/useAuth";
 import { App } from "antd";
 import "../styles/pages/AuthPages.css";
-import backgroundImage from '../assets/reg_auth.png';
-import logo from '../assets/лого.png'; // ← добавьте логотип
+import backgroundImage from "../assets/reg_auth.png";
+import logoLight from "../assets/лого2.png";
 
 const { Title } = Typography;
 
@@ -16,29 +16,17 @@ const LoginPage: React.FC = () => {
   const { setUser } = useAuth();
   const { message } = App.useApp();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [currentLogo, setCurrentLogo] = useState(logoLight);
 
   useEffect(() => {
-    const root = document.documentElement;
-  
-    // Принудительно установить тёмную тему и сохранить предыдущее значение
-    const previousTheme = root.getAttribute("data-theme");
-    root.setAttribute("data-theme", "dark");
-  
-    return () => {
-      // Восстановить прошлую тему при выходе со страницы
-      if (previousTheme) {
-        root.setAttribute("data-theme", previousTheme);
-      } else {
-        root.removeAttribute("data-theme");
-      }
-    };
+    // Всегда используем logoLight, так как тема всегда светлая
+    setCurrentLogo(logoLight);
   }, []);
-  
-  
+
   useEffect(() => {
     if (location.state?.fromRegister) {
       setIsTransitioning(true);
-      setTimeout(() => setIsTransitioning(false), 600);
+      setTimeout(() => setIsTransitioning(false), 300); // Сокращено до 300 мс для согласованности
     }
   }, [location]);
 
@@ -64,7 +52,7 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className={`auth-container ${isTransitioning ? "transition" : ""}`}>
+    <div className={`auth-container ${isTransitioning ? "transition" : ""}`} data-theme="light">
       <div className="auth-wrapper login">
         {/* Левая колонка — форма авторизации */}
         <div className="auth-form">
@@ -75,48 +63,56 @@ const LoginPage: React.FC = () => {
               name="email"
               rules={[{ required: true, message: "Введите email!" }]}
             >
-              <Input />
+              <Input aria-label="Email" />
             </Form.Item>
             <Form.Item
               label="Пароль"
               name="password"
               rules={[{ required: true, message: "Введите пароль!" }]}
             >
-              <Input.Password />
+              <Input.Password aria-label="Пароль" />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" block>
+              <Button
+                type="primary"
+                htmlType="submit"
+                block
+                aria-label="Войти"
+              >
                 Войти
               </Button>
             </Form.Item>
-            <Form.Item style={{ textAlign: "center" }}>
-              Ещё не зарегистрированы?{" "}
-              <Link to="/register" state={{ fromLogin: true }}>
-                Создать аккаунт
-              </Link>
-            </Form.Item>
+            <Form.Item>
+  <span className="secondary-text">
+    Ещё не зарегистрированы? <Link to="/register" state={{ fromLogin: true }}>Создать аккаунт</Link>
+  </span>
+</Form.Item>
+
           </Form>
         </div>
 
         {/* Правая колонка — изображение и текст */}
         <div className="auth-left">
           <div className="auth-text">
-          <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-  <img
-    src={logo}
-    alt="Logo"
-    style={{ height: "1.5em", verticalAlign: "middle" }}
-  />
-  Projectory
-</h1>
-
+            <h1 style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <img
+                src={currentLogo}
+                alt="Logo"
+                style={{ height: "1.5em", verticalAlign: "middle" }}
+              />
+              Projectory
+            </h1>
             <p>
               Добро пожаловать
               <br />
               Работай над проектами с нами!
             </p>
           </div>
-          <img src={backgroundImage} alt="Auth Illustration" className="auth-image" />
+          <img
+            src={backgroundImage}
+            alt="Auth Illustration"
+            className="auth-image"
+          />
         </div>
       </div>
     </div>

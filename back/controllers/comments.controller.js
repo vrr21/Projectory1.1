@@ -100,12 +100,16 @@ exports.addComment = async (req, res) => {
 
       const userRole = userRoleRes.recordset[0]?.Role_Name?.toLowerCase();
 
+      // 🔗 Формируем ссылку на задачу
+      const taskLink = `/tasks/${taskId}#comments`;
+
       // 🔔 Отправляем уведомления
-      if (userRole.includes('менеджер') && EmployeeEmail) {
+      if (userRole && userRole.includes('менеджер') && EmployeeEmail) {
         await createNotification({
           userEmail: EmployeeEmail,
           title: `Новый комментарий к задаче: ${Task_Name}`,
-          description: cleanedCommentText
+          description: cleanedCommentText,
+          link: taskLink
         });
       }
 
@@ -114,7 +118,8 @@ exports.addComment = async (req, res) => {
           await createNotification({
             userEmail: managerEmail,
             title: `Новый комментарий к задаче: ${Task_Name}`,
-            description: cleanedCommentText
+            description: cleanedCommentText,
+            link: taskLink
           });
         }
       }
@@ -126,6 +131,7 @@ exports.addComment = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при добавлении комментария' });
   }
 };
+
 
 exports.updateComment = async (req, res) => {
   const { id } = req.params;
@@ -232,7 +238,6 @@ exports.getExecutionComments = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении комментариев' });
   }
 };
-
 exports.addExecutionComment = async (req, res) => {
   const { executionId, commentText } = req.body;
   const userId = req.user?.id;
@@ -254,65 +259,8 @@ exports.addExecutionComment = async (req, res) => {
         VALUES (@executionId, @userId, @commentText)
       `);
 
-    // 🔥 Получаем информацию о задаче и исполнителе
-    const taskInfoResult = await poolConn.request()
-      .input('executionId', sql.Int, executionId)
-      .query(`
-        SELECT 
-          t.Task_Name,
-          u.Email AS EmployeeEmail
-        FROM Execution e
-        JOIN Tasks t ON e.ID_Task = t.ID_Task
-        JOIN Users u ON e.ID_Employee = u.ID_User
-        WHERE e.ID_Execution = @executionId
-      `);
-    const taskInfo = taskInfoResult.recordset[0];
-
-    // 🔥 Получаем ID_Team и Email менеджера
-    const teamResult = await poolConn.request()
-      .input('executionId', sql.Int, executionId)
-      .query(`
-        SELECT 
-          o.ID_Team,
-          u.Email AS ManagerEmail
-        FROM Execution e
-        JOIN Tasks t ON e.ID_Task = t.ID_Task
-        JOIN Orders o ON t.ID_Order = o.ID_Order
-        JOIN Users u ON o.ID_User = u.ID_User
-        WHERE e.ID_Execution = @executionId
-      `);
-    const teamInfo = teamResult.recordset[0];
-
-    // 🔥 Проверяем роль пользователя
-    const userRoleRes = await poolConn.request()
-      .input('UserId', sql.Int, userId)
-      .query(`
-        SELECT r.Role_Name 
-        FROM Users u
-        JOIN Roles r ON u.ID_Role = r.ID_Role
-        WHERE u.ID_User = @UserId
-      `);
-    const userRole = userRoleRes.recordset[0]?.Role_Name?.toLowerCase();
-
-    // 🔔 Отправляем уведомление
-    if (taskInfo && teamInfo) {
-      const { Task_Name, EmployeeEmail } = taskInfo;
-      const { ManagerEmail } = teamInfo;
-
-      if (userRole.includes('менеджер') && EmployeeEmail) {
-        await createNotification({
-          userEmail: EmployeeEmail,
-          title: `Новый комментарий к учёту времени: ${Task_Name}`,
-          description: cleanedCommentText
-        });
-      } else if (ManagerEmail) {
-        await createNotification({
-          userEmail: ManagerEmail,
-          title: `Новый комментарий к учёту времени: ${Task_Name}`,
-          description: cleanedCommentText
-        });
-      }
-    }
+    // 🐞 Добавим лог
+    console.log("Комментарий успешно добавлен:", { executionId, userId, commentText });
 
     res.status(201).json({ message: 'Комментарий добавлен' });
   } catch (err) {
@@ -320,6 +268,7 @@ exports.addExecutionComment = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при добавлении комментария' });
   }
 };
+
 
 
 // Удаление всех комментариев по задаче

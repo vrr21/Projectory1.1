@@ -136,50 +136,95 @@
 [data-theme="dark"] .ant-dropdown-menu-item {
   color: #ffffff !important;
 }
+.notification-item.clickable {
+  cursor: pointer;
+}
 
-/* ===== УВЕДОМЛЕНИЯ ===== */
+
 .notification-item {
   background: none !important;
-  padding: 12px 0;
   border-bottom: 1px solid var(--border-color);
   position: relative;
+  z-index: 2;
   transition: background-color 0.2s ease;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.notification-item.clickable:hover {
+  background-color: var(--hover-bg-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+/* Делаем карточку кликабельной, если есть ссылка */
+.notification-item[haslink="true"] {
+  cursor: pointer;
+}
+
+.notification-item[haslink="true"]:hover {
+  background-color: var(--hover-bg-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
 }
 
 .notification-item:hover {
   background-color: var(--hover-bg-color);
 }
 
+/* Контейнер для текста и крестика */
+.notification-content {
+  padding: 6px 16px 8px 16px; /* сверху 6px, снизу 8px */
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+/* Заголовок и крестик в одну строку */
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* выравниваем текст и крестик вверх */
+}
+
+/* Заголовок уведомления */
 .notification-title {
   font-weight: 600;
   color: var(--text-color);
+  word-break: break-word;
+  font-size: 14px;
+  margin-right: 8px;
 }
 
+/* Описание уведомления */
 .notification-description {
   color: var(--text-color);
   font-size: 13px;
   margin-top: 4px;
 }
 
+/* Время уведомления */
 .notification-time {
   font-size: 12px;
   color: #888;
   margin-top: 4px;
 }
 
+/* Иконка закрытия */
 .notification-close {
-  position: absolute;
-  top: 8px;
-  right: 0;
-  font-size: 16px;
+  font-size: 12px; /* уменьшили размер крестика */
   color: var(--text-color);
   cursor: pointer;
   transition: color 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px; /* чуть приподняли крестик */
 }
 
 .notification-close:hover {
   color: var(--accent-color);
 }
+
+
 /* Drawer уведомлений */
 .ant-drawer-content {
   background-color: var(--card-bg-color) !important;

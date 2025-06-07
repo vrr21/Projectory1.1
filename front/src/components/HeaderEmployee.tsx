@@ -11,7 +11,7 @@ import {
   MenuProps,
 } from "antd";
 import { BellOutlined, BulbOutlined } from "@ant-design/icons";
-
+import { CloseOutlined } from "@ant-design/icons"
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/useAuth";
 import { useTheme } from "../contexts/ThemeContext";
@@ -30,7 +30,8 @@ interface NotificationItem {
   description: string;
   Created_At: string;
   datetime?: string;
-  isRead?: boolean;  
+  isRead?: boolean;
+  link?: string;
 }
 
 const HeaderEmployee: React.FC = () => {
@@ -74,21 +75,20 @@ const HeaderEmployee: React.FC = () => {
       }
     }
     setUnreadCount(0);
-    localStorage.setItem('notificationsReadManager', 'true');
+    localStorage.setItem("notificationsReadManager", "true");
   };
-  
+
   const markAsRead = async (id: number) => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       await fetch(`${API_URL}/api/employee/notifications/${id}/read`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` }
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err) {
-      console.error('Ошибка при отметке уведомления как прочитанного:', err);
+      console.error("Ошибка при отметке уведомления как прочитанного:", err);
     }
   };
-  
 
   const handleDeleteNotification = async (id: number) => {
     try {
@@ -115,7 +115,7 @@ const HeaderEmployee: React.FC = () => {
         `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-  
+
       if (!res.ok) throw new Error("Ошибка при загрузке уведомлений");
       const data: NotificationItem[] = await res.json();
       setNotifications(
@@ -128,13 +128,14 @@ const HeaderEmployee: React.FC = () => {
             hour: "2-digit",
             minute: "2-digit",
           }),
+          link: n.link && n.link.trim() !== "" ? n.link : `/tasks/${n.id}`,
         }))
       );
-  
+
       // 🟢 Подсчет непрочитанных
       const unread = data.filter((n) => !n.isRead).length;
       setUnreadCount(unread);
-  
+
       const modalAlreadyShown = localStorage.getItem("notificationsModalShown");
       if (!modalAlreadyShown && !location.pathname.includes("/notifications")) {
         localStorage.setItem("notificationsModalShown", "true");
@@ -175,7 +176,6 @@ const HeaderEmployee: React.FC = () => {
       console.error("Ошибка при загрузке уведомлений:", error);
     }
   }, [theme, navigate, location.pathname]);
-  
 
   useEffect(() => {
     fetchNotifications();
@@ -286,19 +286,55 @@ const HeaderEmployee: React.FC = () => {
         <List
           itemLayout="vertical"
           dataSource={notifications}
-          style={{ marginTop: 0, paddingTop: 0 }} // ✅ добавлено
+          style={{ marginTop: 0, paddingTop: 0 }}
           renderItem={(item) => (
-            <List.Item className="notification-item" key={item.id}>
-              <span
-                className="notification-close"
-                onClick={() => handleDeleteNotification(item.id)}
-              >
-                ×
-              </span>
-              <div className="notification-title">{item.title}</div>
-              <div className="notification-description">{item.description}</div>
-              <div className="notification-time">{item.datetime}</div>
-            </List.Item>
+<List.Item
+  className={`notification-item ${item.link ? "clickable" : ""}`}
+  key={item.id}
+  onClick={() => {
+    if (item.link) {
+      setIsDrawerVisible(false);
+
+      const [routePart] = item.link.split("#");
+      const isTaskLink = routePart.includes("/tasks/");
+      const isExecutionLink = routePart.includes("/executions/");
+
+      if (isTaskLink) {
+        navigate("/employee");
+      } else if (isExecutionLink) {
+        navigate("/time-tracking");
+      } else {
+        navigate(routePart.startsWith("/") ? routePart : `/${routePart}`);
+      }
+
+      const hash = item.link.split("#")[1];
+      if (hash) {
+        setTimeout(() => {
+          const target = document.getElementById(hash);
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 500);
+      }
+    }
+  }}
+>
+  <div className="notification-content">
+    <div className="notification-header">
+      <div className="notification-title">{item.title}</div>
+      <CloseOutlined
+        className="notification-close"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleDeleteNotification(item.id);
+        }}
+      />
+    </div>
+    <div className="notification-description">{item.description}</div>
+    <div className="notification-time">{item.datetime}</div>
+  </div>
+</List.Item>
+
           )}
         />
       </Drawer>
