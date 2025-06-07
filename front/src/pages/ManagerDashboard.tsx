@@ -172,7 +172,9 @@ const ManagerDashboard: React.FC = () => {
   const [newComment, setNewComment] = useState<string>("");
   const fetchComments = async (taskId: number) => {
     try {
-      const response = await fetch(`${API_URL}/api/comments/${taskId}?entityType=task`);
+      const response = await fetch(
+        `${API_URL}/api/comments/${taskId}?entityType=task`
+      );
       const data = await response.json();
       const cleanedComments = data.map((comment: CommentType) => ({
         ...comment,
@@ -184,22 +186,22 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Не удалось загрузить комментарии");
     }
   };
-  
+
   const handleAddComment = async () => {
     if (!newComment.trim() || !viewingTaskId) {
       messageApi.error("Комментарий пустой");
       return;
     }
-  
+
     const token = localStorage.getItem("token");
     if (!token) {
       messageApi.error("Нет токена авторизации");
       return;
     }
-  
+
     try {
       const cleanedComment = newComment.replace(/(\r\n|\n|\r)/g, " ").trim();
-  
+
       const response = await fetch(`${API_URL}/api/comments`, {
         method: "POST",
         headers: {
@@ -209,14 +211,14 @@ const ManagerDashboard: React.FC = () => {
         body: JSON.stringify({
           taskId: viewingTaskId,
           commentText: cleanedComment,
-          entityType: 'task' // 👈 Добавили это поле
+          entityType: "task", // 👈 Добавили это поле
         }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Ошибка при добавлении комментария");
       }
-  
+
       setNewComment("");
       fetchComments(viewingTaskId);
       messageApi.success("Комментарий добавлен");
@@ -225,7 +227,6 @@ const ManagerDashboard: React.FC = () => {
       messageApi.error("Не удалось добавить комментарий");
     }
   };
-  
 
   const [loading, setLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -1964,9 +1965,15 @@ const ManagerDashboard: React.FC = () => {
             renderItem={(item) => (
               <List.Item
                 style={{
+                  display: "flex",
+                  flexDirection: "column", // расположение кнопок внизу
                   justifyContent: "flex-start",
                   alignItems: "flex-start",
                   textAlign: "left",
+                  backgroundColor: "#2a2a2a",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  marginBottom: "12px",
                 }}
               >
                 <List.Item.Meta
@@ -2008,90 +2015,95 @@ const ManagerDashboard: React.FC = () => {
                     </div>
                   }
                   description={
-                    <>
-                      <div
-                        className="comment-text-container"
-                        style={{
-                          color: "#fff",
-                          textAlign: "left",
-                          whiteSpace: "normal",
-                          wordBreak: "break-word",
-                          overflowWrap: "break-word",
-                        }}
-                      >
-                        {editingCommentId === item.ID_Comment ? (
-                          <Input.TextArea
-                            value={editingCommentText}
-                            onChange={(e) =>
-                              setEditingCommentText(e.target.value)
-                            }
-                            autoSize
-                          />
-                        ) : (
-                          <p
-                            className="comment-text"
-                            style={{
-                              margin: 0,
-                              whiteSpace: "normal",
-                              wordBreak: "break-word",
-                              overflowWrap: "break-word",
-                            }}
-                          >
-                            {item.CommentText.replace(
-                              /(\r\n|\n|\r)/g,
-                              " "
-                            ).trim()}
-                          </p>
-                        )}
-                      </div>
-
-                      {item.ID_User === user?.id && (
-  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-    {editingCommentId === item.ID_Comment ? (
-      <>
-        <Button
-          size="small"
-          type="primary"
-          onClick={handleUpdateComment}
-          style={{ border: "none", boxShadow: "none" }}
-        >
-          Сохранить
-        </Button>
-        <Button
-          size="small"
-          onClick={() => {
-            setEditingCommentId(null);
-            setEditingCommentText("");
-          }}
-          style={{ border: "none", boxShadow: "none" }}
-        >
-          Отмена
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => {
-            setEditingCommentId(item.ID_Comment);
-            setEditingCommentText(item.CommentText);
-          }}
-        />
-        <Button
-          size="small"
-          icon={<DeleteOutlined />}
-          danger
-          onClick={() => handleDeleteComment(item.ID_Comment)}
-        />
-      </>
-    )}
-  </div>
-)}
-
-                    </>
+                    <div
+                      className="comment-text-container"
+                      style={{
+                        color: "#fff",
+                        textAlign: "left",
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      {editingCommentId === item.ID_Comment ? (
+                        <Input.TextArea
+                          value={editingCommentText}
+                          onChange={(e) =>
+                            setEditingCommentText(e.target.value)
+                          }
+                          autoSize
+                        />
+                      ) : (
+                        <p
+                          className="comment-text"
+                          style={{
+                            margin: 0,
+                            whiteSpace: "normal",
+                            wordBreak: "break-word",
+                            overflowWrap: "break-word",
+                          }}
+                        >
+                          {item.CommentText.replace(
+                            /(\r\n|\n|\r)/g,
+                            " "
+                          ).trim()}
+                        </p>
+                      )}
+                    </div>
                   }
                 />
+
+                {item.ID_User === user?.id && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      alignSelf: "flex-end",
+                      gap: 8,
+                      marginTop: 8,
+                    }}
+                  >
+                    {editingCommentId === item.ID_Comment ? (
+                      <>
+                        <Button
+                          size="small"
+                          type="primary"
+                          onClick={handleUpdateComment}
+                          style={{ border: "none", boxShadow: "none" }}
+                        >
+                          Сохранить
+                        </Button>
+                        <Button
+                          size="small"
+                          onClick={() => {
+                            setEditingCommentId(null);
+                            setEditingCommentText("");
+                          }}
+                          style={{ border: "none", boxShadow: "none" }}
+                        >
+                          Отмена
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          onClick={() => {
+                            setEditingCommentId(item.ID_Comment);
+                            setEditingCommentText(item.CommentText);
+                          }}
+                        />
+                        <Button
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          danger
+                          onClick={() => handleDeleteComment(item.ID_Comment)}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
               </List.Item>
             )}
           />

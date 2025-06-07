@@ -222,6 +222,7 @@ exports.getExecutionComments = async (req, res) => {
       .query(`
         SELECT 
           ec.ID_Comment,
+          ec.ID_User,  -- 🔥 Добавляем ID_User!
           ec.CommentText,
           ec.Created_At,
           u.First_Name + ' ' + u.Last_Name AS AuthorName,
@@ -238,6 +239,9 @@ exports.getExecutionComments = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении комментариев' });
   }
 };
+
+
+
 exports.addExecutionComment = async (req, res) => {
   const { executionId, commentText } = req.body;
   const userId = req.user?.id;
@@ -285,5 +289,62 @@ exports.deleteCommentsByTask = async (req, res) => {
   } catch (err) {
     console.error('Ошибка удаления комментариев по задаче:', err);
     res.status(500).json({ error: 'Ошибка при удалении комментариев по задаче' });
+  }
+};
+
+
+exports.updateExecutionComment = async (req, res) => {
+  const { id } = req.params;
+  const { commentText } = req.body;
+  const userId = req.user?.id;
+
+  if (!commentText || !userId) {
+    return res.status(400).json({ error: 'Комментарий не может быть пустым' });
+  }
+
+  try {
+    const cleanedCommentText = commentText.replace(/(\r\n|\n|\r)/g, ' ').trim();
+    const poolConn = await pool.connect();
+
+    const result = await poolConn.request()
+      .input('id', sql.Int, id)
+      .input('userId', sql.Int, userId)
+      .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
+      .query(`
+        UPDATE ExecutionComments
+        SET CommentText = @commentText
+        WHERE ID_Comment = @id AND ID_User = @userId
+      `);
+
+    res.status(200).json({ message: 'Комментарий обновлен' });
+  } catch (err) {
+    console.error('updateExecutionComment error:', err);
+    res.status(500).json({ error: 'Ошибка при обновлении комментария' });
+  }
+};
+
+exports.deleteExecutionComment = async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Неавторизован' });
+  }
+
+  try {
+    const poolConn = await pool.connect();
+
+    const result = await poolConn.request()
+      .input('id', sql.Int, id)
+      .input('userId', sql.Int, userId)
+      .query(`
+        DELETE FROM ExecutionComments
+        WHERE ID_Comment = @id AND ID_User = @userId
+      `);
+
+    res.status(200).json({ message: 'Комментарий удален' });
+  } catch (err) {
+    console.error('deleteExecutionComment error:', err);
+    res.status(500).json({ error: 'Ошибка при удалении комментария' });
   }
 };

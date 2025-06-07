@@ -434,6 +434,40 @@
   border-radius: 8px;
   margin-bottom: 10px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  position: relative; /* Add this to allow absolute positioning of buttons */
+}
+
+.comment-list .ant-list-item .action-buttons {
+  position: absolute;
+  bottom: 8px; /* Small margin from the bottom */
+  right: 8px; /* Small margin from the right */
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Ensure buttons remain consistent with existing styles */
+.comment-list .ant-list-item .ant-btn {
+  background-color: transparent !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all 0.2s ease;
+}
+
+/* Hover and active states for dark theme */
+[data-theme="dark"] .comment-list .ant-list-item .ant-btn:hover,
+[data-theme="dark"] .comment-list .ant-list-item .ant-btn:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
+}
+
+/* Hover and active states for light theme */
+[data-theme="light"] .comment-list .ant-list-item .ant-btn:hover,
+[data-theme="light"] .comment-list .ant-list-item .ant-btn:active {
+  color: #00bcd4 !important;
+  border-color: #00bcd4 !important;
+  background-color: transparent !important;
 }
 
 .comment-list .ant-list-item-meta {
@@ -771,3 +805,45 @@
   }
 }
 
+/* =============================== */
+/* Стили для формы добавления комментариев */
+/* =============================== */
+
+/* Общий контейнер формы */
+.add-comment-form {
+  margin-top: 16px;
+  background-color: var(--card-bg-color);
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+/* Текстовое поле комментария */
+.add-comment-form .ant-input-textarea {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+/* Кнопка "Добавить комментарий" */
+.add-comment-form .ant-btn-primary {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border: none;
+  width: 100%;
+  margin-top: 12px;
+}
+
+.add-comment-form .ant-btn-primary:hover {
+  background-color: #00bcd4;
+}
+
+/* =============================== */
+/* Адаптивность */
+@media (max-width: 480px) {
+  .add-comment-form {
+    padding: 12px;
+  }
+}
