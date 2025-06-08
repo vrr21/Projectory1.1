@@ -75,7 +75,8 @@ const HeaderEmployee: React.FC = () => {
       }
     }
     setUnreadCount(0);
-    localStorage.setItem("notificationsReadManager", "true");
+    localStorage.setItem("notificationsReadEmployee", "true");
+
   };
 
   const markAsRead = async (id: number) => {
@@ -93,11 +94,11 @@ const HeaderEmployee: React.FC = () => {
   const handleDeleteNotification = async (id: number) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/employee/notifications/${id}`, {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_URL}/api/notifications/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
       });
-
+  
       if (!res.ok) throw new Error("Ошибка при удалении уведомления");
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       setUnreadCount((prev) => Math.max(prev - 1, 0));
@@ -106,6 +107,7 @@ const HeaderEmployee: React.FC = () => {
       console.error("Ошибка при загрузке уведомлений:", error);
     }
   };
+  
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -115,6 +117,7 @@ const HeaderEmployee: React.FC = () => {
         `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      
 
       if (!res.ok) throw new Error("Ошибка при загрузке уведомлений");
       const data: NotificationItem[] = await res.json();
@@ -179,7 +182,10 @@ const HeaderEmployee: React.FC = () => {
 
   useEffect(() => {
     fetchNotifications();
+    window.addEventListener("notificationRefresh", fetchNotifications);
+    return () => window.removeEventListener("notificationRefresh", fetchNotifications);
   }, [fetchNotifications]);
+  
   const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(" ");
     const first = parts[0]?.[0] || "";

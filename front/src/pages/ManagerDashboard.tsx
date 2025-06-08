@@ -222,6 +222,8 @@ const ManagerDashboard: React.FC = () => {
       setNewComment("");
       fetchComments(viewingTaskId);
       messageApi.success("Комментарий добавлен");
+      window.dispatchEvent(new Event("notificationRefresh"));
+
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
       messageApi.error("Не удалось добавить комментарий");

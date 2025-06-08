@@ -94,56 +94,70 @@ const ListEmployee: React.FC = () => {
 
   const handleSave = async (values: Partial<User> & { ID_Role: number }) => {
     try {
-      // Если роль не указана, ставим роль по умолчанию (31 - Сотрудник)
-      if (!values.ID_Role) {
-        values.ID_Role = 31;  // Устанавливаем роль по умолчанию
-      }
-  
+      console.log("Submitted values:", values); // Для отладки
+
       // Проверка: email уже существует?
-      if (!editingEmployee && employees.some((emp) => emp.Email === values.Email)) {
+      if (
+        !editingEmployee &&
+        employees.some((emp) => emp.Email === values.Email)
+      ) {
         messageApi.error("Пользователь с таким email уже существует");
         return;
       }
-  
-      // Проверка: пароль существует?
-      if (values.Password && employees.some((emp) => emp.Password === values.Password)) {
+
+      // Проверка: пароль уже используется другим сотрудником?
+      if (
+        values.Password &&
+        employees.some((emp) => emp.Password === values.Password)
+      ) {
         messageApi.error("Пароль уже используется другим сотрудником");
         return;
       }
-  
+
       // Проверка: длина и состав пароля
-      if (values.Password && !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password)) {
-        messageApi.error("Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру");
+      if (
+        values.Password &&
+        !/^(?=.*[A-Za-z])(?=.*\d).{8,}$/.test(values.Password)
+      ) {
+        messageApi.error(
+          "Пароль должен содержать минимум 8 символов, включая хотя бы одну букву и одну цифру"
+        );
         return;
       }
-  
-      // Создание нового сотрудника
+
       if (!editingEmployee) {
+        // Новый сотрудник
         const res = await fetch(`${API_URL}/api/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
+          body: JSON.stringify({
+            ...values,
+            ID_Role: values.ID_Role, // важно: берём роль из формы
+          }),
         });
-  
+
         if (!res.ok) throw new Error("Ошибка при создании пользователя");
         messageApi.success("Сотрудник создан");
       } else {
-        // Обновление данных существующего сотрудника
+        // Обновление данных
+        const updatedValues = { ...values };
         if (!values.Password) {
-          delete values.Password;  // Если пароль не указан, удалить его из данных
+          delete updatedValues.Password;
         }
-  
-        const res = await fetch(`${API_URL}/api/users/${editingEmployee.ID_User}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(values),
-        });
-  
+
+        const res = await fetch(
+          `${API_URL}/api/users/${editingEmployee.ID_User}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedValues),
+          }
+        );
+
         if (!res.ok) throw new Error("Ошибка при обновлении данных");
         messageApi.success("Сотрудник обновлён");
       }
-  
-      // Перезагрузка списка сотрудников
+
       fetchEmployees();
       setIsModalVisible(false);
       setEditingEmployee(null);
@@ -152,7 +166,6 @@ const ListEmployee: React.FC = () => {
       messageApi.error((err as Error).message);
     }
   };
-  
 
   const handleArchive = async (id: number, archive: boolean) => {
     try {
@@ -214,7 +227,7 @@ const ListEmployee: React.FC = () => {
       messageApi.error((err as Error).message);
     } finally {
       setConfirmDeleteVisible(false);
-      setSelectedRowKeys([]); // Очистить выбор
+      setSelectedRowKeys([]);
     }
   };
 
@@ -233,7 +246,9 @@ const ListEmployee: React.FC = () => {
       key: "Avatar",
       align: "center",
       render: (avatar, record) => {
-        const initials = `${record.First_Name?.[0] ?? ""}${record.Last_Name?.[0] ?? ""}`;
+        const initials = `${record.First_Name?.[0] ?? ""}${
+          record.Last_Name?.[0] ?? ""
+        }`;
         return (
           <Avatar
             src={avatar ? `${API_URL}/uploads/${avatar}` : undefined}
@@ -313,12 +328,15 @@ const ListEmployee: React.FC = () => {
       align: "center",
       render: (text) => (
         <div
-          style={{ textAlign: isNumericOrDateOrDash(text) ? "center" : "left" }}
+          style={{
+            textAlign: isNumericOrDateOrDash(text) ? "center" : "left",
+          }}
         >
-          {text}
+          {text || "Не назначена"}
         </div>
-      ),
+      )
     },
+    
     {
       title: <div style={{ textAlign: "center" }}>Команды</div>,
       dataIndex: "Teams",
@@ -326,12 +344,15 @@ const ListEmployee: React.FC = () => {
       align: "center",
       render: (text) => (
         <div
-          style={{ textAlign: isNumericOrDateOrDash(text) ? "center" : "left" }}
+          style={{
+            textAlign: isNumericOrDateOrDash(text) ? "center" : "left",
+          }}
         >
           {text}
         </div>
       ),
     },
+
     {
       title: <div style={{ textAlign: "center" }}>Проекты</div>,
       dataIndex: "Projects",
@@ -435,17 +456,16 @@ const ListEmployee: React.FC = () => {
               Сотрудники
             </h1>
             <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "8px",
-    flexWrap: "wrap",
-    marginBottom: -24,
-    marginTop: -12,
-  }}
->
-
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+                flexWrap: "wrap",
+                marginBottom: -24,
+                marginTop: -12,
+              }}
+            >
               <Button
                 className="dark-action-button"
                 icon={<UserAddOutlined />}
@@ -545,7 +565,14 @@ const ListEmployee: React.FC = () => {
               okText="Сохранить"
               cancelText="Отмена"
             >
-              <Form form={form} layout="vertical" onFinish={handleSave}>
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleSave}
+                initialValues={{
+                  ID_Role: editingEmployee ? editingEmployee.ID_Role : 31,
+                }}
+              >
                 <Form.Item
                   name="First_Name"
                   label="Имя"
@@ -668,20 +695,16 @@ const ListEmployee: React.FC = () => {
                 >
                   <Input.Password autoComplete="new-password" />
                 </Form.Item>
-
                 <Form.Item
-  name="ID_Role"
-  label="Роль"
-  initialValue={31} // Сотрудник по умолчанию
->
-  <Radio.Group className="custom-radio-group">
-    <Radio value={31}>Сотрудник</Radio>
-    <Radio value={1}>Менеджер</Radio>
-    <Radio value={16}>Backend-разработчик</Radio>
-    {/* Добавьте другие роли */}
-  </Radio.Group>
-</Form.Item>
-
+                  name="ID_Role"
+                  label="Роль"
+                  rules={[{ required: true, message: "Выберите роль" }]}
+                >
+                  <Radio.Group>
+                    <Radio value={1}>Менеджер</Radio>
+                    <Radio value={31}>Сотрудник</Radio>
+                  </Radio.Group>
+                </Form.Item>
               </Form>
             </Modal>
 

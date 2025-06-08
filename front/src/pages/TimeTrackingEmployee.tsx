@@ -322,7 +322,6 @@ const TimeTrackingEmployee: React.FC = () => {
     // 🚀 Добавляем Time_Norm в запись (можно использовать для отчётов или подсказок)
     const timeNorm = selectedTask?.Time_Norm || 0;
 
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const payload = {
       taskName: values.taskName,
       date: values.date.toISOString(),
@@ -536,7 +535,6 @@ const TimeTrackingEmployee: React.FC = () => {
       if (viewingEntry) {
         await fetchComments(viewingEntry);
       }
-      
   
       api.success({ message: "Комментарий удален" });
     } catch (error) {
@@ -546,7 +544,9 @@ const TimeTrackingEmployee: React.FC = () => {
   };
   
   
+  
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const userId = user.ID_User || user.id;
 
   return (
     <App>
@@ -1254,7 +1254,8 @@ const TimeTrackingEmployee: React.FC = () => {
                         />
                       
                         {/* Правая часть — кнопки */}
-                        {String(item.ID_User) === String(user?.id) && (
+                        {String(item.ID_User) === String(userId) &&  (
+
                           <div
                             style={{
                               display: "flex",

@@ -239,7 +239,6 @@ exports.getAllEmployeesFull = async (req, res) => {
   }
 };
 
-
 exports.getAllEmployeesExtended = async (req, res) => {
   try {
     await poolConnect;
@@ -252,18 +251,13 @@ exports.getAllEmployeesExtended = async (req, res) => {
         U.Phone,
         U.Avatar,
         U.Archived,
-
-        -- 🎯 Роли
-        CASE 
-          WHEN U.ID_Role = 1 THEN R.Role_Name
-          ELSE ISNULL((
-            SELECT STRING_AGG(TM.Role + ' (Команда: ' + T.Team_Name + ')', ', ')
-            FROM TeamMembers TM
-            JOIN Teams T ON TM.ID_Team = T.ID_Team
-            WHERE TM.ID_User = U.ID_User
-          ), '–')
-        END AS Roles,
-
+        U.ID_Role,
+        -- 🔥 Получаем список ролей из TeamMembers
+        ISNULL((
+          SELECT STRING_AGG(TM.Role, ', ')
+          FROM TeamMembers TM
+          WHERE TM.ID_User = U.ID_User
+        ), R.Role_Name) AS Roles,
         -- Команды
         ISNULL((
           SELECT STRING_AGG(T.Team_Name, ', ')
@@ -271,7 +265,6 @@ exports.getAllEmployeesExtended = async (req, res) => {
           JOIN Teams T ON TM.ID_Team = T.ID_Team
           WHERE TM.ID_User = U.ID_User
         ), '–') AS Teams,
-
         -- Проекты
         ISNULL((
           SELECT STRING_AGG(O.Order_Name, ', ')
@@ -283,7 +276,6 @@ exports.getAllEmployeesExtended = async (req, res) => {
             WHERE T.ID_Team = O.ID_Team AND TM.ID_User = U.ID_User
           )
         ), '–') AS Projects,
-
         -- Задачи
         ISNULL((
           SELECT STRING_AGG(TK.Task_Name, ', ')
@@ -291,7 +283,6 @@ exports.getAllEmployeesExtended = async (req, res) => {
           JOIN Tasks TK ON A.ID_Task = TK.ID_Task
           WHERE A.ID_Employee = U.ID_User
         ), '–') AS Tasks
-
       FROM Users U
       LEFT JOIN Roles R ON U.ID_Role = R.ID_Role
     `);
@@ -477,14 +468,13 @@ exports.getEmployeesByTeam = async (req, res) => {
   }
 };
 
-// Удалить сотрудника (и уведомления)
 exports.deleteEmployee = async (req, res) => {
   const { id } = req.params;
 
   try {
     await poolConnect;
 
-    // 🔎 Найти Email пользователя
+    // Найти Email пользователя
     const userResult = await pool.request()
       .input("ID_User", sql.Int, id)
       .query("SELECT Email FROM Users WHERE ID_User = @ID_User");
@@ -495,19 +485,39 @@ exports.deleteEmployee = async (req, res) => {
 
     const userEmail = userResult.recordset[0].Email;
 
-    // 🗑️ Удалить уведомления пользователя
+    // Удалить уведомления
     await pool.request()
       .input("UserEmail", sql.NVarChar, userEmail)
       .query("DELETE FROM Notifications WHERE UserEmail = @UserEmail");
 
-    // 🗑️ Удалить самого пользователя
+    // Удалить записи из TeamMembers
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("DELETE FROM TeamMembers WHERE ID_User = @ID_User");
+
+    // Удалить связанные назначения
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("DELETE FROM Assignment WHERE ID_Employee = @ID_User");
+
+    // Удалить связанные исполнения
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("DELETE FROM Execution WHERE ID_Employee = @ID_User");
+
+    // Удалить комментарии к задачам
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .query("DELETE FROM TaskComments WHERE ID_User = @ID_User");
+
+    // Удалить пользователя
     await pool.request()
       .input("ID_User", sql.Int, id)
       .query("DELETE FROM Users WHERE ID_User = @ID_User");
 
-    res.json({ message: "Пользователь и связанные уведомления успешно удалены" });
+    res.json({ message: "Пользователь и все связанные записи успешно удалены" });
   } catch (error) {
     console.error("Ошибка при удалении пользователя:", error);
-    res.status(500).json({ message: "Ошибка сервера при удалении пользователя" });
+    res.status(500).json({ message: "Ошибка сервера при удалении пользователя", error: error.message });
   }
 };

@@ -79,10 +79,11 @@ const HeaderManager: React.FC = () => {
   const markAsRead = async (id: number) => {
     try {
       const token = localStorage.getItem("token");
-      await fetch(`${API_URL}/api/employee/notifications/${id}/read`, {
-        method: "PUT",
-        headers: { Authorization: `Bearer ${token}` },
+      await fetch(`${API_URL}/api/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
       });
+      
     } catch (err) {
       console.error("Ошибка при отметке уведомления как прочитанного:", err);
     }
@@ -91,44 +92,49 @@ const HeaderManager: React.FC = () => {
   const handleDeleteNotification = async (id: number) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/employee/notifications/${id}`, {
+  
+      const res = await fetch(`${API_URL}/api/notifications/${id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
-
+  
       if (!res.ok) throw new Error("Ошибка при удалении уведомления");
+  
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       setUnreadCount((prev) => Math.max(prev - 1, 0));
       toast.success("Уведомление удалено");
     } catch (error) {
-      console.error("Ошибка при удалении уведомлений:", error);
+      console.error("Ошибка при удалении уведомления:", error);
     }
   };
+  
+  
 
   const fetchNotifications = useCallback(async () => {
     try {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       const token = localStorage.getItem("token");
-
+  
       if (!currentUser.email || !token) {
         console.error("Ошибка: отсутствует email или токен");
         return;
       }
-
+  
       const res = await fetch(
         `${API_URL}/api/manager/notifications?managerEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
+      
+  
       if (!res.ok) {
         console.error(
           `Ошибка при загрузке уведомлений: ${res.status} ${res.statusText}`
         );
         return;
       }
-
+  
       const data: NotificationItem[] = await res.json();
-
+  
       setNotifications(
         data.map((n) => ({
           ...n,
@@ -139,13 +145,17 @@ const HeaderManager: React.FC = () => {
             hour: "2-digit",
             minute: "2-digit",
           }),
-          link: n.link && n.link.trim() !== "" ? n.link : `/tasks/${n.id}`,
+          link: n.link && n.link.trim() !== ""
+            ? (n.link.startsWith("/manager") ? n.link : `/manager${n.link}`)
+            : `/manager/tasks/${n.id}`,
         }))
       );
-
+      
+      
+  
       const unread = data.filter((n) => !n.isRead).length;
       setUnreadCount(unread);
-
+  
       const modalAlreadyShown = localStorage.getItem(
         "notificationsModalShownManager"
       );
@@ -188,10 +198,14 @@ const HeaderManager: React.FC = () => {
       console.error("Ошибка при загрузке уведомлений:", error);
     }
   }, [theme, navigate, location.pathname]);
+  
 
   useEffect(() => {
     fetchNotifications();
+    window.addEventListener("notificationRefresh", fetchNotifications);
+    return () => window.removeEventListener("notificationRefresh", fetchNotifications);
   }, [fetchNotifications]);
+  
 
   const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(" ");
@@ -307,21 +321,8 @@ const HeaderManager: React.FC = () => {
               onClick={() => {
                 if (item.link) {
                   setIsDrawerVisible(false);
-
-                  const [routePart] = item.link.split("#");
-                  const isTaskLink = routePart.includes("/tasks/");
-                  const isExecutionLink = routePart.includes("/executions/");
-
-                  if (isTaskLink) {
-                    navigate("/employee");
-                  } else if (isExecutionLink) {
-                    navigate("/time-tracking");
-                  } else {
-                    navigate(
-                      routePart.startsWith("/") ? routePart : `/${routePart}`
-                    );
-                  }
-
+                  navigate(item.link);
+              
                   const hash = item.link.split("#")[1];
                   if (hash) {
                     setTimeout(() => {
@@ -336,6 +337,8 @@ const HeaderManager: React.FC = () => {
                   }
                 }
               }}
+              
+              
             >
               <div className="notification-content">
                 <div className="notification-header">

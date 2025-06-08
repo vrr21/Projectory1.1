@@ -144,12 +144,20 @@ const addTeamMember = async (req, res) => {
       return res.status(400).json({ message: 'Пользователь уже является участником команды' });
     }
 
-    await pool
-      .request()
-      .input('ID_User', userId)
-      .input('ID_Team', teamId)
-      .input('Role', sql.NVarChar, role)
-      .query('INSERT INTO TeamMembers (ID_User, ID_Team, Role) VALUES (@ID_User, @ID_Team, @Role)');
+    // 🔥 Обновляем роль в Users
+await pool.request()
+.input('ID_User', userId)
+.input('Role_Name', sql.NVarChar, role)
+.query(`
+  UPDATE Users
+  SET ID_Role = (
+    SELECT TOP 1 ID_Role
+    FROM Roles
+    WHERE Role_Name = @Role_Name
+  )
+  WHERE ID_User = @ID_User
+`);
+
 
     res.status(201).json({ message: 'Участник успешно добавлен' });
   } catch (error) {
@@ -427,6 +435,7 @@ const updateMemberRole = async (req, res) => {
       return res.status(400).json({ message: 'Роль обязательна' });
     }
 
+    // 1️⃣ Обновляем роль в TeamMembers
     const result = await pool.request()
       .input('ID_Team', sql.Int, teamId)
       .input('ID_User', sql.Int, memberId)
@@ -441,12 +450,27 @@ const updateMemberRole = async (req, res) => {
       return res.status(404).json({ message: 'Участник не найден в команде' });
     }
 
+    // 2️⃣ Также обновляем роль в таблице Users
+    await pool.request()
+      .input('ID_User', sql.Int, memberId)
+      .input('Role_Name', sql.NVarChar, role)
+      .query(`
+        UPDATE Users
+        SET ID_Role = (
+          SELECT TOP 1 ID_Role
+          FROM Roles
+          WHERE Role_Name = @Role_Name
+        )
+        WHERE ID_User = @ID_User
+      `);
+
     res.status(200).json({ message: 'Роль обновлена' });
   } catch (error) {
     console.error('Ошибка при обновлении роли участника:', error);
     res.status(500).json({ message: 'Ошибка сервера при обновлении роли' });
   }
 };
+
 
 
 const exportCustomTeams = async (req, res) => {

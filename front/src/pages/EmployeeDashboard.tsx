@@ -167,10 +167,11 @@ const EmployeeDashboard = () => {
         );
         return;
       }
-  
       setNewComment("");
       fetchComments(viewingTask.ID_Task);
       messageApi.success("Комментарий добавлен");
+      window.dispatchEvent(new Event("notificationRefresh"));
+      
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
       messageApi.error("Ошибка при добавлении комментария.");

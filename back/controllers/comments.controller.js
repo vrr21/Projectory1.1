@@ -192,26 +192,36 @@ exports.updateComment = async (req, res) => {
   }
 };
 
-
-// Удаление комментария
 exports.deleteComment = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Неавторизован' });
+  }
 
   try {
     const poolConn = await pool.connect();
-    await poolConn.request()
+    const result = await poolConn.request()
       .input('id', sql.Int, id)
+      .input('userId', sql.Int, userId)
       .query(`
         DELETE FROM TaskComments
-        WHERE ID_Comment = @id
+        WHERE ID_Comment = @id AND ID_User = @userId
       `);
 
-    res.sendStatus(200);
+    if (result.rowsAffected[0] === 0) {
+      return res.status(403).json({ error: 'Нет прав на удаление комментария' });
+    }
+
+    res.status(200).json({ message: 'Комментарий удален' });
   } catch (err) {
     console.error('deleteComment error:', err);
     res.status(500).json({ error: 'Ошибка при удалении комментария' });
   }
 };
+
+
 
 exports.getExecutionComments = async (req, res) => {
   const { executionId } = req.params;

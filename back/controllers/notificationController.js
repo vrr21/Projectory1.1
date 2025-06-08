@@ -1,8 +1,7 @@
 const { sql, poolConnect, pool } = require('../config/db');
 
-// 🔹 Получить уведомления по email
-
-const getNotifications = async (req, res) => {
+// 🔹 Получить уведомления сотрудника
+const getEmployeeNotifications = async (req, res) => {
   try {
     await poolConnect;
     const email = req.query.employeeEmail;
@@ -10,22 +9,24 @@ const getNotifications = async (req, res) => {
     if (!email) {
       return res.status(400).json({ message: 'Email обязателен' });
     }
+
     const result = await pool.request()
-    .input('Email', sql.NVarChar, email)
-    .query(`
-      SELECT 
-        ID_Notification AS id, 
-        Title AS title, 
-        Description AS description, 
-        Link,            -- 🟢 добавляем Link
-        Created_At,
-        Is_Read AS isRead
-      FROM Notifications
-      WHERE UserEmail = @Email
-      ORDER BY Created_At DESC
-    `);
-  
-  
+      .input('Email', sql.NVarChar, email)
+      .query(`
+        SELECT 
+          ID_Notification AS id,
+          Title AS title,
+          Description AS description,
+          Link,
+          Created_At,
+          Is_Read AS isRead
+        FROM Notifications
+        WHERE UserEmail = @Email
+          AND (CreatedByEmail IS NULL OR CreatedByEmail <> @Email)
+        ORDER BY Created_At DESC
+      `);
+      
+
     res.status(200).json(result.recordset);
   } catch (error) {
     console.error('❌ Ошибка при получении уведомлений:', error);
@@ -33,7 +34,40 @@ const getNotifications = async (req, res) => {
   }
 };
 
-// 🔹 Удалить уведомление по ID
+const getManagerNotifications = async (req, res) => {
+  try {
+    await poolConnect;
+    const email = req.query.managerEmail;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email обязателен' });
+    }
+
+    const result = await pool.request()
+      .input('Email', sql.NVarChar, email)
+      .query(`
+       SELECT 
+  ID_Notification AS id,
+  Title AS title,
+  Description AS description,
+  Link,
+  Created_At,
+  Is_Read AS isRead
+FROM Notifications
+WHERE UserEmail = @Email
+   OR CreatedByEmail = @Email
+ORDER BY Created_At DESC
+
+      `);
+
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error('❌ Ошибка при получении уведомлений для менеджера:', error);
+    res.status(500).json({ message: 'Ошибка сервера при получении уведомлений' });
+  }
+};
+
+// 🔹 Удалить уведомление
 const deleteNotificationById = async (req, res) => {
   try {
     await poolConnect;
@@ -43,8 +77,7 @@ const deleteNotificationById = async (req, res) => {
       return res.status(400).json({ message: 'Неверный ID уведомления' });
     }
 
-    const result = await pool
-      .request()
+    const result = await pool.request()
       .input('ID', sql.Int, id)
       .query('DELETE FROM Notifications WHERE ID_Notification = @ID');
 
@@ -60,7 +93,6 @@ const deleteNotificationById = async (req, res) => {
 };
 
 // 🔹 Создать уведомление
-// 🔹 Создать уведомление
 const createNotification = async (req, res) => {
   try {
     await poolConnect;
@@ -71,14 +103,16 @@ const createNotification = async (req, res) => {
     }
 
     await pool.request()
-      .input('UserEmail', sql.NVarChar, userEmail)
-      .input('Title', sql.NVarChar, title)
-      .input('Description', sql.NVarChar, description)
-      .input('Link', sql.NVarChar, link || null)
-      .query(`
-        INSERT INTO Notifications (UserEmail, Title, Description, Link, Created_At)
-        VALUES (@UserEmail, @Title, @Description, @Link, GETDATE())
-      `);
+    .input('UserEmail', sql.NVarChar, userEmail)
+    .input('CreatedByEmail', sql.NVarChar, req.user.email) // <-- Добавляем отправителя
+    .input('Title', sql.NVarChar, title)
+    .input('Description', sql.NVarChar, description)
+    .input('Link', sql.NVarChar, link || null)
+    .query(`
+      INSERT INTO Notifications (UserEmail, CreatedByEmail, Title, Description, Link, Created_At)
+      VALUES (@UserEmail, @CreatedByEmail, @Title, @Description, @Link, GETDATE())
+    `);
+  
 
     res.status(201).json({ message: "Уведомление успешно создано" });
   } catch (error) {
@@ -86,7 +120,6 @@ const createNotification = async (req, res) => {
     res.status(500).json({ message: "Ошибка сервера при создании уведомления" });
   }
 };
-
 
 // 🔹 Пометить уведомление как прочитанное
 const markNotificationAsRead = async (req, res) => {
@@ -98,8 +131,7 @@ const markNotificationAsRead = async (req, res) => {
       return res.status(400).json({ message: 'Неверный ID уведомления' });
     }
 
-    await pool
-      .request()
+    await pool.request()
       .input('ID', sql.Int, id)
       .query(`
         UPDATE Notifications
@@ -113,40 +145,10 @@ const markNotificationAsRead = async (req, res) => {
     res.status(500).json({ message: 'Ошибка сервера при отметке уведомления' });
   }
 };
-const getManagerNotifications = async (req, res) => {
-  try {
-    await poolConnect;
-    const email = req.query.managerEmail;
-
-    if (!email) {
-      return res.status(400).json({ message: 'Email обязателен' });
-    }
-
-    const result = await pool.request()
-    .input('Email', sql.NVarChar, email)
-    .query(`
-      SELECT 
-        ID_Notification AS id, 
-        Title AS title, 
-        Description AS description, 
-        Link,
-        Created_At,
-        Is_Read AS isRead
-      FROM Notifications
-      WHERE UserEmail = @Email
-      ORDER BY Created_At DESC
-    `);
-
-    res.status(200).json(result.recordset);
-  } catch (error) {
-    console.error('❌ Ошибка при получении уведомлений для менеджера:', error);
-    res.status(500).json({ message: 'Ошибка сервера при получении уведомлений' });
-  }
-};
 
 module.exports = {
-  getNotifications,
-  getManagerNotifications, 
+  getEmployeeNotifications,
+  getManagerNotifications,
   deleteNotificationById,
   createNotification,
   markNotificationAsRead
