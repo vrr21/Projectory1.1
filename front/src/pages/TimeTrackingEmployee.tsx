@@ -970,17 +970,18 @@ const TimeTrackingEmployee: React.FC = () => {
                   </Form.Item>
 
                   <Form.Item
-                    name="date"
-                    label="Дата"
-                    rules={[{ required: true, message: "Выберите дату" }]}
-                  >
-                    <DatePicker
-                      style={{ width: "100%" }}
-                      disabledDate={(current) =>
-                        current && current > dayjs().endOf("day")
-                      }
-                    />
-                  </Form.Item>
+  name="date"
+  label="Дата"
+  rules={[{ required: true, message: "Выберите дату и время" }]}
+>
+  <DatePicker
+    showTime
+    format="YYYY-MM-DD HH:mm"
+    style={{ width: "100%" }}
+    disabledDate={(current) => current && current > dayjs().endOf("day")}
+  />
+</Form.Item>
+
                   <Form.Item
                     name="isCompleted"
                     label="Завершена ли задача?"
@@ -1168,14 +1169,13 @@ const TimeTrackingEmployee: React.FC = () => {
               </Modal>
 
               <Modal
-                title="Комментарии к задаче"
+                title="Комментарии"
                 open={isCommentsModalVisible}
                 onCancel={() => setIsCommentsModalVisible(false)}
                 footer={null}
               >
                 {viewingEntry && (
                   <>
-                    <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
                     <List
                       dataSource={comments}
                       renderItem={(item) => (

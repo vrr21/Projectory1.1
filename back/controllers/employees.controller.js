@@ -94,25 +94,21 @@ exports.fullSearchEmployeeData = async (req, res) => {
 exports.updateEmployeeProfile = async (req, res) => {
   const { id, firstName, lastName, phone, ID_Role } = req.body;
 
-  if (!id || !firstName || !lastName || (ID_Role === undefined)) {
+  if (!id || !firstName || !lastName || ID_Role === undefined) {
     return res.status(400).json({ message: "Некорректные данные" });
   }
 
   try {
-    // Если роль не указана, ставим роль по умолчанию (31 - Сотрудник)
-    const role = ID_Role || 31;  // Если роль не передана, ставим роль 31
-
-    // Логирование данных для отладки
-    console.log(`Updating user ${id} with role ${role}`);
-
     await poolConnect;
+
+    // 🔄 Обновляем основные данные
     await pool
       .request()
       .input("id", sql.Int, id)
       .input("firstName", sql.NVarChar(255), firstName)
       .input("lastName", sql.NVarChar(255), lastName)
       .input("phone", sql.NVarChar(50), phone || null)
-      .input("ID_Role", sql.Int, role)
+      .input("ID_Role", sql.Int, ID_Role)
       .query(`
         UPDATE Users
         SET First_Name = @firstName,
@@ -121,6 +117,16 @@ exports.updateEmployeeProfile = async (req, res) => {
             ID_Role = @ID_Role
         WHERE ID_User = @id
       `);
+
+    // 🔥 Если назначаем роль менеджера (ID_Role === 1), удаляем из TeamMembers
+    if (ID_Role === 1) {
+      await pool
+        .request()
+        .input("id", sql.Int, id)
+        .query(`
+          DELETE FROM TeamMembers WHERE ID_User = @id
+        `);
+    }
 
     res.json({ message: "Профиль успешно обновлён" });
   } catch (error) {
@@ -519,5 +525,34 @@ exports.deleteEmployee = async (req, res) => {
   } catch (error) {
     console.error("Ошибка при удалении пользователя:", error);
     res.status(500).json({ message: "Ошибка сервера при удалении пользователя", error: error.message });
+  }
+};
+
+exports.createEmployee = async (req, res) => {
+  const { firstName, lastName, email, phone, password, ID_Role } = req.body;
+
+  if (!firstName || !lastName || !email || !password) {
+    return res.status(400).json({ message: "Некорректные данные" });
+  }
+
+  try {
+    await poolConnect;
+
+    await pool.request()
+      .input("firstName", sql.NVarChar(255), firstName)
+      .input("lastName", sql.NVarChar(255), lastName)
+      .input("email", sql.NVarChar(255), email)
+      .input("phone", sql.NVarChar(50), phone || null)
+      .input("password", sql.NVarChar(255), password)
+      .input("ID_Role", sql.Int, ID_Role || 31) // 👈 если не указана роль, ставим 31 (Сотрудник)
+      .query(`
+        INSERT INTO Users (First_Name, Last_Name, Email, Phone, Password, ID_Role)
+        VALUES (@firstName, @lastName, @email, @phone, @password, @ID_Role)
+      `);
+
+    res.status(201).json({ message: "Пользователь создан" });
+  } catch (error) {
+    console.error("Ошибка при создании пользователя:", error);
+    res.status(500).json({ message: "Ошибка сервера при создании пользователя" });
   }
 };

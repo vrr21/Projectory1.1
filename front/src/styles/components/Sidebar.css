@@ -145,11 +145,18 @@ body.sidebar-collapsed .main-content {
 .team-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-color); /* ✅ автоматическая адаптация под тему */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  color: var(--text-color);
+  white-space: normal; /* Позволяет перенос строки */
+  overflow-wrap: break-word; /* Разрешает перенос длинных слов */
+  word-break: break-word;    /* При необходимости переносит длинные слова */
 }
+.sidebar-content .team-info {
+  display: flex;
+  flex-wrap: wrap; /* ✅ добавляем перенос строк */
+  gap: 12px;
+  align-items: center;
+}
+
 .team-role {
   font-size: 12px;
   color: var(--text-muted-color); /* или --text-color, по желанию */

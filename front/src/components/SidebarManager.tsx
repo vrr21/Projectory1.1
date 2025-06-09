@@ -26,7 +26,7 @@ const SidebarManager: React.FC = () => {
     {
       key: "/manager",
       icon: <TableOutlined />,
-      label: <Link to="/manager">Доски задач</Link>,
+      label: <Link to="/manager">Доска задач</Link>,
     },
     {
       key: "/projects",

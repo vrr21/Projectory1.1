@@ -847,3 +847,220 @@
     padding: 12px;
   }
 }
+
+/* Dark Theme */
+.ant-checkbox-inner {
+  background-color: var(--card-bg-color);
+  border: 1px solid var(--border-color);
+}
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+.ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: var(--accent-color);
+}
+
+/* Light Theme */
+[data-theme="light"] .ant-checkbox-inner {
+  background-color: #fff !important;
+  border: 1px solid #ccc !important;
+}
+[data-theme="light"] .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--accent-color) !important;
+  border-color: var(--accent-color) !important;
+}
+[data-theme="light"] .ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: var(--accent-color) !important;
+}
+
+/* Light Theme DatePicker */
+[data-theme="light"] .ant-picker {
+  background-color: #fff !important;
+  color: #000 !important;
+  border: 1px solid #ccc !important;
+}
+[data-theme="light"] .ant-picker-input > input {
+  color: #000 !important;
+}
+
+/* Hover & Focus */
+[data-theme="light"] .ant-picker:hover,
+[data-theme="light"] .ant-picker-focused {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 2px rgba(0, 191, 255, 0.2);
+}
+
+/* Upload Button — Dark Theme */
+.ant-upload .ant-btn {
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px dashed var(--border-color) !important;
+}
+.ant-upload .ant-btn:hover {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Light Theme */
+[data-theme="light"] .ant-upload .ant-btn {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px dashed #ccc !important;
+}
+[data-theme="light"] .ant-upload .ant-btn:hover {
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+}
+
+/* Light Theme Attachments */
+[data-theme="light"] .attachment-upload,
+[data-theme="light"] .attachment-link {
+  background-color: #ffffff !important;
+  border: 1px dashed #ccc !important;
+  color: #000 !important;
+}
+/* Светлая тема: Upload кнопка */
+[data-theme="light"] .ant-upload-drag .ant-upload-text,
+[data-theme="light"] .ant-upload-drag .ant-upload-hint,
+[data-theme="light"] .ant-upload .ant-btn span {
+  color: #000000 !important;
+}
+/* Светлая тема: блок Upload */
+[data-theme="light"] .ant-upload-drag {
+  background-color: #ffffff !important;
+  border: 1px dashed #ccc !important;
+  color: #000000 !important;
+}
+
+/* Светлая тема: текст Upload */
+[data-theme="light"] .ant-upload-drag .ant-upload-text,
+[data-theme="light"] .ant-upload-drag .ant-upload-hint {
+  color: #000000 !important;
+}
+
+/* Светлая тема: иконка Upload */
+[data-theme="light"] .ant-upload-drag-icon .anticon {
+  color: #000000 !important;
+}
+
+/* Светлая тема: загруженные файлы (имя файла) */
+[data-theme="light"] .ant-upload-list-item-name {
+  color: #000000 !important;
+}
+/* Светлая тема: время в DatePicker */
+[data-theme="light"] .ant-picker-time-panel {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+[data-theme="light"] .ant-picker-time-panel-cell {
+  color: #000000 !important;
+}
+/* Светлая тема: улучшить видимость TimePicker */
+[data-theme="light"] .ant-picker-time-panel {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-picker-time-panel-cell-inner {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+  background-color: #00bcd4 !important;
+  color: #ffffff !important;
+}
+
+/* =============================== */
+/* Light Theme: Add Comment Form */
+/* =============================== */
+[data-theme="light"] .add-comment-form {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+/* Текстовое поле комментария */
+[data-theme="light"] .add-comment-form .ant-input-textarea {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ccc !important;
+}
+
+/* Кнопка "Добавить комментарий" */
+[data-theme="light"] .add-comment-form .ant-btn-primary {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+[data-theme="light"] .add-comment-form .ant-btn-primary:hover {
+  background-color: #00bcd4 !important;
+}
+
+/* Список комментариев */
+[data-theme="light"] .comment-list .ant-list-item {
+  background-color: #f9f9f9 !important;
+  color: #000000 !important;
+  border: 1px solid #ddd !important;
+}
+[data-theme="light"] .comment-list .ant-list-item-meta-description {
+  color: #000000 !important;
+}
+/* comments.css */
+.comment-list .ant-list-item {
+  padding: 12px 44px 12px 12px;
+  background-color: var(--card-bg-color);
+  border-radius: 8px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  box-sizing: border-box;
+}
+
+[data-theme="light"] .comment-item {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ccc !important;
+}
+/* comments.css */
+
+.comment-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px;
+  background-color: var(--card-bg-color) !important;
+  color: var(--text-color) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+/* Светлая тема */
+[data-theme="light"] .comment-item {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border-color: #ccc !important;
+}
+
+.comment-author {
+  font-weight: bold;
+  color: var(--text-color);
+}
+[data-theme="light"] .comment-author {
+  color: #000000;
+}
+
+.comment-timestamp {
+  font-size: 12px;
+  color: #999;
+}
+
+.comment-text {
+  color: var(--text-color);
+  word-break: break-word;
+}
+[data-theme="light"] .comment-text {
+  color: #000000;
+}

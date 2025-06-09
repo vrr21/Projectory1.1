@@ -243,12 +243,14 @@ const EmployeeAccount: React.FC = () => {
       const formDataData = new FormData();
       formDataData.append("avatar", compressedFile);
       formDataData.append("userId", String(user.id));
-
       const response = await fetch(`${API_URL}/api/employees/upload-avatar`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
         body: formDataData,
       });
-
+      
       if (!response.ok) {
         throw new Error("Ошибка при загрузке аватара");
       }
@@ -284,9 +286,17 @@ const EmployeeAccount: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/api/employees/update`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id, ...formData }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({
+          id: user.id,
+          ...formData,
+          ID_Role: user.role.toLowerCase() === 'менеджер' ? 1 : 31
+        }),
       });
+      
 
       const result = await response.json();
 

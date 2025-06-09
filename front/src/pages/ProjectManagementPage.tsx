@@ -729,49 +729,44 @@ const ProjectManagementPage: React.FC = () => {
                         </Form.Item>
 
                         <Form.Item
-                          name="End_Date"
-                          label="Дата окончания"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Пожалуйста, выберите дату окончания",
-                            },
-                            {
-                              validator: async (_, value) => {
-                                if (!value)
-                                  return Promise.reject(
-                                    new Error(
-                                      "Пожалуйста, выберите дату окончания"
-                                    )
-                                  );
-                                const selectedDate =
-                                  dayjs(value).startOf("day");
-                                const today = dayjs().startOf("day");
-                                const maxDate = today.add(1, "year");
+  name="End_Date"
+  label="Дата окончания"
+  rules={[
+    {
+      required: true,
+      message: "Пожалуйста, выберите дату окончания",
+    },
+    {
+      validator: async (_, value) => {
+        if (!value)
+          return Promise.reject(new Error("Пожалуйста, выберите дату окончания"));
+        const selectedDate = dayjs(value).startOf("day");
+        const today = dayjs().startOf("day");
+        const maxDate = today.add(1, "year");
 
-                                if (selectedDate.isBefore(today)) {
-                                  return Promise.reject(
-                                    new Error("Нельзя выбрать прошедшую дату")
-                                  );
-                                }
+        if (selectedDate.isBefore(today)) {
+          return Promise.reject(new Error("Нельзя выбрать прошедшую дату"));
+        }
 
-                                if (selectedDate.isAfter(maxDate)) {
-                                  return Promise.reject(
-                                    new Error(
-                                      `Максимальный срок — ${maxDate.format(
-                                        "YYYY-MM-DD"
-                                      )}`
-                                    )
-                                  );
-                                }
+        if (selectedDate.isAfter(maxDate)) {
+          return Promise.reject(
+            new Error(`Максимальный срок — ${maxDate.format("YYYY-MM-DD")}`)
+          );
+        }
 
-                                return Promise.resolve();
-                              },
-                            },
-                          ]}
-                        >
-                          <DatePicker style={{ width: "100%" }} />
-                        </Form.Item>
+        return Promise.resolve();
+      },
+    },
+  ]}
+>
+  <DatePicker
+    style={{ width: "100%" }}
+    showTime={{ format: "HH:mm" }}
+    format="YYYY-MM-DD HH:mm"
+    popupClassName="custom-datepicker-popup"
+  />
+</Form.Item>
+
 
                         <Form.Item
                           name="Team_Name"

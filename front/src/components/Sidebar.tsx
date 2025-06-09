@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
     {
       key: "/employee",
       icon: <TableOutlined />,
-      label: <Link to="/employee">Доски задач</Link>,
+      label: <Link to="/employee">Доска задач</Link>,
     },
     {
       key: "/teams",
@@ -198,50 +198,50 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
         </div>
 
         {team && (
-          <div style={{ borderTop: "1px solid #333", padding: "12px 16px", marginTop: "auto" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <Avatar
-                size={40}
-                style={{
-                  borderRadius: "50%",
-                  backgroundImage: getPatternFromName(team?.Team_Name || "none"),
-                  color: "#fff",
-                  fontWeight: "bold",
-                  fontSize: 16,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: 40,
-                  minHeight: 40,
-                }}
-              >
-                {team ? `${team.Team_Name.charAt(0).toUpperCase()}${team.Team_Name.charAt(team.Team_Name.length - 1).toUpperCase()}` : "?"}
-              </Avatar>
-              {!collapsed && (
-                <div>
-                <div
-                  className="team-name"
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {team ? team.Team_Name : "Пока не в команде"}
-                </div>
-                {team?.Role && (
-                  <div className="team-role" style={{ fontSize: 12 }}>
-                    Моя роль: {team.Role}
-                  </div>
-                )}
-              </div>
-              
-              )}
-            </div>
+  <div style={{ borderTop: "1px solid #333", padding: "12px 16px", marginTop: "auto" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+      <Avatar
+        size={40}
+        style={{
+          borderRadius: "50%",
+          backgroundImage: getPatternFromName(team?.Team_Name || "none"),
+          color: "#fff",
+          fontWeight: "bold",
+          fontSize: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: 40,
+          minHeight: 40,
+        }}
+      >
+        {team ? `${team.Team_Name.charAt(0).toUpperCase()}${team.Team_Name.charAt(team.Team_Name.length - 1).toUpperCase()}` : "?"}
+      </Avatar>
+      {!collapsed && (
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
+          <div
+            className="team-name"
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              wordWrap: "break-word",    // ✅ Добавлено для длинных слов
+              wordBreak: "break-word",   // ✅ Добавлено для длинных слов
+              overflowWrap: "break-word",// ✅ Добавлено для длинных слов
+            }}
+          >
+            {team ? team.Team_Name : "Пока не в команде"}
           </div>
-        )}
+          {team?.Role && (
+            <div className="team-role" style={{ fontSize: 12 }}>
+              Моя роль: {team.Role}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  </div>
+)}
+
       </div>
     </Sider>
   );

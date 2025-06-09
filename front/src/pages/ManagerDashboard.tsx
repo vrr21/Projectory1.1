@@ -1533,18 +1533,18 @@ const ManagerDashboard: React.FC = () => {
     items: [
       {
         key: "excel",
-        label: "Экспорт в Excel",
-        onClick: () => handleExport("excel"),
+        label: "Экспорт в Word (.docx)",
+        onClick: () => handleExport("word"),
       },
       {
         key: "pdf",
-        label: "Экспорт в PDF",
-        onClick: () => handleExport("pdf"),
+        label: "Экспорт в Excel (.xlsx)",
+        onClick: () => handleExport("excel"),
       },
       {
         key: "word",
-        label: "Экспорт в Word",
-        onClick: () => handleExport("word"),
+        label: "Экспорт в PDF (.pdf)",
+        onClick: () => handleExport("pdf"),
       },
     ],
   };

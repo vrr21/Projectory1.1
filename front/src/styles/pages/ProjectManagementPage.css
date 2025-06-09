@@ -218,4 +218,41 @@
   background-color: #ffffff !important;
 }
 
+/* Стили для светлой темы DatePicker */
+[data-theme="light"] .custom-datepicker-popup .ant-picker-panel {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+[data-theme="light"] .custom-datepicker-popup .ant-picker-time-panel {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+/* Уменьшить ширину панели времени */
+.custom-datepicker-popup .ant-picker-time-panel {
+  width: 180px !important;
+}
 
+/* Выравнять высоту строк, если нужно */
+.custom-datepicker-popup .ant-picker-time-panel-column {
+  line-height: 32px !important;
+}
+
+/* Цвет текста навигационной панели календаря */
+.ant-picker-header {
+  background-color: var(--card-bg-color) !important; /* например, для тёмной темы */
+  color: var(--text-color) !important; /* твой цвет текста */
+}
+
+/* Цвет иконок навигации (стрелки переключения месяца/года) */
+.ant-picker-header .ant-picker-super-prev-icon,
+.ant-picker-header .ant-picker-prev-icon,
+.ant-picker-header .ant-picker-super-next-icon,
+.ant-picker-header .ant-picker-next-icon {
+  color: var(--text-color) !important;
+  font-weight: bold !important;
+}
+
+/* Цвет названия месяца и года */
+.ant-picker-header-view {
+  color: var(--text-color) !important;
+}

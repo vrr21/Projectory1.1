@@ -632,25 +632,18 @@ const TimeTrackingManager: React.FC = () => {
               )}
             </Modal>
             <Modal
-              title="Комментарии к задаче"
+               title="Комментарии"
               open={isCommentsModalVisible}
               onCancel={() => setIsCommentsModalVisible(false)}
               footer={null}
             >
               {viewingEntry && (
                 <>
-                  <h3 style={{ marginTop: 0 }}>Комментарии:</h3>
                   <List
+                    className="comment-list"
                     dataSource={comments}
                     renderItem={(item) => (
-                      <List.Item
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between", // распределение по краям
-                          alignItems: "flex-start",
-                          paddingRight: "8px",
-                        }}
-                      >
+                      <List.Item className="comment-item">
                         <List.Item.Meta
                           avatar={
                             <Avatar
@@ -683,9 +676,7 @@ const TimeTrackingManager: React.FC = () => {
                                 width: "100%",
                               }}
                             >
-                              <span
-                                style={{ fontWeight: "bold", color: "#fff" }}
-                              >
+                              <span className="comment-author">
                                 {item.AuthorName}
                               </span>
                               <span style={{ fontSize: 12, color: "#999" }}>
@@ -696,9 +687,7 @@ const TimeTrackingManager: React.FC = () => {
                             </div>
                           }
                           description={
-                            <div
-                              style={{ color: "#fff", wordBreak: "break-word" }}
-                            >
+                            <div className="comment-text">
                               {editingCommentId === item.ID_Comment ? (
                                 <Input.TextArea
                                   value={editingCommentText}
@@ -714,14 +703,7 @@ const TimeTrackingManager: React.FC = () => {
                           }
                         />
                         {item.ID_User === user?.id && (
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              marginLeft: "auto", // смещаем вправо
-                            }}
-                          >
+                          <div className="action-buttons">
                             {editingCommentId === item.ID_Comment ? (
                               <>
                                 <Button

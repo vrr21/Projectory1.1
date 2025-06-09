@@ -102,4 +102,6 @@ router.get('/:id', getEmployeeById);
 // ❌ Удаление пользователя (с каскадной очисткой уведомлений)
 router.delete('/users/:id', employeesController.deleteEmployee);  // 🟢 Теперь работает!
 
+router.post("/", employeesController.createEmployee);
+
 module.exports = router;

@@ -13,8 +13,7 @@ interface RegisterData {
 
 // 📌 Регистрация пользователя
 export const registerUser = async (data: RegisterData) => {
-  const role = data.isManager ? "Менеджер" : "Сотрудник";
-
+  const roleId = data.isManager ? 1 : 31; // 1 - Менеджер, 31 - Сотрудник
   return axios.post(
     `${API_URL}/api/auth/register`,
     {
@@ -23,7 +22,7 @@ export const registerUser = async (data: RegisterData) => {
       phone: data.phone,
       email: data.email,
       password: data.password,
-      role: role,
+      ID_Role: roleId, // отправляем ID_Role, а не строку!
     },
     {
       headers: {
@@ -32,6 +31,7 @@ export const registerUser = async (data: RegisterData) => {
     }
   );
 };
+
 
 // 🔐 Авторизация пользователя
 export const loginUser = async (data: { email: string; password: string }) => {
