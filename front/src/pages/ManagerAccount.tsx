@@ -159,7 +159,8 @@ const ManagerAccount: React.FC = () => {
       formDataData.append("avatar", compressedFile);
       formDataData.append("userId", String(user.id));
 
-      const response = await fetch(`${API_URL}/api/manager/upload-avatar`, {
+      const response = await fetch(`${API_URL}/api/employees/upload-avatar`, {
+
         method: "POST",
         body: formDataData,
       });

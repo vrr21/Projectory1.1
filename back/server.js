@@ -19,7 +19,10 @@ app.use(cors({
   credentials: true,
   exposedHeaders: ['Content-Disposition']
 }));
+
+
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // 👈 ДОБАВЬ ЭТО!
 
 // Static
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -34,7 +37,6 @@ app.use('/api/projects', require('./routes/projectTasks'));
 app.use('/api/tasks', require('./routes/tasks.routes'));
 app.use('/api/taskdetails', require('./routes/tasks.details.routes'));
 app.use('/api/employees', require('./routes/employees.routes'));
-app.use('/api/employees', require('./routes/uploadAvatar.routes'));
 app.use('/api/statuses', require('./routes/status.routes'));
 app.use('/api/employee', require('./routes/employeeFullSearch.router'));
 app.use('/api/manager', require('./routes/manager.routes'));

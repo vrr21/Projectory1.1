@@ -52,7 +52,6 @@ dayjs.locale("ru");
 const { Content } = Layout;
 const API_URL = import.meta.env.VITE_API_URL;
 
-
 interface Project {
   ID_Order: string;
   Order_Name: string;
@@ -124,6 +123,39 @@ const TimeTrackingEmployee: React.FC = () => {
   const [newComment, setNewComment] = useState("");
   const [isCommentsModalVisible, setIsCommentsModalVisible] = useState(false);
   const [editingFileList, setEditingFileList] = useState<UploadFile[]>([]);
+  const createNotification = async ({
+    token,
+    userEmail,
+    title,
+    description,
+    link,
+  }: {
+    token: string;
+    userEmail: string;
+    title: string;
+    description: string;
+    link?: string;
+  }) => {
+    try {
+      console.log("DEBUG: createNotification called with:", userEmail, title, description, link);
+
+      await fetch(`${API_URL}/api/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userEmail,
+          title,
+          description,
+          link,
+        }),
+      });
+    } catch (error) {
+      console.error("Ошибка при создании уведомления:", error);
+    }
+  };
   
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
@@ -208,6 +240,20 @@ const TimeTrackingEmployee: React.FC = () => {
     setTimeEntries(userEntries);
   }, []);
 
+  const getManagerEmail = async (orderId: string): Promise<string> => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${API_URL}/api/projects/${orderId}/manager-email`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      return data.email || "";
+    } catch (error) {
+      console.error("Ошибка при получении email менеджера:", error);
+      return "";
+    }
+  };
+  
   useEffect(() => {
     fetchProjects();
     fetchTasks();
@@ -217,7 +263,7 @@ const TimeTrackingEmployee: React.FC = () => {
       fetchTimeEntries();
     }
   }, [fetchProjects, fetchTasks, fetchTimeEntries, executionId]);
-  
+
   const fetchSingleEntry = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -231,7 +277,7 @@ const TimeTrackingEmployee: React.FC = () => {
       console.error("Ошибка при загрузке записи:", error);
     }
   };
-  
+
   const handleEdit = (entry: RawTimeEntry) => {
     const project = projects.find(
       (p) => p.Order_Name === entry.Order_Name
@@ -364,7 +410,16 @@ const TimeTrackingEmployee: React.FC = () => {
       api.success({
         message: editingEntry ? "Запись обновлена" : "Время добавлено",
       });
+      const managerEmail = selectedTask?.ID_Order ? await getManagerEmail(selectedTask.ID_Order) : "";
 
+      await createNotification({
+        token: token ?? "",
+        userEmail: managerEmail,
+        title: editingEntry ? "Время обновлено" : "Новое время добавлено",
+        description: `Задача: ${selectedTask?.Task_Name || "Неизвестно"}`,
+        link: `/tasks/${selectedTask?.ID_Task || ""}`
+      });
+      
       await fetchTimeEntries(); // Обновить карточки
       form.resetFields(); // Очистить форму
       setEditingEntry(null); // Сброс редактирования
@@ -380,81 +435,97 @@ const TimeTrackingEmployee: React.FC = () => {
 
   const fetchComments = async (entry: RawTimeEntry) => {
     const token = localStorage.getItem("token");
-  
+
     const url = entry.ID_Execution
       ? `${API_URL}/api/comments/execution/${entry.ID_Execution}`
       : `${API_URL}/api/comments/${entry.ID_Task}`;
-  
+
     try {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) throw new Error(`Ошибка загрузки комментариев: ${res.status}`);
+      if (!res.ok)
+        throw new Error(`Ошибка загрузки комментариев: ${res.status}`);
       const data = await res.json();
       setComments(data);
     } catch (error) {
       console.error("Ошибка при получении комментариев:", error);
     }
   };
-  
-  
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !viewingEntry) return;
-  
-    try {
-      const token = localStorage.getItem("token");
-      const url = viewingEntry.ID_Execution
-        ? `${API_URL}/api/comments/execution`
-        : `${API_URL}/api/comments`;
-  
-      const body = viewingEntry.ID_Execution
-        ? {
-            executionId: viewingEntry.ID_Execution,
-            commentText: newComment.trim(),
-          }
-        : {
-            taskId: viewingEntry.ID_Task,
-            commentText: newComment.trim(),
-            entityType: "task",
-          };
-  
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-  
-      if (!res.ok) throw new Error("Ошибка при добавлении комментария");
-  
-      await fetchComments(viewingEntry);
-      setNewComment("");
-      api.success({ message: "Комментарий добавлен" });
-    } catch (error) {
-      console.error("Ошибка при добавлении комментария:", error);
-      api.error({ message: "Не удалось добавить комментарий" });
-    }
-  };
-  
-  
+
+
+ const handleAddComment = async () => {
+  console.log("DEBUG: handleAddComment called", viewingEntry);
+
+  if (!newComment.trim() || !viewingEntry) return;
+
+  try {
+    const token = localStorage.getItem("token");
+
+    // Выбираем endpoint и тело запроса в зависимости от контекста
+    const url = viewingEntry.ID_Execution
+      ? `${API_URL}/api/comments/execution`
+      : `${API_URL}/api/comments`;
+
+    const body = viewingEntry.ID_Execution
+      ? {
+          executionId: viewingEntry.ID_Execution,
+          commentText: newComment.trim(),
+        }
+      : {
+          taskId: viewingEntry.ID_Task,
+          commentText: newComment.trim(),
+          entityType: "task",
+        };
+
+    // Отправляем комментарий
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) throw new Error("Ошибка при добавлении комментария");
+
+    // Отправляем уведомление менеджеру
+    await createNotification({
+      token: token ?? "",
+      userEmail: viewingEntry.Employee_Email ?? "",
+      title: "Новый комментарий",
+      description: `Новый комментарий к задаче: ${viewingEntry.Task_Name}`,
+      link: `/tasks/${viewingEntry.ID_Task}`,
+    });
+
+    await fetchComments(viewingEntry);
+    setNewComment("");
+    api.success({ message: "Комментарий добавлен" });
+  } catch (error) {
+    console.error("Ошибка при добавлении комментария:", error);
+    api.error({ message: "Не удалось добавить комментарий" });
+  }
+};
+
+
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);
     setIsCommentsModalVisible(true);
     fetchComments(entry);
   };
-  
 
   const handleViewEntry = async (entry: RawTimeEntry) => {
     setViewingEntry(entry); // сначала показать старое состояние
     setIsViewModalVisible(true);
-  
+
     try {
-      const res = await fetch(`${API_URL}/api/tasks/${entry.ID_Task}/attachments`);
+      const res = await fetch(
+        `${API_URL}/api/tasks/${entry.ID_Task}/attachments`
+      );
       if (!res.ok) throw new Error(`Ошибка загрузки вложений: ${res.status}`);
       const data = await res.json();
-  
+
       setViewingEntry((prev) => {
         if (!prev) return null;
         return {
@@ -467,7 +538,6 @@ const TimeTrackingEmployee: React.FC = () => {
       console.error("Ошибка при получении вложений:", error);
     }
   };
-  
 
   const getWeekDays = () =>
     Array.from({ length: 7 }, (_, i) => weekStart.add(i, "day"));
@@ -483,12 +553,12 @@ const TimeTrackingEmployee: React.FC = () => {
     if (!editingCommentId) return;
     const token = localStorage.getItem("token");
     if (!token) return;
-  
+
     try {
       const cleanedCommentText = editingCommentText
         .replace(/(\r\n|\n|\r)/g, " ")
         .trim();
-  
+
       const response = await fetch(
         `${API_URL}/api/comments/${editingCommentId}`,
         {
@@ -500,28 +570,27 @@ const TimeTrackingEmployee: React.FC = () => {
           body: JSON.stringify({ commentText: cleanedCommentText }),
         }
       );
-  
+
       if (!response.ok) throw new Error("Ошибка при обновлении комментария");
-  
+
       setEditingCommentId(null);
       setEditingCommentText("");
-  
+
       if (viewingEntry) {
         await fetchComments(viewingEntry);
       }
-      
-  
+
       api.success({ message: "Комментарий обновлен" });
     } catch (error) {
       console.error(error);
       api.error({ message: "Не удалось обновить комментарий" });
     }
   };
-  
+
   const handleDeleteComment = async (commentId: number) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-  
+
     try {
       const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
         method: "DELETE",
@@ -529,22 +598,20 @@ const TimeTrackingEmployee: React.FC = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-  
+
       if (!response.ok) throw new Error("Ошибка при удалении комментария");
-  
+
       if (viewingEntry) {
         await fetchComments(viewingEntry);
       }
-  
+
       api.success({ message: "Комментарий удален" });
     } catch (error) {
       console.error(error);
       api.error({ message: "Не удалось удалить комментарий" });
     }
   };
-  
-  
-  
+
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user.ID_User || user.id;
 
@@ -970,17 +1037,42 @@ const TimeTrackingEmployee: React.FC = () => {
                   </Form.Item>
 
                   <Form.Item
-  name="date"
-  label="Дата"
-  rules={[{ required: true, message: "Выберите дату и время" }]}
->
-  <DatePicker
-    showTime
-    format="YYYY-MM-DD HH:mm"
-    style={{ width: "100%" }}
-    disabledDate={(current) => current && current > dayjs().endOf("day")}
-  />
-</Form.Item>
+                    name="date"
+                    label="Дата"
+                    rules={[
+                      { required: true, message: "Выберите дату и время" },
+                    ]}
+                  >
+                    <DatePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm"
+                      style={{ width: "100%" }}
+                      disabledDate={(current) =>
+                        current && current > dayjs().endOf("day")
+                      }
+                      disabledTime={(current) => {
+                        if (!current) return {};
+                        const now = dayjs();
+                        if (current.isSame(now, "day")) {
+                          return {
+                            disabledHours: () =>
+                              Array.from({ length: 24 }, (_, i) =>
+                                i > now.hour() ? i : -1
+                              ).filter((h) => h !== -1),
+                            disabledMinutes: (selectedHour) => {
+                              if (selectedHour === now.hour()) {
+                                return Array.from({ length: 60 }, (_, i) =>
+                                  i > now.minute() ? i : -1
+                                ).filter((m) => m !== -1);
+                              }
+                              return [];
+                            },
+                          };
+                        }
+                        return {};
+                      }}
+                    />
+                  </Form.Item>
 
                   <Form.Item
                     name="isCompleted"
@@ -1180,145 +1272,173 @@ const TimeTrackingEmployee: React.FC = () => {
                       dataSource={comments}
                       renderItem={(item) => (
                         <List.Item
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "flex-start",
-                          paddingRight: "8px",
-                        }}
-                      >
-                        <List.Item.Meta
-                          avatar={
-                            <Tooltip title="Перейти в профиль">
-                              <div
-                                onClick={() => {
-                                  if (item.ID_User) {
-                                    navigate(`/employee/${item.ID_User}`);
-                                  }
-                                }}
-                                style={{ cursor: item.ID_User ? "pointer" : "default" }}
-                              >
-                                <Avatar
-                                  src={
-                                    item.Avatar
-                                      ? `${API_URL}/uploads/${item.Avatar}`
-                                      : undefined
-                                  }
-                                  icon={!item.Avatar ? <UserOutlined /> : undefined}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            paddingRight: "8px",
+                          }}
+                        >
+                          <List.Item.Meta
+                            avatar={
+                              <Tooltip title="Перейти в профиль">
+                                <div
+                                  onClick={() => {
+                                    if (item.ID_User) {
+                                      navigate(`/employee/${item.ID_User}`);
+                                    }
+                                  }}
                                   style={{
-                                    backgroundColor: item.Avatar ? "transparent" : "#777",
+                                    cursor: item.ID_User
+                                      ? "pointer"
+                                      : "default",
                                   }}
                                 >
-                                  {!item.Avatar &&
-                                    (item.AuthorName?.split(" ")
-                                      .map((n) => n[0])
-                                      .slice(0, 2)
-                                      .join("")
-                                      .toUpperCase() || "–")}
-                                </Avatar>
+                                  <Avatar
+                                    src={
+                                      item.Avatar
+                                        ? `${API_URL}/uploads/${item.Avatar}`
+                                        : undefined
+                                    }
+                                    icon={
+                                      !item.Avatar ? (
+                                        <UserOutlined />
+                                      ) : undefined
+                                    }
+                                    style={{
+                                      backgroundColor: item.Avatar
+                                        ? "transparent"
+                                        : "#777",
+                                    }}
+                                  >
+                                    {!item.Avatar &&
+                                      (item.AuthorName?.split(" ")
+                                        .map((n) => n[0])
+                                        .slice(0, 2)
+                                        .join("")
+                                        .toUpperCase() ||
+                                        "–")}
+                                  </Avatar>
+                                </div>
+                              </Tooltip>
+                            }
+                            title={
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  width: "100%",
+                                }}
+                              >
+                                <span
+                                  style={{ fontWeight: "bold", color: "#fff" }}
+                                >
+                                  {item.AuthorName}
+                                </span>
+                                <span style={{ fontSize: 12, color: "#999" }}>
+                                  {dayjs(item.Created_At).format(
+                                    "YYYY-MM-DD HH:mm"
+                                  )}
+                                </span>
                               </div>
-                            </Tooltip>
-                          }
-                          title={
+                            }
+                            description={
+                              <div
+                                style={{
+                                  color: "#fff",
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {editingCommentId === item.ID_Comment ? (
+                                  <Input.TextArea
+                                    value={editingCommentText}
+                                    onChange={(e) =>
+                                      setEditingCommentText(e.target.value)
+                                    }
+                                    autoSize
+                                  />
+                                ) : (
+                                  <p style={{ margin: 0 }}>
+                                    {item.CommentText}
+                                  </p>
+                                )}
+                              </div>
+                            }
+                          />
+
+                          {/* Правая часть — кнопки */}
+                          {String(item.ID_User) === String(userId) && (
                             <div
                               style={{
                                 display: "flex",
-                                justifyContent: "space-between",
                                 alignItems: "center",
-                                width: "100%",
+                                gap: "8px",
+                                marginLeft: "auto",
                               }}
                             >
-                              <span style={{ fontWeight: "bold", color: "#fff" }}>
-                                {item.AuthorName}
-                              </span>
-                              <span style={{ fontSize: 12, color: "#999" }}>
-                                {dayjs(item.Created_At).format("YYYY-MM-DD HH:mm")}
-                              </span>
-                            </div>
-                          }
-                          description={
-                            <div style={{ color: "#fff", wordBreak: "break-word" }}>
                               {editingCommentId === item.ID_Comment ? (
-                                <Input.TextArea
-                                  value={editingCommentText}
-                                  onChange={(e) =>
-                                    setEditingCommentText(e.target.value)
-                                  }
-                                  autoSize
-                                />
+                                <>
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    onClick={handleUpdateComment}
+                                    style={{
+                                      border: "none",
+                                      boxShadow: "none",
+                                    }}
+                                  >
+                                    Сохранить
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    onClick={() => {
+                                      setEditingCommentId(null);
+                                      setEditingCommentText("");
+                                    }}
+                                    style={{
+                                      border: "none",
+                                      boxShadow: "none",
+                                    }}
+                                  >
+                                    Отмена
+                                  </Button>
+                                </>
                               ) : (
-                                <p style={{ margin: 0 }}>{item.CommentText}</p>
+                                <>
+                                  <Button
+                                    type="link"
+                                    size="small"
+                                    style={{
+                                      color: "#fff",
+                                      border: "none",
+                                      boxShadow: "none",
+                                    }}
+                                    onClick={() => {
+                                      setEditingCommentId(item.ID_Comment);
+                                      setEditingCommentText(item.CommentText);
+                                    }}
+                                    icon={<EditOutlined />}
+                                  />
+                                  <Button
+                                    type="link"
+                                    size="small"
+                                    style={{
+                                      color: "#fff",
+                                      border: "none",
+                                      boxShadow: "none",
+                                    }}
+                                    danger
+                                    onClick={() =>
+                                      handleDeleteComment(item.ID_Comment)
+                                    }
+                                    icon={<DeleteOutlined />}
+                                  />
+                                </>
                               )}
                             </div>
-                          }
-                        />
-                      
-                        {/* Правая часть — кнопки */}
-                        {String(item.ID_User) === String(userId) &&  (
-
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                              marginLeft: "auto",
-                            }}
-                          >
-                            {editingCommentId === item.ID_Comment ? (
-                              <>
-                                <Button
-                                  type="primary"
-                                  size="small"
-                                  onClick={handleUpdateComment}
-                                  style={{ border: "none", boxShadow: "none" }}
-                                >
-                                  Сохранить
-                                </Button>
-                                <Button
-                                  size="small"
-                                  onClick={() => {
-                                    setEditingCommentId(null);
-                                    setEditingCommentText("");
-                                  }}
-                                  style={{ border: "none", boxShadow: "none" }}
-                                >
-                                  Отмена
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  type="link"
-                                  size="small"
-                                  style={{
-                                    color: "#fff",
-                                    border: "none",
-                                    boxShadow: "none",
-                                  }}
-                                  onClick={() => {
-                                    setEditingCommentId(item.ID_Comment);
-                                    setEditingCommentText(item.CommentText);
-                                  }}
-                                  icon={<EditOutlined />}
-                                />
-                                <Button
-                                  type="link"
-                                  size="small"
-                                  style={{
-                                    color: "#fff",
-                                    border: "none",
-                                    boxShadow: "none",
-                                  }}
-                                  danger
-                                  onClick={() => handleDeleteComment(item.ID_Comment)}
-                                  icon={<DeleteOutlined />}
-                                />
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </List.Item>
-                      
+                          )}
+                        </List.Item>
                       )}
                     />
                     <Input.TextArea

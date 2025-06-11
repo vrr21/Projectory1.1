@@ -121,13 +121,29 @@ const TimeTrackingManager: React.FC = () => {
       console.error("Ошибка при получении комментариев:", error);
     }
   };
-
-  const handleAddComment = async () => {
-    if (!newComment.trim() || !viewingEntry?.ID_Execution) return;
-
+  const getEmployeeEmail = async (employeeId: string): Promise<string> => {
     try {
       const token = localStorage.getItem("token");
-
+      const res = await fetch(`${API_URL}/api/employees/${employeeId}/email`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      return data.email || "";
+    } catch (error) {
+      console.error("Ошибка при получении email сотрудника:", error);
+      return "";
+    }
+  };
+  
+  const handleAddComment = async () => {
+    console.log("DEBUG: handleAddComment called", viewingEntry);
+  
+    if (!newComment.trim() || !viewingEntry?.ID_Execution) return;
+  
+    try {
+      const token = localStorage.getItem("token");
+  
+      // Добавляем комментарий к исполнению задачи
       const res = await fetch(`${API_URL}/api/comments/execution`, {
         method: "POST",
         headers: {
@@ -139,15 +155,38 @@ const TimeTrackingManager: React.FC = () => {
           commentText: newComment.trim(),
         }),
       });
-
+  
       if (!res.ok) throw new Error("Ошибка при добавлении комментария");
-
+  
+      // Получаем email сотрудника для уведомления
+      let employeeEmail = "";
+      if (viewingEntry.ID_Employee) {
+        employeeEmail = await getEmployeeEmail(viewingEntry.ID_Employee);
+        console.log("DEBUG: employeeEmail =", employeeEmail);
+      } else {
+        console.warn("ID_Employee отсутствует — уведомление не отправляем");
+      }
+  
+      // Отправляем уведомление, если email есть
+      if (employeeEmail) {
+        await createNotification({
+          token: token ?? "",
+          userEmail: employeeEmail,
+          title: "Новый комментарий",
+          description: `Новый комментарий к задаче: ${viewingEntry.Task_Name}`,
+          link: `/tasks/${viewingEntry.ID_Task}`,
+        });
+      }
+  
       setNewComment("");
-      fetchComments(viewingEntry.ID_Execution);
+      await fetchComments(viewingEntry.ID_Execution);
+      api.success({ message: "Комментарий добавлен" });
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
+      api.error({ message: "Не удалось добавить комментарий" });
     }
   };
+  
 
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);
@@ -210,19 +249,22 @@ const TimeTrackingManager: React.FC = () => {
 
   const handleUpdateComment = async () => {
     if (!editingCommentId) return;
+    const isExecution = viewingEntry?.ID_Execution ? true : false;
     const token = localStorage.getItem("token");
+  
+    const endpoint = isExecution
+      ? `/api/comments/execution/${editingCommentId}`
+      : `/api/comments/${editingCommentId}`;
+  
     try {
-      const response = await fetch(
-        `${API_URL}/api/comments/execution/${editingCommentId}`, // Исправлено!
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ commentText: editingCommentText }),
-        }
-      );
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ commentText: editingCommentText }),
+      });
       if (!response.ok) throw new Error("Ошибка при обновлении комментария");
       setEditingCommentId(null);
       setEditingCommentText("");
@@ -233,17 +275,54 @@ const TimeTrackingManager: React.FC = () => {
       api.error({ message: "Не удалось обновить комментарий" });
     }
   };
-
-  const handleDeleteComment = async (commentId: number) => {
-    const token = localStorage.getItem("token");
+  
+  const createNotification = async ({
+    token,
+    userEmail,
+    title,
+    description,
+    link,
+  }: {
+    token: string;
+    userEmail: string;
+    title: string;
+    description: string;
+    link?: string;
+  }) => {
     try {
-      const response = await fetch(
-        `${API_URL}/api/comments/execution/${commentId}`, // Исправлено!
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      console.log("DEBUG: createNotification called with:", userEmail, title, description, link);
+
+      await fetch(`${API_URL}/api/notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          userEmail,
+          title,
+          description,
+          link,
+        }),
+      });
+    } catch (error) {
+      console.error("Ошибка при создании уведомления:", error);
+    }
+  };
+  
+  const handleDeleteComment = async (commentId: number) => {
+    const isExecution = viewingEntry?.ID_Execution ? true : false;
+    const token = localStorage.getItem("token");
+  
+    const endpoint = isExecution
+      ? `/api/comments/execution/${commentId}`
+      : `/api/comments/${commentId}`;
+  
+    try {
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Ошибка при удалении комментария");
       if (viewingEntry) fetchComments(viewingEntry.ID_Execution);
       api.success({ message: "Комментарий удален" });
@@ -252,6 +331,7 @@ const TimeTrackingManager: React.FC = () => {
       api.error({ message: "Не удалось удалить комментарий" });
     }
   };
+  
 
   return (
     <Layout className="layout">

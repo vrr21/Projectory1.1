@@ -2,7 +2,6 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 
-// Хранилище для аватаров
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const uploadPath = path.join(__dirname, '../uploads');
@@ -16,27 +15,31 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage }).single('avatar');
+exports.uploadAvatar = async (req, res) => {
+  console.log("req.body:", req.body);
+  console.log("req.file:", req.file);
 
-exports.uploadAvatar = (req, res) => {
-  upload(req, res, async function (err) {
-    if (err) return res.status(500).json({ message: 'Ошибка загрузки файла' });
+  const userId = req.body.userId;
+  if (!req.file) {
+    return res.status(400).json({ message: 'Файл не был загружен' });
+  }
+  if (!userId) {
+    return res.status(400).json({ message: 'ID пользователя не указан' });
+  }
 
-    const userId = req.body.userId;
-    const filename = req.file.filename;
+  const filename = req.file.filename;
 
-    const { poolConnect, pool, sql } = require('../config/db');
-    try {
-      await poolConnect;
-      await pool.request()
-        .input('id', sql.Int, userId)
-        .input('avatar', sql.NVarChar, filename)
-        .query('UPDATE Users SET Avatar = @avatar WHERE ID_User = @id');
+  const { poolConnect, pool, sql } = require('../config/db');
+  try {
+    await poolConnect;
+    await pool.request()
+      .input('id', sql.Int, userId)
+      .input('avatar', sql.NVarChar, filename)
+      .query('UPDATE Users SET Avatar = @avatar WHERE ID_User = @id');
 
-      res.json({ message: 'Аватар обновлён', filename });
-    } catch (error) {
-      console.error('Ошибка при обновлении аватара:', error);
-      res.status(500).json({ message: 'Ошибка обновления аватара' });
-    }
-  });
+    res.json({ message: 'Аватар обновлён', filename });
+  } catch (error) {
+    console.error('Ошибка при обновлении аватара:', error);
+    res.status(500).json({ message: 'Ошибка обновления аватара' });
+  }
 };

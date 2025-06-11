@@ -153,35 +153,36 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Контроллер для загрузки аватара
-exports.uploadAvatar = [
-  upload.single("avatar"),
-  async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({ message: "Файл не загружен" });
-    }
+exports.uploadAvatar = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "Файл не загружен" });
+  }
 
-    const { userId } = req.body;
-    const filename = req.file.filename;
+  const { userId } = req.body;
+  const filename = req.file.filename;
 
-    try {
-      await poolConnect;
-      await pool
-        .request()
-        .input("userId", sql.Int, userId)
-        .input("avatar", sql.NVarChar(255), filename).query(`
-          UPDATE Users
-          SET Avatar = @avatar
-          WHERE ID_User = @userId
-        `);
+  if (!userId) {
+    return res.status(400).json({ message: "ID пользователя не указан" });
+  }
 
-      res.json({ filename });
-    } catch (error) {
-      console.error("Ошибка при сохранении аватара:", error);
-      res.status(500).json({ message: "Ошибка при сохранении аватара" });
-    }
-  },
-];
+  try {
+    await poolConnect;
+    await pool
+      .request()
+      .input("userId", sql.Int, userId)
+      .input("avatar", sql.NVarChar(255), filename)
+      .query(`
+        UPDATE Users
+        SET Avatar = @avatar
+        WHERE ID_User = @userId
+      `);
+
+    res.json({ filename });
+  } catch (error) {
+    console.error("Ошибка при сохранении аватара:", error);
+    res.status(500).json({ message: "Ошибка при сохранении аватара" });
+  }
+};
 
 exports.getExtendedEmployeeList = async (req, res) => {
   try {

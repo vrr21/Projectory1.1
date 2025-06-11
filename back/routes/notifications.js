@@ -19,7 +19,7 @@ router.get('/manager/notifications', verifyToken, getManagerNotifications);
 router.delete('/notifications/:id', verifyToken, deleteNotificationById);
 
 // 🔹 Создать уведомление
-router.post('/notifications', verifyToken, createNotification);
+router.post('/', verifyToken, createNotification);
 
 // 🔹 Отметить уведомление как прочитанное
 router.put('/notifications/:id/read', verifyToken, markNotificationAsRead);

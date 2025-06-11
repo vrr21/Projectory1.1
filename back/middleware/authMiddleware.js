@@ -18,8 +18,10 @@ function authMiddleware(req, res, next) {
     req.user = {
       id: decoded.id,
       email: decoded.email,
-      role: decoded.role  // 🔥 добавляем роль
+      role: decoded.role
     };
+    console.log("DEBUG: userRole =", decoded.role);
+    
     next();
   } catch (error) {
     console.error('Ошибка при проверке токена:', error.message);

@@ -132,69 +132,58 @@ exports.addComment = async (req, res) => {
   }
 };
 
-
 exports.updateComment = async (req, res) => {
   const { id } = req.params;
   const { commentText } = req.body;
   const userId = req.user?.id;
+  const userRole = req.user?.role?.toLowerCase();
 
   if (!commentText || !userId) {
     return res.status(400).json({ error: 'Комментарий не может быть пустым' });
   }
 
   try {
-    const cleanedCommentText = commentText
-      .replace(/(\r\n|\n|\r)/g, ' ')
-      .trim();
-
+    const cleanedCommentText = commentText.replace(/(\r\n|\n|\r)/g, ' ').trim();
     const poolConn = await pool.connect();
+    let result;
 
-    // 🔍 Получаем информацию о комментарии (чтобы узнать Task_Name и Email)
-    const commentInfoResult = await poolConn.request()
-      .input('id', sql.Int, id)
-      .query(`
-        SELECT 
-          c.ID_Task, 
-          c.EntityType, 
-          t.Task_Name, 
-          u.Email AS EmployeeEmail
-        FROM TaskComments c
-        JOIN Tasks t ON c.ID_Task = t.ID_Task
-        JOIN Execution e ON t.ID_Task = e.ID_Task
-        JOIN Users u ON e.ID_Employee = u.ID_User
-        WHERE c.ID_Comment = @id
-      `);
-
-    const commentInfo = commentInfoResult.recordset[0];
-
-    await poolConn.request()
-      .input('id', sql.Int, id)
-      .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
-      .query(`
-        UPDATE TaskComments
-        SET CommentText = @commentText
-        WHERE ID_Comment = @id
-      `);
-
-    // 🔔 Отправляем уведомление
-    if (commentInfo?.EmployeeEmail) {
-      await createNotification({
-        userEmail: commentInfo.EmployeeEmail,
-        title: `Комментарий обновлен: ${commentInfo.Task_Name}`,
-        description: cleanedCommentText
-      });
+    if (userRole && userRole.includes('менеджер')) {
+      result = await poolConn.request()
+        .input('id', sql.Int, id)
+        .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
+        .query(`
+          UPDATE TaskComments
+          SET CommentText = @commentText
+          WHERE ID_Comment = @id
+        `);
+    } else {
+      result = await poolConn.request()
+        .input('id', sql.Int, id)
+        .input('userId', sql.Int, userId)
+        .input('commentText', sql.NVarChar(sql.MAX), cleanedCommentText)
+        .query(`
+          UPDATE TaskComments
+          SET CommentText = @commentText
+          WHERE ID_Comment = @id AND ID_User = @userId
+        `);
     }
 
-    res.sendStatus(200);
+    if (result.rowsAffected[0] === 0) {
+      return res.status(403).json({ error: 'Нет прав на редактирование комментария' });
+    }
+
+    res.status(200).json({ message: 'Комментарий обновлен' });
   } catch (err) {
     console.error('updateComment error:', err);
     res.status(500).json({ error: 'Ошибка при обновлении комментария' });
   }
 };
 
+
 exports.deleteComment = async (req, res) => {
   const { id } = req.params;
   const userId = req.user?.id;
+  const userRole = req.user?.role?.toLowerCase();
 
   if (!userId) {
     return res.status(401).json({ error: 'Неавторизован' });
@@ -202,13 +191,24 @@ exports.deleteComment = async (req, res) => {
 
   try {
     const poolConn = await pool.connect();
-    const result = await poolConn.request()
-      .input('id', sql.Int, id)
-      .input('userId', sql.Int, userId)
-      .query(`
-        DELETE FROM TaskComments
-        WHERE ID_Comment = @id AND ID_User = @userId
-      `);
+    let result;
+
+    if (userRole && userRole.includes('менеджер')) {
+      result = await poolConn.request()
+        .input('id', sql.Int, id)
+        .query(`
+          DELETE FROM TaskComments
+          WHERE ID_Comment = @id
+        `);
+    } else {
+      result = await poolConn.request()
+        .input('id', sql.Int, id)
+        .input('userId', sql.Int, userId)
+        .query(`
+          DELETE FROM TaskComments
+          WHERE ID_Comment = @id AND ID_User = @userId
+        `);
+    }
 
     if (result.rowsAffected[0] === 0) {
       return res.status(403).json({ error: 'Нет прав на удаление комментария' });
@@ -220,7 +220,6 @@ exports.deleteComment = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при удалении комментария' });
   }
 };
-
 
 
 exports.getExecutionComments = async (req, res) => {
