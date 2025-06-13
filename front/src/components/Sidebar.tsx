@@ -43,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
     {
       key: "/employee",
       icon: <TableOutlined />,
-      label: <Link to="/employee">Доска задач</Link>,
+      label: <Link to="/employee">Мои задачи</Link>,
     },
     {
       key: "/teams",
@@ -76,7 +76,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, onCollapse }) => {
     {
       key: "/myteams",
       icon: <TeamOutlined />,
-      label: <Link to="/myteams">Мои команды</Link>,
+      label: <Link to="/myteams">Моя команда</Link>,
     },
     {
       key: "/team-management",

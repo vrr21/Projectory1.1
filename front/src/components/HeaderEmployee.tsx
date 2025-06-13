@@ -11,7 +11,7 @@ import {
   MenuProps,
 } from "antd";
 import { BellOutlined, BulbOutlined } from "@ant-design/icons";
-import { CloseOutlined } from "@ant-design/icons"
+import { CloseOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/useAuth";
 import { useTheme } from "../contexts/ThemeContext";
@@ -76,7 +76,6 @@ const HeaderEmployee: React.FC = () => {
     }
     setUnreadCount(0);
     localStorage.setItem("notificationsReadEmployee", "true");
-
   };
 
   const markAsRead = async (id: number) => {
@@ -95,10 +94,10 @@ const HeaderEmployee: React.FC = () => {
     try {
       const token = localStorage.getItem("token");
       const res = await fetch(`${API_URL}/api/notifications/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
-  
+
       if (!res.ok) throw new Error("Ошибка при удалении уведомления");
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       setUnreadCount((prev) => Math.max(prev - 1, 0));
@@ -107,17 +106,15 @@ const HeaderEmployee: React.FC = () => {
       console.error("Ошибка при загрузке уведомлений:", error);
     }
   };
-  
 
   const fetchNotifications = useCallback(async () => {
     try {
       const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
       const token = localStorage.getItem("token");
       const res = await fetch(
-        `${API_URL}/api/employee/notifications?employeeEmail=${currentUser.email}`,
+        `${API_URL}/api/notifications/employee/notifications?employeeEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
 
       if (!res.ok) throw new Error("Ошибка при загрузке уведомлений");
       const data: NotificationItem[] = await res.json();
@@ -183,13 +180,14 @@ const HeaderEmployee: React.FC = () => {
   useEffect(() => {
     fetchNotifications();
     window.addEventListener("notificationRefresh", fetchNotifications);
-    return () => window.removeEventListener("notificationRefresh", fetchNotifications);
+    return () =>
+      window.removeEventListener("notificationRefresh", fetchNotifications);
   }, [fetchNotifications]);
-  
+
   const getInitials = (fullName: string) => {
     const parts = fullName.trim().split(" ");
-    const first = parts[0]?.[0] || "";
-    const last = parts[1]?.[0] || "";
+    const first = parts[1]?.[0] || ""; // было parts[0]
+    const last = parts[0]?.[0] || ""; // было parts[1]
     return `${first}${last}`.toUpperCase();
   };
 
@@ -294,53 +292,59 @@ const HeaderEmployee: React.FC = () => {
           dataSource={notifications}
           style={{ marginTop: 0, paddingTop: 0 }}
           renderItem={(item) => (
-<List.Item
-  className={`notification-item ${item.link ? "clickable" : ""}`}
-  key={item.id}
-  onClick={() => {
-    if (item.link) {
-      setIsDrawerVisible(false);
+            <List.Item
+              className={`notification-item ${item.link ? "clickable" : ""}`}
+              key={item.id}
+              onClick={() => {
+                if (item.link) {
+                  setIsDrawerVisible(false);
 
-      const [routePart] = item.link.split("#");
-      const isTaskLink = routePart.includes("/tasks/");
-      const isExecutionLink = routePart.includes("/executions/");
+                  const [routePart] = item.link.split("#");
+                  const isTaskLink = routePart.includes("/tasks/");
+                  const isExecutionLink = routePart.includes("/executions/");
 
-      if (isTaskLink) {
-        navigate("/employee");
-      } else if (isExecutionLink) {
-        navigate("/time-tracking");
-      } else {
-        navigate(routePart.startsWith("/") ? routePart : `/${routePart}`);
-      }
+                  if (isTaskLink) {
+                    navigate("/employee");
+                  } else if (isExecutionLink) {
+                    navigate("/time-tracking");
+                  } else {
+                    navigate(
+                      routePart.startsWith("/") ? routePart : `/${routePart}`
+                    );
+                  }
 
-      const hash = item.link.split("#")[1];
-      if (hash) {
-        setTimeout(() => {
-          const target = document.getElementById(hash);
-          if (target) {
-            target.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        }, 500);
-      }
-    }
-  }}
->
-  <div className="notification-content">
-    <div className="notification-header">
-      <div className="notification-title">{item.title}</div>
-      <CloseOutlined
-        className="notification-close"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleDeleteNotification(item.id);
-        }}
-      />
-    </div>
-    <div className="notification-description">{item.description}</div>
-    <div className="notification-time">{item.datetime}</div>
-  </div>
-</List.Item>
-
+                  const hash = item.link.split("#")[1];
+                  if (hash) {
+                    setTimeout(() => {
+                      const target = document.getElementById(hash);
+                      if (target) {
+                        target.scrollIntoView({
+                          behavior: "smooth",
+                          block: "center",
+                        });
+                      }
+                    }, 500);
+                  }
+                }
+              }}
+            >
+              <div className="notification-content">
+                <div className="notification-header">
+                  <div className="notification-title">{item.title}</div>
+                  <CloseOutlined
+                    className="notification-close"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteNotification(item.id);
+                    }}
+                  />
+                </div>
+                <div className="notification-description">
+                  {item.description}
+                </div>
+                <div className="notification-time">{item.datetime}</div>
+              </div>
+            </List.Item>
           )}
         />
       </Drawer>

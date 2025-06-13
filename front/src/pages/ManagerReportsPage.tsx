@@ -276,9 +276,10 @@ const ManagerReportsPage: React.FC = () => {
       dataIndex: "Deadline",
       key: "Deadline",
       align: "center",
-      render: (date) => new Date(date).toLocaleDateString(),
+      render: (date) => new Date(date).toLocaleDateString("ru-RU"),
     },
   ];
+  
 
   const timeTrackingColumns: ColumnsType<TimeTrackingEntry> = [
     {
@@ -533,7 +534,7 @@ const ManagerReportsPage: React.FC = () => {
                 marginBottom: "-2px",
               }}
             >
-              Отчёты по сотрудникам
+              Отчёты
             </h1>
 
             <div

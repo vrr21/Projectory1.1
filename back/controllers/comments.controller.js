@@ -248,9 +248,6 @@ exports.getExecutionComments = async (req, res) => {
     res.status(500).json({ error: 'Ошибка при получении комментариев' });
   }
 };
-
-
-
 exports.addExecutionComment = async (req, res) => {
   const { executionId, commentText } = req.body;
   const userId = req.user?.id;
@@ -261,8 +258,9 @@ exports.addExecutionComment = async (req, res) => {
 
   try {
     const cleanedCommentText = commentText.replace(/(\r\n|\n|\r)/g, ' ').trim();
-
     const poolConn = await pool.connect();
+
+    // 📌 Сохраняем комментарий
     await poolConn.request()
       .input('executionId', sql.Int, executionId)
       .input('userId', sql.Int, userId)
@@ -272,16 +270,79 @@ exports.addExecutionComment = async (req, res) => {
         VALUES (@executionId, @userId, @commentText)
       `);
 
-    // 🐞 Добавим лог
-    console.log("Комментарий успешно добавлен:", { executionId, userId, commentText });
+    // 📌 Получаем инфу об исполнении
+    const execResult = await poolConn.request()
+      .input('executionId', sql.Int, executionId)
+      .query(`
+        SELECT 
+          e.ID_Employee,
+          e.ID_Task,
+          t.Task_Name,
+          u.Email AS EmployeeEmail
+        FROM Execution e
+        JOIN Tasks t ON e.ID_Task = t.ID_Task
+        JOIN Users u ON e.ID_Employee = u.ID_User
+        WHERE e.ID_Execution = @executionId
+      `);
 
-    res.status(201).json({ message: 'Комментарий добавлен' });
+    const execInfo = execResult.recordset[0];
+    if (!execInfo) {
+      return res.status(404).json({ error: 'Исполнение не найдено' });
+    }
+
+    const { Task_Name, EmployeeEmail } = execInfo;
+
+    // 📌 Получаем почты всех менеджеров
+    const managersRes = await poolConn.request().query(`
+      SELECT u.Email
+      FROM Users u
+      JOIN Roles r ON u.ID_Role = r.ID_Role
+      WHERE r.Role_Name LIKE N'%менеджер%'
+    `);
+    const managerEmails = managersRes.recordset.map(r => r.Email);
+
+    // 📌 Получаем роль текущего пользователя
+    const userRoleRes = await poolConn.request()
+      .input('UserId', sql.Int, userId)
+      .query(`
+        SELECT r.Role_Name 
+        FROM Users u
+        JOIN Roles r ON u.ID_Role = r.ID_Role
+        WHERE u.ID_User = @UserId
+      `);
+    const userRole = userRoleRes.recordset[0]?.Role_Name?.toLowerCase();
+
+    // 📌 Правильный путь для перехода в уведомлении
+    const taskLink = `/executions/${executionId}#comments`;
+
+    // 📤 Уведомление сотруднику, если пишет менеджер
+    if (userRole?.includes('менеджер') && EmployeeEmail) {
+      await createNotification({
+        userEmail: EmployeeEmail,
+        title: `Новый комментарий к исполнению: ${Task_Name}`,
+        description: cleanedCommentText,
+        link: taskLink
+      });
+    }
+
+    // 📤 Уведомление всем менеджерам
+    for (const managerEmail of managerEmails) {
+      if (managerEmail) {
+        await createNotification({
+          userEmail: managerEmail,
+          title: `Новый комментарий к исполнению: ${Task_Name}`,
+          description: cleanedCommentText,
+          link: taskLink
+        });
+      }
+    }
+
+    res.status(201).json({ message: 'Комментарий добавлен и уведомления отправлены' });
   } catch (err) {
     console.error('addExecutionComment error:', err);
     res.status(500).json({ error: 'Ошибка при добавлении комментария' });
   }
 };
-
 
 
 // Удаление всех комментариев по задаче

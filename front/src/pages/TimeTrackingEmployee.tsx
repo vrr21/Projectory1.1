@@ -41,7 +41,6 @@ import { FilterOutlined } from "@ant-design/icons";
 import { PlusOutlined } from "@ant-design/icons";
 import { Select } from "antd";
 import { Radio } from "antd";
-import { UserOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
 
 dayjs.extend(isoWeek);
@@ -103,7 +102,9 @@ interface CommentType {
   AuthorName: string;
   Avatar?: string;
   ID_User?: number;
+  isExecutionComment?: boolean;
 }
+
 
 const TimeTrackingEmployee: React.FC = () => {
   const navigate = useNavigate();
@@ -435,24 +436,35 @@ const TimeTrackingEmployee: React.FC = () => {
 
   const fetchComments = async (entry: RawTimeEntry) => {
     const token = localStorage.getItem("token");
-
+    if (!token) return;
+  
     const url = entry.ID_Execution
       ? `${API_URL}/api/comments/execution/${entry.ID_Execution}`
       : `${API_URL}/api/comments/${entry.ID_Task}`;
-
+  
     try {
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok)
+  
+      if (!res.ok) {
         throw new Error(`Ошибка загрузки комментариев: ${res.status}`);
-      const data = await res.json();
-      setComments(data);
+      }
+  
+      const data: CommentType[] = await res.json();
+  
+      const enriched: CommentType[] = data.map((comment) => ({
+        ...comment,
+        isExecutionComment: !!entry.ID_Execution,
+      }));
+  
+      setComments(enriched);
     } catch (error) {
       console.error("Ошибка при получении комментариев:", error);
     }
   };
-
+  
+  
 
  const handleAddComment = async () => {
   console.log("DEBUG: handleAddComment called", viewingEntry);
@@ -553,14 +565,18 @@ const TimeTrackingEmployee: React.FC = () => {
     if (!editingCommentId) return;
     const token = localStorage.getItem("token");
     if (!token) return;
-
+  
     try {
       const cleanedCommentText = editingCommentText
         .replace(/(\r\n|\n|\r)/g, " ")
         .trim();
-
+  
+      // ✅ Определяем тип комментария по isExecutionComment
+      const comment = comments.find(c => c.ID_Comment === editingCommentId);
+      const isExecution = comment?.isExecutionComment;
+  
       const response = await fetch(
-        `${API_URL}/api/comments/${editingCommentId}`,
+        `${API_URL}/api/comments${isExecution ? "/execution" : ""}/${editingCommentId}`,
         {
           method: "PUT",
           headers: {
@@ -570,48 +586,56 @@ const TimeTrackingEmployee: React.FC = () => {
           body: JSON.stringify({ commentText: cleanedCommentText }),
         }
       );
-
+  
       if (!response.ok) throw new Error("Ошибка при обновлении комментария");
-
+  
       setEditingCommentId(null);
       setEditingCommentText("");
-
+  
       if (viewingEntry) {
         await fetchComments(viewingEntry);
       }
-
+  
       api.success({ message: "Комментарий обновлен" });
     } catch (error) {
       console.error(error);
       api.error({ message: "Не удалось обновить комментарий" });
     }
   };
+  
 
   const handleDeleteComment = async (commentId: number) => {
     const token = localStorage.getItem("token");
     if (!token) return;
-
+  
     try {
-      const response = await fetch(`${API_URL}/api/comments/${commentId}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
+      // ✅ Определяем тип комментария по isExecutionComment
+      const comment = comments.find(c => c.ID_Comment === commentId);
+      const isExecution = comment?.isExecutionComment;
+  
+      const response = await fetch(
+        `${API_URL}/api/comments${isExecution ? "/execution" : ""}/${commentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+  
       if (!response.ok) throw new Error("Ошибка при удалении комментария");
-
+  
       if (viewingEntry) {
         await fetchComments(viewingEntry);
       }
-
+  
       api.success({ message: "Комментарий удален" });
     } catch (error) {
       console.error(error);
       api.error({ message: "Не удалось удалить комментарий" });
     }
   };
-
+  
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const userId = user.ID_User || user.id;
 
@@ -715,33 +739,31 @@ const TimeTrackingEmployee: React.FC = () => {
                               }
                             />
                             <Dropdown
-                              menu={{
-                                items: [
-                                  ...projects.map((p) => ({
-                                    key: p.ID_Order,
-                                    label: p.Order_Name,
-                                    onClick: () =>
-                                      setSelectedProjectId(p.ID_Order),
-                                  })),
-                                  { type: "divider" },
-                                  {
-                                    key: "reset",
-                                    label: "Сбросить фильтр",
-                                    onClick: () => setSelectedProjectId(null),
-                                  },
-                                ],
-                              }}
-                              placement="bottomRight"
-                              arrow
-                            >
-                              <Button icon={<FilterOutlined />}>
-                                {selectedProjectId
-                                  ? projects.find(
-                                      (p) => p.ID_Order === selectedProjectId
-                                    )?.Order_Name
-                                  : "Фильтр по проекту"}
-                              </Button>
-                            </Dropdown>
+  menu={{
+    items: [
+      ...projects.map((p) => ({
+        key: p.ID_Order,
+        label: p.Order_Name,
+        onClick: () => setSelectedProjectId(p.ID_Order),
+      })),
+      { type: "divider" },
+      {
+        key: "reset",
+        label: "Сбросить фильтр",
+        onClick: () => setSelectedProjectId(null),
+      },
+    ],
+  }}
+  placement="bottomRight"
+  arrow
+>
+  <Button icon={<FilterOutlined />}>
+    {selectedProjectId
+      ? projects.find((p) => p.ID_Order === selectedProjectId)?.Order_Name
+      : "Фильтр по проекту"}
+  </Button>
+</Dropdown>
+
                           </div>
                         </div>
 
@@ -1294,31 +1316,27 @@ const TimeTrackingEmployee: React.FC = () => {
                                       : "default",
                                   }}
                                 >
-                                  <Avatar
-                                    src={
-                                      item.Avatar
-                                        ? `${API_URL}/uploads/${item.Avatar}`
-                                        : undefined
-                                    }
-                                    icon={
-                                      !item.Avatar ? (
-                                        <UserOutlined />
-                                      ) : undefined
-                                    }
-                                    style={{
-                                      backgroundColor: item.Avatar
-                                        ? "transparent"
-                                        : "#777",
-                                    }}
-                                  >
-                                    {!item.Avatar &&
-                                      (item.AuthorName?.split(" ")
-                                        .map((n) => n[0])
-                                        .slice(0, 2)
-                                        .join("")
-                                        .toUpperCase() ||
-                                        "–")}
-                                  </Avatar>
+                              <Avatar
+  src={item.Avatar ? `${API_URL}/uploads/${item.Avatar}` : undefined}
+  style={{
+    backgroundColor: item.Avatar ? "transparent" : "#777",
+    color: "#fff",
+    fontWeight: 600,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    textTransform: "uppercase",
+    userSelect: "none",
+  }}
+>
+  {!item.Avatar &&
+    (item.AuthorName?.split(" ")
+      .filter(Boolean)
+      .map((word) => word[0])
+      .slice(0, 2)
+      .join("") || "–")}
+</Avatar>
+
                                 </div>
                               </Tooltip>
                             }

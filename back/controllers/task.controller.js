@@ -1092,12 +1092,13 @@ exports.updateTaskStatus = async (req, res) => {
 
     const statusId = statusResult.recordset[0].ID_Status;
 
+    // ✅ Обновляем статус задачи
     await pool
       .request()
       .input("ID_Task", sql.Int, id)
       .input("ID_Status", sql.Int, statusId)
       .query(
-        "UPDATE Tasks SET ID_Status = @ID_Status WHERE ID_Task = @ID_Task"
+        "UPDATE Tasks SET ID_Status = @ID_Status, OverdueCompleted = 0 WHERE ID_Task = @ID_Task"
       );
 
     res.status(200).json({ message: "Статус задачи обновлён" });
@@ -1111,6 +1112,7 @@ exports.updateTaskStatus = async (req, res) => {
       });
   }
 };
+
 
 module.exports = {
   getAllTasks: exports.getAllTasks,

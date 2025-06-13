@@ -223,7 +223,6 @@ const ManagerDashboard: React.FC = () => {
       fetchComments(viewingTaskId);
       messageApi.success("Комментарий добавлен");
       window.dispatchEvent(new Event("notificationRefresh"));
-
     } catch (error) {
       console.error("Ошибка при добавлении комментария:", error);
       messageApi.error("Не удалось добавить комментарий");
@@ -800,26 +799,24 @@ const ManagerDashboard: React.FC = () => {
 
       const statusId = STATUS_MAP[targetStatusName];
 
-      // ⚡️ Собираем все обязательные поля
+      // Собираем данные для обновления с обработкой необязательных полей
       const updatedTask = {
-        Task_Name: taskData.Task_Name,
-        Description: taskData.Description,
-        Time_Norm: taskData.Time_Norm,
-        ID_Order: taskData.ID_Order,
+        Task_Name: taskData.Task_Name || "",
+        Description: taskData.Description || "",
+        Time_Norm: taskData.Time_Norm !== undefined ? taskData.Time_Norm : 0,
+        ID_Order: taskData.ID_Order || null,
         Deadline: taskData.Deadline
           ? new Date(taskData.Deadline).toISOString()
           : null,
         ID_Status: statusId,
-        onlyStatusUpdate: true, // <-- Добавляем флаг!
+        onlyStatusUpdate: true,
       };
 
-      // Проверка на наличие всех обязательных полей
+      // Проверка обязательных полей
       if (
         !updatedTask.Task_Name ||
         !updatedTask.Description ||
-        updatedTask.Time_Norm === undefined ||
-        !updatedTask.ID_Order ||
-        !updatedTask.Deadline
+        !updatedTask.ID_Order
       ) {
         throw new Error(
           "Ошибка: отсутствуют обязательные поля для обновления задачи"
@@ -838,7 +835,7 @@ const ManagerDashboard: React.FC = () => {
       }
 
       messageApi.success(`Статус задачи обновлён на "${targetStatusName}"`);
-      await loadTasks();
+      await loadTasks(); // Перезагрузка задач
     } catch (error) {
       console.error("Ошибка при изменении статуса задачи:", error);
       messageApi.error("Не удалось обновить статус задачи");
@@ -846,22 +843,16 @@ const ManagerDashboard: React.FC = () => {
   };
 
   const getDeadlineStatus = (deadline?: string | null, status?: string) => {
-    if (!deadline || !status) {
+    if (!deadline || !status || ["Завершена", "Выполнена"].includes(status)) {
       return {
         label: (
           <>
             <ClockCircleOutlined style={{ marginRight: 4 }} />
-            Без срока
+            {["Завершена", "Выполнена"].includes(status || "")
+              ? status
+              : "Без срока"}
           </>
         ),
-        color: "#aaa",
-      };
-    }
-
-    if (status === "Завершена" || status === "Выполнена") {
-      // Без иконки для статусов Завершена и Выполнена
-      return {
-        label: status,
         color: "#aaa",
       };
     }
@@ -922,413 +913,436 @@ const ManagerDashboard: React.FC = () => {
   const renderKanbanBoard = () => (
     <>
       <div
-        className="filter-row"
+        className="kanban-wrapper"
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
+          maxHeight: "calc(100vh - 100px)", // Ограничиваем высоту с учетом шапки
+          overflowY: "auto",
+          overflowX: "auto",
+          position: "relative",
         }}
       >
-        <Button
-          className="dark-action-button"
-          onClick={() => openModal()}
-          icon={<PlusOutlined style={{ color: "inherit" }} />}
-        >
-          Добавить задачу
-        </Button>
-
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <Input
-            placeholder="Поиск задач..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 250 }}
-          />
-          <Button
-            icon={<FilterOutlined />}
-            onClick={() => setIsFilterModalVisible(true)}
-            style={{ backgroundColor: "#1f1f1f", color: "#f0f0f0" }}
-          >
-            Фильтры
-          </Button>
-          <Dropdown menu={exportMenu} trigger={["click"]}>
-            <Button icon={<DownloadOutlined />}>Экспорт</Button>
-          </Dropdown>
-        </div>
-      </div>
-
-      {/* Статусы и Kanban Board */}
-      <div
-        className="kanban-status-row"
-        style={{
-          display: "flex",
-          gap: "12px",
-          paddingInline: "4px",
-          marginBottom: "12px",
-        }}
-      >
-        {STATUSES.map((status) => (
-          <div
-            key={`header-${status}`}
-            className="kanban-status-header"
-            style={{
-              flex: "1 1 0",
-              minWidth: "280px",
-              maxWidth: "100%",
-            }}
-          >
-            {status}
-          </div>
-        ))}
-      </div>
-
-      <DragDropContext onDragEnd={onDragEnd}>
+        {/* Фильтры */}
         <div
-          className="kanban-columns"
+          className="filter-row"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+            position: "sticky",
+            top: 0,
+            backgroundColor: "#1a1a1a",
+            zIndex: 10,
+            padding: "8px 4px",
+          }}
+        >
+          <Button
+            className="dark-action-button"
+            onClick={() => openModal()}
+            icon={<PlusOutlined style={{ color: "inherit" }} />}
+          >
+            Добавить задачу
+          </Button>
+
+          <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+            <Input
+              placeholder="Поиск задач..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: "250px" }}
+            />
+            <Button
+              icon={<FilterOutlined />}
+              onClick={() => setIsFilterModalVisible(true)}
+              style={{ backgroundColor: "#1f1f1f", color: "#f0f0f0" }}
+            >
+              Фильтры
+            </Button>
+            <Dropdown menu={exportMenu} trigger={["click"]}>
+              <Button icon={<DownloadOutlined />}>Экспорт</Button>
+            </Dropdown>
+          </div>
+        </div>
+
+        {/* Заголовки статусов */}
+        <div
+          className="kanban-status-row"
           style={{
             display: "flex",
             gap: "12px",
             paddingInline: "4px",
-            overflowX: "auto",
+            marginBottom: "12px",
+            position: "sticky",
+            top: "56px", // Под фильтрами
+            backgroundColor: "#1a1a1a",
+            zIndex: 10,
           }}
         >
-          {STATUSES.map((status) => {
-            const tasksForStatus = filteredTasks.filter(
-              (task) => task.Status_Name === status
-            );
-            const isExpanded = expandedStatuses.includes(status);
+          {STATUSES.map((status) => (
+            <div
+              key={`header-${status}`}
+              className="kanban-status-header"
+              style={{
+                flex: "1 1 0",
+                minWidth: "280px",
+                maxWidth: "100%",
+                textAlign: "center",
+                padding: "10px 12px",
+                backgroundColor: "#2a2a2a",
+              }}
+            >
+              {status}
+            </div>
+          ))}
+        </div>
 
-            return (
-              <Droppable key={status} droppableId={status}>
-                {(provided) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.droppableProps}
-                    className="kanban-column"
-                    style={{
-                      flex: "1 1 0",
-                      minWidth: "280px",
-                      backgroundColor: "#2a2a2a",
-                      padding: "1.5rem 1rem",
-                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "1rem",
-                    }}
-                  >
-                    {(isExpanded
-                      ? tasksForStatus
-                      : tasksForStatus.slice(0, 5)
-                    ).map((task, index) => {
-                      const deadlineInfo = getDeadlineStatus(
-                        task.Deadline,
-                        task.Status_Name
-                      );
-                      return (
-                        <Draggable
-                          key={`task-${task.ID_Task}`}
-                          draggableId={`task-${task.ID_Task}`}
-                          index={index}
-                        >
-                          {(providedDraggable) => (
-                            <div
-                              ref={providedDraggable.innerRef}
-                              {...providedDraggable.draggableProps}
-                              {...providedDraggable.dragHandleProps}
-                              className="kanban-task"
-                            >
-                              <div className="kanban-task-content">
-                                <strong>{task.Task_Name}</strong>
-                                <p>{task.Description}</p>
-                                {task.OverdueCompleted === 1 && (
-                                  <span
-                                    style={{
-                                      color: "#f44336",
-                                      fontWeight: "bold",
-                                    }}
-                                  >
-                                    Срок истёк!
-                                  </span>
-                                )}
-                                <p>
-                                  <i>Проект:</i> {task.Order_Name}
-                                </p>
-                                <p>
-                                  <i>Данный модуль выполняет:</i>{" "}
-                                  {getAssignedEmployeeName(task)}
-                                </p>
+        {/* Kanban Board */}
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div
+            className="kanban-columns"
+            style={{
+              display: "flex",
+              gap: "12px",
+              paddingInline: "4px",
+            }}
+          >
+            {STATUSES.map((status) => {
+              const tasksForStatus = filteredTasks.filter(
+                (task) => task.Status_Name === status
+              );
+              const isExpanded = expandedStatuses.includes(status);
 
-                                {(() => {
-                                  const assignedUserId =
-                                    task.Assigned_Employee_Id;
-                                  // Фильтруем всех сотрудников кроме главного исполнителя
-                                  const otherEmployees = (
-                                    task.AlsoAssignedEmployees || []
-                                  ).filter(
-                                    (emp) => emp.ID_User !== assignedUserId
-                                  );
-
-                                  return otherEmployees.length > 0 ? (
-                                    <div
-                                      className="kanban-avatars-row"
-                                      style={{
-                                        display: "flex",
-                                        justifyContent: "flex-start",
-                                        alignItems: "center",
-                                        marginTop: "8px",
-                                      }}
-                                    >
-                                      <span
-                                        style={{
-                                          fontSize: "13px",
-                                          fontStyle: "italic",
-                                          color: "#bbb",
-                                          marginRight: "8px",
-                                          minWidth: "160px",
-                                        }}
-                                      >
-                                        Задача назначена также:
-                                      </span>
-                                      <div
-                                        className="kanban-avatars"
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "4px",
-                                          flexWrap: "wrap",
-                                        }}
-                                      >
-                                        {otherEmployees.map((emp, idx) => (
-                                          <div
-                                            key={emp.ID_User}
-                                            title={emp.EmployeeName}
-                                            style={{
-                                              marginLeft:
-                                                idx === 0 ? "0" : "-8px",
-                                              zIndex:
-                                                otherEmployees.length - idx,
-                                            }}
-                                          >
-                                            {emp.Avatar &&
-                                            emp.Avatar !== "null" ? (
-                                              <img
-                                                src={`${API_URL}/uploads/${encodeURIComponent(
-                                                  emp.Avatar
-                                                )}`}
-                                                alt={emp.EmployeeName}
-                                                style={{
-                                                  width: "28px",
-                                                  height: "28px",
-                                                  borderRadius: "50%",
-                                                  objectFit: "cover",
-                                                  border: "2px solid #444",
-                                                  backgroundColor: "#555",
-                                                  cursor: "pointer",
-                                                }}
-                                              />
-                                            ) : (
-                                              <div
-                                                style={{
-                                                  width: "28px",
-                                                  height: "28px",
-                                                  borderRadius: "50%",
-                                                  backgroundColor: "#777",
-                                                  color: "#fff",
-                                                  fontSize: "12px",
-                                                  fontWeight: "bold",
-                                                  display: "flex",
-                                                  alignItems: "center",
-                                                  justifyContent: "center",
-                                                  border: "2px solid #444",
-                                                  cursor: "pointer",
-                                                }}
-                                              >
-                                                {emp.EmployeeName.split(" ")
-                                                  .map((n: string) => n[0])
-                                                  .slice(0, 2)
-                                                  .join("")
-                                                  .toUpperCase()}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : null;
-                                })()}
-                                {/* Дедлайн */}
-                                <div
-                                  style={{
-                                    marginTop: 8,
-                                    fontSize: "13px",
-                                    fontStyle: "italic",
-                                    color: "#bbb",
-                                  }}
-                                >
-                                  Дедлайн:{" "}
-                                  {task.Status_Name === "Завершена" &&
-                                  task.OverdueCompleted === 1 ? (
+              return (
+                <Droppable key={status} droppableId={status}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className="kanban-column"
+                      style={{
+                        flex: "1 1 0",
+                        minWidth: "280px",
+                        backgroundColor: "#2a2a2a",
+                        padding: "1.5rem 1rem",
+                        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "1rem",
+                      }}
+                    >
+                      {(isExpanded
+                        ? tasksForStatus
+                        : tasksForStatus.slice(0, 5)
+                      ).map((task, index) => {
+                        const deadlineInfo = getDeadlineStatus(
+                          task.Deadline,
+                          task.Status_Name
+                        );
+                        return (
+                          <Draggable
+                            key={`task-${task.ID_Task}`}
+                            draggableId={`task-${task.ID_Task}`}
+                            index={index}
+                          >
+                            {(providedDraggable) => (
+                              <div
+                                ref={providedDraggable.innerRef}
+                                {...providedDraggable.draggableProps}
+                                {...providedDraggable.dragHandleProps}
+                                className="kanban-task"
+                              >
+                                <div className="kanban-task-content">
+                                  <strong>{task.Task_Name}</strong>
+                                  <p>{task.Description}</p>
+                                  {task.OverdueCompleted === 1 && (
                                     <span
                                       style={{
                                         color: "#f44336",
                                         fontWeight: "bold",
                                       }}
                                     >
-                                      срок истёк
-                                    </span>
-                                  ) : (
-                                    <span
-                                      style={{
-                                        color: ["Новая", "В работе"].includes(
-                                          task.Status_Name
-                                        )
-                                          ? "#52c41a"
-                                          : "#bbb",
-                                        fontWeight: "bold",
-                                      }}
-                                    >
-                                      {task.Deadline
-                                        ? dayjs(task.Deadline).format(
-                                            "DD.MM.YYYY HH:mm"
-                                          )
-                                        : "Без срока"}
+                                      Срок истёк!
                                     </span>
                                   )}
-                                </div>
+                                  <p>
+                                    <i>Проект:</i> {task.Order_Name}
+                                  </p>
+                                  <p>
+                                    <i>Данный модуль выполняет:</i>{" "}
+                                    {getAssignedEmployeeName(task)}
+                                  </p>
 
-                                {/* Футер задачи */}
-                                <div
-                                  className="task-footer"
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    marginTop: "8px",
-                                  }}
-                                >
+                                  {(() => {
+                                    const assignedUserId =
+                                      task.Assigned_Employee_Id;
+                                    const otherEmployees = (
+                                      task.AlsoAssignedEmployees || []
+                                    ).filter(
+                                      (emp) => emp.ID_User !== assignedUserId
+                                    );
+
+                                    return otherEmployees.length > 0 ? (
+                                      <div
+                                        className="kanban-avatars-row"
+                                        style={{
+                                          display: "flex",
+                                          justifyContent: "flex-start",
+                                          alignItems: "center",
+                                          marginTop: "8px",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontSize: "13px",
+                                            fontStyle: "italic",
+                                            color: "#bbb",
+                                            marginRight: "8px",
+                                            minWidth: "160px",
+                                          }}
+                                        >
+                                          Задача назначена также:
+                                        </span>
+                                        <div
+                                          className="kanban-avatars"
+                                          style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: "4px",
+                                            flexWrap: "wrap",
+                                          }}
+                                        >
+                                          {otherEmployees.map((emp, idx) => (
+                                            <div
+                                              key={emp.ID_User}
+                                              title={emp.EmployeeName}
+                                              style={{
+                                                marginLeft:
+                                                  idx === 0 ? "0" : "-8px",
+                                                zIndex:
+                                                  otherEmployees.length - idx,
+                                              }}
+                                            >
+                                              {emp.Avatar &&
+                                              emp.Avatar !== "null" ? (
+                                                <img
+                                                  src={`${API_URL}/uploads/${encodeURIComponent(
+                                                    emp.Avatar
+                                                  )}`}
+                                                  alt={emp.EmployeeName}
+                                                  style={{
+                                                    width: "28px",
+                                                    height: "28px",
+                                                    borderRadius: "50%",
+                                                    objectFit: "cover",
+                                                    border: "2px solid #444",
+                                                    backgroundColor: "#555",
+                                                    cursor: "pointer",
+                                                  }}
+                                                />
+                                              ) : (
+                                                <div
+                                                  style={{
+                                                    width: "28px",
+                                                    height: "28px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: "#777",
+                                                    color: "#fff",
+                                                    fontSize: "12px",
+                                                    fontWeight: "bold",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    justifyContent: "center",
+                                                    border: "2px solid #444",
+                                                    cursor: "pointer",
+                                                  }}
+                                                >
+                                                  {emp.EmployeeName.split(" ")
+                                                    .map((n: string) => n[0])
+                                                    .slice(0, 2)
+                                                    .join("")
+                                                    .toUpperCase()}
+                                                </div>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : null;
+                                  })()}
                                   <div
                                     style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: "8px",
+                                      marginTop: "8px",
+                                      fontSize: "13px",
+                                      fontStyle: "italic",
+                                      color: "#bbb",
                                     }}
                                   >
-                                    <Button
-                                      type="link"
-                                      icon={<EyeOutlined />}
-                                      size="small"
-                                      style={{ padding: 0 }}
-                                      onClick={() =>
-                                        loadTaskDetails(task.ID_Task)
-                                      }
-                                    />
-                                    <Button
-                                      type="link"
-                                      icon={<MessageOutlined />}
-                                      size="small"
-                                      style={{ padding: 0 }}
-                                      onClick={() => {
-                                        setViewingTaskId(task.ID_Task);
-                                        fetchComments(task.ID_Task);
-                                        setIsCommentsModalVisible(true);
-                                      }}
-                                    />
+                                    Дедлайн:{" "}
+                                    {task.Status_Name === "Завершена" &&
+                                    task.OverdueCompleted === 1 ? (
+                                      <span
+                                        style={{
+                                          color: "#f44336",
+                                          fontWeight: "bold",
+                                        }}
+                                      >
+                                        срок истёк
+                                      </span>
+                                    ) : (
+                                      <span
+                                        style={{
+                                          color: ["Новая", "В работе"].includes(
+                                            task.Status_Name
+                                          )
+                                            ? "#52c41a"
+                                            : "#bbb",
+                                          fontWeight: "bold",
+                                        }}
+                                      >
+                                        {task.Deadline
+                                          ? dayjs(task.Deadline).format(
+                                              "DD.MM.YYYY HH:mm"
+                                            )
+                                          : "Без срока"}
+                                      </span>
+                                    )}
                                   </div>
 
                                   <div
+                                    className="task-footer"
                                     style={{
-                                      backgroundColor: [
-                                        "Выполнена",
-                                        "Завершена",
-                                      ].includes(task.Status_Name)
-                                        ? "transparent"
-                                        : deadlineInfo?.color,
-                                      color: [
-                                        "Выполнена",
-                                        "Завершена",
-                                      ].includes(task.Status_Name)
-                                        ? "#ccc" // можно выбрать любой цвет для текста
-                                        : "#fff",
-                                      borderRadius: "4px",
-                                      padding: "2px 6px",
-                                      fontSize: "12px",
-                                      minWidth: "80px",
-                                      textAlign: "center",
                                       display: "flex",
+                                      justifyContent: "space-between",
                                       alignItems: "center",
-                                      justifyContent: "center",
-                                      gap: "4px",
+                                      marginTop: "8px",
                                     }}
                                   >
-                                    {["Выполнена", "Завершена"].includes(
-                                      task.Status_Name
-                                    ) && <ClockCircleOutlined />}
-                                    {deadlineInfo?.label}
+                                    <div
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: "8px",
+                                      }}
+                                    >
+                                      <Button
+                                        type="link"
+                                        icon={<EyeOutlined />}
+                                        size="small"
+                                        style={{ padding: 0 }}
+                                        onClick={() =>
+                                          loadTaskDetails(task.ID_Task)
+                                        }
+                                      />
+                                      <Button
+                                        type="link"
+                                        icon={<MessageOutlined />}
+                                        size="small"
+                                        style={{ padding: 0 }}
+                                        onClick={() => {
+                                          setViewingTaskId(task.ID_Task);
+                                          fetchComments(task.ID_Task);
+                                          setIsCommentsModalVisible(true);
+                                        }}
+                                      />
+                                    </div>
+
+                                    <div
+                                      style={{
+                                        backgroundColor: [
+                                          "Выполнена",
+                                          "Завершена",
+                                        ].includes(task.Status_Name)
+                                          ? "transparent"
+                                          : deadlineInfo?.color,
+                                        color: [
+                                          "Выполнена",
+                                          "Завершена",
+                                        ].includes(task.Status_Name)
+                                          ? "#ccc"
+                                          : "#fff",
+                                        borderRadius: "4px",
+                                        padding: "2px 6px",
+                                        fontSize: "12px",
+                                        minWidth: "80px",
+                                        textAlign: "center",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "4px",
+                                      }}
+                                    >
+                                      {["Выполнена", "Завершена"].includes(
+                                        task.Status_Name
+                                      ) && <ClockCircleOutlined />}
+                                      {deadlineInfo?.label}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {tasksForStatus.length > 5 && (
+                        <>
+                          {!isExpanded ? (
+                            <Button
+                              className="show-more-button"
+                              onClick={() =>
+                                setExpandedStatuses([
+                                  ...expandedStatuses,
+                                  status,
+                                ])
+                              }
+                              style={{
+                                backgroundColor: "var(--card-bg-color)",
+                                color: "var(--text-color)",
+                                border: "1px solid #444",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontWeight: 500,
+                                textAlign: "center",
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                              }}
+                            >
+                              Смотреть далее ({tasksForStatus.length - 5} ещё)
+                            </Button>
+                          ) : (
+                            <Button
+                              className="show-more-button"
+                              onClick={() =>
+                                setExpandedStatuses(
+                                  expandedStatuses.filter((s) => s !== status)
+                                )
+                              }
+                              style={{
+                                backgroundColor: "var(--card-bg-color)",
+                                color: "var(--text-color)",
+                                border: "1px solid #444",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontWeight: 500,
+                                textAlign: "center",
+                                cursor: "pointer",
+                                transition: "all 0.3s ease",
+                              }}
+                            >
+                              Свернуть
+                            </Button>
                           )}
-                        </Draggable>
-                      );
-                    })}
-                    {tasksForStatus.length > 5 && (
-                      <>
-                        {!isExpanded ? (
-                          <Button
-                            className="show-more-button"
-                            onClick={() =>
-                              setExpandedStatuses([...expandedStatuses, status])
-                            }
-                            style={{
-                              backgroundColor: "#1f1f1f",
-                              color: "#f0f0f0",
-                              border: "1px solid #444",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              fontWeight: 500,
-                              textAlign: "center",
-                              cursor: "pointer",
-                              transition: "all 0.3s ease",
-                            }}
-                          >
-                            Смотреть далее ({tasksForStatus.length - 5} ещё)
-                          </Button>
-                        ) : (
-                          <Button
-                            className="show-more-button"
-                            onClick={() =>
-                              setExpandedStatuses(
-                                expandedStatuses.filter((s) => s !== status)
-                              )
-                            }
-                            style={{
-                              backgroundColor: "#1f1f1f",
-                              color: "#f0f0f0",
-                              border: "1px solid #444",
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              fontWeight: 500,
-                              textAlign: "center",
-                              cursor: "pointer",
-                              transition: "all 0.3s ease",
-                            }}
-                          >
-                            Свернуть
-                          </Button>
-                        )}
-                      </>
-                    )}
+                        </>
+                      )}
 
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            );
-          })}
-        </div>
-      </DragDropContext>
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              );
+            })}
+          </div>
+        </DragDropContext>
+      </div>
     </>
   );
 
@@ -1457,8 +1471,11 @@ const ManagerDashboard: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: 250 }}
           />
-          <Button onClick={() => setShowArchive(!showArchive)}>
-            {showArchive ? "Назад к списку задач" : "Перейти в архив"}
+          <Button
+            icon={<InboxOutlined />}
+            onClick={() => setShowArchive(!showArchive)}
+          >
+            {showArchive ? "Назад к списку задач" : "Архив"}
           </Button>
 
           <Button
@@ -1532,17 +1549,17 @@ const ManagerDashboard: React.FC = () => {
   const exportMenu = {
     items: [
       {
-        key: "excel",
+        key: "word",
         label: "Экспорт в Word (.docx)",
         onClick: () => handleExport("word"),
       },
       {
-        key: "pdf",
+        key: "excel",
         label: "Экспорт в Excel (.xlsx)",
         onClick: () => handleExport("excel"),
       },
       {
-        key: "word",
+        key: "pdf",
         label: "Экспорт в PDF (.pdf)",
         onClick: () => handleExport("pdf"),
       },
@@ -1550,7 +1567,16 @@ const ManagerDashboard: React.FC = () => {
   };
 
   return (
-    <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
+    <ConfigProvider
+      theme={{
+        algorithm: darkAlgorithm,
+        token: {
+          colorBgContainer: "#121212",
+          colorText: "#f0f0f0",
+          colorPrimary: "#006F7A",
+        },
+      }}
+    >
       <App>
         {contextHolder}
         <div className="manager-dashboard">

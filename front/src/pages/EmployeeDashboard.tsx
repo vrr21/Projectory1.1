@@ -17,7 +17,7 @@ import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useAuth } from "../contexts/useAuth";
 import HeaderEmployee from "../components/HeaderEmployee";
 import Sidebar from "../components/Sidebar";
-
+import { UploadOutlined } from "@ant-design/icons"; 
 import {
   DragDropContext,
   Droppable,
@@ -30,8 +30,6 @@ import "../styles/pages/ManagerDashboard.css";
 import { Input, List } from "antd";
 import { MessageOutlined } from "@ant-design/icons";
 
-import { DownloadOutlined } from "@ant-design/icons";
-import { Dropdown } from "antd";
 
 const { darkAlgorithm } = theme;
 const API_URL = import.meta.env.VITE_API_URL;
@@ -502,45 +500,7 @@ const EmployeeDashboard = () => {
   const openViewModal = (task: Task) => setViewingTask(task);
   const closeViewModal = () => setViewingTask(null);
 
-  const handleExport = async (format: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/export/tasks?format=${format}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "*/*",
-        },
-      });
-
-      if (!res.ok) throw new Error("Ошибка при экспорте");
-
-      const blob = await res.blob();
-      const contentDisposition = res.headers.get("Content-Disposition");
-      let filename = `tasks_export.${format === "word" ? "docx" : format}`;
-
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?([^"]+)"?/);
-        if (match && match[1]) {
-          filename = match[1];
-        }
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      if (error instanceof Error) {
-        messageApi.error(error.message);
-      } else {
-        messageApi.error("Неизвестная ошибка при экспорте данных");
-      }
-    }
-  };
-
+ 
 
   return (
     <ConfigProvider theme={{ algorithm: darkAlgorithm }}>
@@ -597,26 +557,6 @@ const EmployeeDashboard = () => {
                             style={{ width: "250px" }}
                           />
 
-                          <Dropdown
-                            menu={{
-                              onClick: ({ key }) => handleExport(key),
-                              items: [
-                                {
-                                  key: "word",
-                                  label: "Экспорт в Word (.docx)",
-                                },
-                                {
-                                  key: "excel",
-                                  label: "Экспорт в Excel (.xlsx)",
-                                },
-                                { key: "pdf", label: "Экспорт в PDF (.pdf)" },
-                              ],
-                            }}
-                            placement="bottomRight"
-                            arrow
-                          >
-                            <Button icon={<DownloadOutlined />}>Экспорт</Button>
-                          </Dropdown>
                         </div>
                         <DragDropContext onDragEnd={handleDragEnd}>
                           <div
@@ -866,26 +806,7 @@ const EmployeeDashboard = () => {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             style={{ width: 200 }}
                           />
-                          <Dropdown
-                            menu={{
-                              onClick: ({ key }) => handleExport(key),
-                              items: [
-                                {
-                                  key: "word",
-                                  label: "Экспорт в Word (.docx)",
-                                },
-                                {
-                                  key: "excel",
-                                  label: "Экспорт в Excel (.xlsx)",
-                                },
-                                { key: "pdf", label: "Экспорт в PDF (.pdf)" },
-                              ],
-                            }}
-                            placement="bottomRight"
-                            arrow
-                          >
-                            <Button icon={<DownloadOutlined />}>Экспорт</Button>
-                          </Dropdown>
+                       
                         </div>
 
                         <Table
@@ -1018,20 +939,23 @@ const EmployeeDashboard = () => {
                       <strong>Загрузить новый файл:</strong>
                     </p>
                     <label
-                      htmlFor="employee-upload"
-                      style={{
-                        display: "inline-block",
-                        padding: "6px 14px",
-                        backgroundColor: "#1f1f1f",
-                        color: "#fff",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        border: "1px solid #444",
-                        fontSize: "13px",
-                      }}
-                    >
-                      📤 Выберите файл
-                    </label>
+  htmlFor="employee-upload"
+  style={{
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+    padding: "6px 14px",
+    backgroundColor: "#1f1f1f",
+    color: "#fff",
+    borderRadius: "6px",
+    cursor: "pointer",
+    border: "1px solid #444",
+    fontSize: "13px",
+  }}
+>
+  <UploadOutlined />
+  Выберите файл
+</label>
                     <input
                       id="employee-upload"
                       type="file"

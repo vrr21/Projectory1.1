@@ -49,3 +49,44 @@ exports.createUser = async (req, res) => {
   }
 };
 
+exports.updateUser = async (req, res) => {
+  const { First_Name, Last_Name, Phone, ID_Role } = req.body;
+  const { id } = req.params;
+
+  if (!id || !First_Name || !Last_Name || ID_Role === undefined) {
+    return res.status(400).json({ message: "Некорректные данные для обновления" });
+  }
+
+  try {
+    await poolConnect;
+
+    await pool.request()
+      .input("ID_User", sql.Int, id)
+      .input("First_Name", sql.NVarChar, First_Name)
+      .input("Last_Name", sql.NVarChar, Last_Name)
+      .input("Phone", sql.NVarChar, Phone)
+      .input("ID_Role", sql.Int, ID_Role)
+      .query(`
+        UPDATE Users
+        SET First_Name = @First_Name,
+            Last_Name = @Last_Name,
+            Phone = @Phone,
+            ID_Role = @ID_Role
+        WHERE ID_User = @ID_User
+      `);
+
+    // Если назначен Менеджером — удалим из команд
+    if (ID_Role === 1) {
+      await pool.request()
+        .input("ID_User", sql.Int, id)
+        .query(`DELETE FROM TeamMembers WHERE ID_User = @ID_User`);
+    }
+
+    res.json({ message: "Пользователь успешно обновлён" });
+  } catch (err) {
+    console.error("Ошибка обновления пользователя:", err);
+    res.status(500).json({ message: "Ошибка сервера при обновлении" });
+  }
+};
+
+

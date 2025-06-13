@@ -286,3 +286,13 @@
   margin-top: 1rem;
   display: block;
 }
+
+[data-theme='light'] .ant-input-password-icon {
+  color: #555;
+}
+/* Прямо в конец файла */
+[data-theme="light"] .ant-input-password-icon {
+  color: #000 !important;
+  filter: brightness(0) !important;
+  opacity: 1 !important;
+}

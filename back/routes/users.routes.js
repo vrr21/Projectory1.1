@@ -14,7 +14,6 @@ router.post('/', async (req, res) => {
   try {
     await poolConnect;
 
-    // Проверка существующего email
     const existing = await pool.request()
       .input('Email', sql.NVarChar, Email)
       .query('SELECT * FROM Users WHERE Email = @Email');
@@ -25,7 +24,6 @@ router.post('/', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(Password, 10);
 
-    // Получение ID роли "Сотрудник"
     const roleResult = await pool.request()
       .input('RoleName', sql.NVarChar, 'Сотрудник')
       .query('SELECT ID_Role FROM Roles WHERE Role_Name = @RoleName');
@@ -54,41 +52,49 @@ router.post('/', async (req, res) => {
   }
 });
 
-// 📌 ОБНОВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ
+// 📌 ОБНОВЛЕНИЕ ПОЛЬЗОВАТЕЛЯ (включая роль)
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { First_Name, Last_Name, Email, Phone, Password } = req.body;
+  const { First_Name, Last_Name, Email, Phone, Password, ID_Role } = req.body;
+
+  if (!First_Name || !Last_Name || !Email || ID_Role === undefined) {
+    return res.status(400).json({ message: 'Некорректные данные' });
+  }
 
   try {
     await poolConnect;
+
     const request = pool.request()
-      .input('id', sql.Int, id)
-      .input('firstName', sql.NVarChar, First_Name)
-      .input('lastName', sql.NVarChar, Last_Name)
-      .input('email', sql.NVarChar, Email)
-      .input('phone', sql.NVarChar, Phone);
+      .input('ID_User', sql.Int, id)
+      .input('First_Name', sql.NVarChar, First_Name)
+      .input('Last_Name', sql.NVarChar, Last_Name)
+      .input('Email', sql.NVarChar, Email)
+      .input('Phone', sql.NVarChar, Phone)
+      .input('ID_Role', sql.Int, ID_Role);
 
     if (Password) {
       const hashedPassword = await bcrypt.hash(Password, 10);
-      request.input('password', sql.NVarChar, hashedPassword);
-      await request.query(`
-        UPDATE Users
-        SET First_Name = @firstName,
-            Last_Name = @lastName,
-            Email = @email,
-            Phone = @phone,
-            Password = @password
-        WHERE ID_User = @id
-      `);
-    } else {
-      await request.query(`
-        UPDATE Users
-        SET First_Name = @firstName,
-            Last_Name = @lastName,
-            Email = @email,
-            Phone = @phone
-        WHERE ID_User = @id
-      `);
+      request.input('Password', sql.NVarChar, hashedPassword);
+    }
+
+    const updateQuery = `
+      UPDATE Users
+      SET First_Name = @First_Name,
+          Last_Name = @Last_Name,
+          Email = @Email,
+          Phone = @Phone
+          ${Password ? ', Password = @Password' : ''}
+          , ID_Role = @ID_Role
+      WHERE ID_User = @ID_User
+    `;
+
+    await request.query(updateQuery);
+
+    // 🔥 Если пользователь становится менеджером — удаляем его из команд
+    if (ID_Role === 1) {
+      await pool.request()
+        .input('ID_User', sql.Int, id)
+        .query('DELETE FROM TeamMembers WHERE ID_User = @ID_User');
     }
 
     res.json({ message: 'Пользователь обновлён' });
@@ -123,9 +129,15 @@ router.delete('/:id', async (req, res) => {
 
   try {
     await poolConnect;
+
+    // Удаляем зависимости
+    await pool.request().input('ID_User', sql.Int, id).query('DELETE FROM TeamMembers WHERE ID_User = @ID_User');
+    await pool.request().input('ID_User', sql.Int, id).query('DELETE FROM Assignment WHERE ID_Employee = @ID_User');
+
+    // Удаляем самого пользователя
     await pool.request()
-      .input('id', sql.Int, id)
-      .query('DELETE FROM Users WHERE ID_User = @id');
+      .input('ID_User', sql.Int, id)
+      .query('DELETE FROM Users WHERE ID_User = @ID_User');
 
     res.json({ message: 'Пользователь удалён' });
   } catch (err) {

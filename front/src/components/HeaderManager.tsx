@@ -121,11 +121,10 @@ const HeaderManager: React.FC = () => {
       }
   
       const res = await fetch(
-        `${API_URL}/api/manager/notifications?managerEmail=${currentUser.email}`,
+        `${API_URL}/api/notifications/manager/notifications?managerEmail=${currentUser.email}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       
-  
       if (!res.ok) {
         console.error(
           `Ошибка при загрузке уведомлений: ${res.status} ${res.statusText}`

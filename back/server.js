@@ -47,7 +47,9 @@ app.use('/api/executions', require('./routes/executions.routes'));
 app.use('/api/users', require('./routes/users.routes'));
 app.use('/api', require('./routes/uploadTaskFile.routes'));
 app.use('/api', require('./routes/timeTracking'));
-app.use('/api', require('./routes/notifications'));
+app.use('/api/notifications', require('./routes/notifications'));
+
+
 app.use('/api/roles', require('./routes/roles'));
 
 // Export Routes

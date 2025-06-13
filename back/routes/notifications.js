@@ -16,12 +16,12 @@ router.get('/employee/notifications', verifyToken, getEmployeeNotifications);
 router.get('/manager/notifications', verifyToken, getManagerNotifications);
 
 // 🔹 Удалить уведомление
-router.delete('/notifications/:id', verifyToken, deleteNotificationById);
+router.delete('/:id', verifyToken, deleteNotificationById);
 
 // 🔹 Создать уведомление
 router.post('/', verifyToken, createNotification);
 
 // 🔹 Отметить уведомление как прочитанное
-router.put('/notifications/:id/read', verifyToken, markNotificationAsRead);
+router.put('/:id/read', verifyToken, markNotificationAsRead);
 
 module.exports = router;

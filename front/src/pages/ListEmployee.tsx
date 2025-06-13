@@ -8,14 +8,12 @@ import {
   Input,
   message,
   Avatar,
-  Dropdown,
 } from "antd";
 import {
   UserAddOutlined,
   EditOutlined,
   InboxOutlined,
   DeleteOutlined,
-  DownloadOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import SidebarManager from "../components/SidebarManager";
@@ -118,19 +116,19 @@ const ListEmployee: React.FC = () => {
         if (!values.Password) {
           delete updatedValues.Password;
         }
-  
-        const res = await fetch(
-          `${API_URL}/api/users/${editingEmployee.ID_User}`,
-          {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              ...updatedValues,
-              ID_Role: values.ID_Role, // 🔥 Добавляем роль!
-            }),
-          }
-        );
-  
+        const res = await fetch(`${API_URL}/api/users/${editingEmployee.ID_User}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            First_Name: values.First_Name,
+            Last_Name: values.Last_Name,
+            Email: values.Email,
+            Phone: values.Phone,
+            Password: values.Password, // если пусто — бэкенд проигнорирует
+            ID_Role: values.ID_Role
+          }),
+        });
+        
         if (!res.ok) throw new Error("Ошибка при обновлении данных");
         messageApi.success("Сотрудник обновлён");
       }
@@ -163,31 +161,7 @@ const ListEmployee: React.FC = () => {
     }
   };
 
-  const handleExport = async (format: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${API_URL}/api/export/employees?format=${format}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
 
-      if (!res.ok) throw new Error("Ошибка экспорта");
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `employees_export.${
-        format === "excel" ? "xlsx" : format === "word" ? "docx" : "pdf"
-      }`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      messageApi.error((err as Error).message);
-    }
-  };
 
   const handleDeleteConfirmed = async () => {
     try {
@@ -479,20 +453,7 @@ const ListEmployee: React.FC = () => {
                   {showArchive ? "Назад к активным" : "Архив"}
                 </Button>
 
-                <Dropdown
-                  menu={{
-                    onClick: ({ key }) => handleExport(key),
-                    items: [
-                      { key: "word", label: "Экспорт в Word (.docx)" },
-                      { key: "excel", label: "Экспорт в Excel (.xlsx)" },
-                      { key: "pdf", label: "Экспорт в PDF (.pdf)" },
-                    ],
-                  }}
-                  placement="bottomRight"
-                  arrow
-                >
-                  <Button icon={<DownloadOutlined />}>Экспорт</Button>
-                </Dropdown>
+               
               </div>
             </div>
 

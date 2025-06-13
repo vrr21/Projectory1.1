@@ -6,13 +6,10 @@ import {
   theme,
   message,
   Tabs,
-  Button,
-  Dropdown,
   Avatar,
   Tooltip,
 } from "antd";
 
-import { DownloadOutlined } from "@ant-design/icons";
 import Header from "../components/HeaderEmployee";
 import Sidebar from "../components/Sidebar";
 import "../styles/pages/TeamManagementPage.css";
@@ -132,42 +129,7 @@ const MyCommandsEmployee: React.FC = () => {
   }, []);
 
   
-  const exportHandler = async (
-    type: "teams" | "projects",
-    format: "xlsx" | "pdf" | "docx"
-  ) => {
-    try {
-      const endpoint = type === "teams" ? "teams" : "projects";
-      const dataToSend = type === "teams" ? teams : projects;
-  
-      const res = await fetch(`${API_URL}/api/export/${endpoint}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          format: format === "xlsx" ? "excel" : format,
-          ...(type === "projects"
-            ? { projects: dataToSend, userId: currentUser?.ID_User }
-            : { teams: dataToSend }),
-        }),
-           
-      });
-      
-      if (!res.ok) throw new Error("Ошибка при экспорте отчётов");
-  
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${endpoint}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
-      console.error("Ошибка при экспорте:", error);
-      messageApi.error("Ошибка экспорта данных");
-    }
-  };
-  
+
 
   const teamColumns: ColumnsType<Team> = [
     {
@@ -248,32 +210,7 @@ const MyCommandsEmployee: React.FC = () => {
     },
   ];
 
-  const renderExportMenu = (type: "teams" | "projects") => (
-    <Dropdown
-      menu={{
-        items: [
-          {
-            key: "docx",
-            label: "Экспорт в Word (.docx)",
-            onClick: () => exportHandler(type, "docx"),
-          },
-          {
-            key: "xlsx",
-            label: "Экспорт в Excel (.xlsx)",
-            onClick: () => exportHandler(type, "xlsx"),
-          },
-          {
-            key: "pdf",
-            label: "Экспорт в PDF (.pdf)",
-            onClick: () => exportHandler(type, "pdf"),
-          },
-        ],
-      }}
-    >
-      <Button icon={<DownloadOutlined />}>Экспорт</Button>
-    </Dropdown>
-  );
-
+ 
   const membersWithMissingId = teams
     .flatMap((team: Team) => team.members)
     .filter((member: TeamMember) => !member.ID_User);
@@ -303,7 +240,7 @@ const MyCommandsEmployee: React.FC = () => {
               items={[
                 {
                   key: "teams",
-                  label: "Мои команды",
+                  label: "Моя команда",
                   children: (
                     <>
                       <div
@@ -326,61 +263,61 @@ const MyCommandsEmployee: React.FC = () => {
                             ).values()
                           ).map((member: TeamMember, index: number) => (
                             <Tooltip
-                              key={member.ID_User ?? member.email}
-                              title={member.fullName}
-                            >
-                              <Avatar
-                                src={
-                                  member.avatar && member.avatar !== "null"
-                                    ? `${API_URL}/uploads/${encodeURIComponent(
-                                        member.avatar
-                                      )}`
-                                    : undefined
+                            key={member.ID_User ?? member.email}
+                            title={member.fullName}
+                          >
+                            <Avatar
+                              src={
+                                member.avatar &&
+                                member.avatar !== "null" &&
+                                member.avatar.trim() !== ""
+                                  ? `${API_URL}/uploads/${encodeURIComponent(member.avatar)}`
+                                  : undefined
+                              }
+                              size={40}
+                              style={{
+                                backgroundColor:
+                                  !member.avatar ||
+                                  member.avatar === "null" ||
+                                  member.avatar.trim() === ""
+                                    ? "#777"
+                                    : "transparent",
+                                cursor: "pointer",
+                                marginLeft: index === 0 ? 0 : -10,
+                                zIndex: 100 - index,
+                                border: "2px solid #1f1f1f",
+                                boxShadow: "0 0 3px rgba(0,0,0,0.2)",
+                                color: "#fff",
+                                fontWeight: 600,
+                              }}
+                              onClick={() => {
+                                const id = Number(member.ID_User);
+                          
+                                if (!id || isNaN(id)) {
+                                  console.warn("Некорректный ID сотрудника:", member);
+                                  messageApi.warning("Некорректный ID сотрудника, переход невозможен");
+                                  return;
                                 }
-                                size={40}
-                                style={{
-                                  backgroundColor:
-                                    !member.avatar || member.avatar === "null"
-                                      ? "#777"
-                                      : "transparent",
-                                  cursor: "pointer",
-                                  marginLeft: index === 0 ? 0 : -10,
-                                  zIndex: 100 - index,
-                                  border: "2px solid #1f1f1f",
-                                  boxShadow: "0 0 3px rgba(0,0,0,0.2)",
-                                }}
-                                onClick={() => {
-                                  const id = Number(member.ID_User);
-
-                                  if (!id || isNaN(id)) {
-                                    console.warn(
-                                      "Некорректный ID сотрудника:",
-                                      member
-                                    );
-                                    messageApi.warning(
-                                      "Некорректный ID сотрудника, переход невозможен"
-                                    );
-                                    return;
-                                  }
-
-                                  if (id === Number(currentUser?.ID_User)) {
-                                    navigate("/profile");
-                                  } else {
-                                    navigate(`/employee/${id}`);
-                                  }
-                                }}
-                              >
-                                {!member.avatar || member.avatar === "null"
-                                  ? getInitials(member.fullName)
-                                  : null}
-                              </Avatar>
-                            </Tooltip>
+                          
+                                if (id === Number(currentUser?.ID_User)) {
+                                  navigate("/profile");
+                                } else {
+                                  navigate(`/employee/${id}`);
+                                }
+                              }}
+                            >
+                              {
+                                (!member.avatar ||
+                                  member.avatar === "null" ||
+                                  member.avatar.trim() === "") &&
+                                getInitials(member.fullName)
+                              }
+                            </Avatar>
+                          </Tooltip>
+                          
                           ))}
                         </div>
 
-                        <div style={{ display: "flex", gap: 8 }}>
-                          {renderExportMenu("teams")}
-                        </div>
                       </div>
 
                       <Table
@@ -405,7 +342,6 @@ const MyCommandsEmployee: React.FC = () => {
                           gap: 8,
                         }}
                       >
-                        {renderExportMenu("projects")}
                       </div>
 
                       <Table

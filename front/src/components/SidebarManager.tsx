@@ -55,7 +55,7 @@ const SidebarManager: React.FC = () => {
           key: "/myteams",
           label: (
             <span style={{ fontSize: "13px" }}>
-              <Link to="/myteams">Мои команды</Link>
+              <Link to="/myteams">Моя команда</Link>
             </span>
           ),
         },

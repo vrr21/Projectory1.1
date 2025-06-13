@@ -125,7 +125,7 @@ const MyCommandsManager: React.FC = () => {
           <SidebarManager />
           <main className="main-content">
             <h1 style={{ fontSize: '28px', fontWeight: 600, marginBottom: '24px' }}>
-              Мои команды
+            Моя команда
             </h1>
 
             <div
