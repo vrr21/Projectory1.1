@@ -544,65 +544,94 @@ exports.closeTask = async (req, res) => {
       .json({ message: "Ошибка при закрытии задачи", error: error.message });
   }
 };
-// 🔹 Обновление статуса задачи для конкретного сотрудника
+
 exports.updateEmployeeTaskStatus = async (req, res) => {
   const { taskId } = req.params;
   const { employeeId, statusName } = req.body;
 
   if (!employeeId || !statusName) {
-    return res
-      .status(400)
-      .json({ message: "employeeId и statusName обязательны" });
+    return res.status(400).json({ message: 'employeeId и statusName обязательны' });
   }
 
   try {
     await poolConnect;
 
-    // Найти ID статуса по имени
-    const statusResult = await pool
-      .request()
-      .input("Status_Name", sql.NVarChar, statusName)
-      .query("SELECT ID_Status FROM Statuses WHERE Status_Name = @Status_Name");
+    // 1️⃣ Получаем ID статуса
+    const statusResult = await pool.request()
+      .input('StatusName', sql.NVarChar, statusName)
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @StatusName');
 
-    if (!statusResult.recordset.length) {
-      return res.status(400).json({ message: "Недопустимый статус" });
+    if (statusResult.recordset.length === 0) {
+      return res.status(404).json({ message: `Статус "${statusName}" не найден` });
     }
 
     const statusId = statusResult.recordset[0].ID_Status;
 
-    // Обновить статус в таблице Assignment для конкретного сотрудника и задачи
-    // Обновить статус в таблице Assignment для конкретного сотрудника и задачи
-    await pool
-      .request()
-      .input("ID_Task", sql.Int, taskId)
-      .input("ID_Employee", sql.Int, employeeId)
-      .input("ID_Status", sql.Int, statusId).query(`
-    UPDATE Assignment
-    SET ID_Status = @ID_Status
-    WHERE ID_Task = @ID_Task AND ID_Employee = @ID_Employee
-  `);
+    // 2️⃣ Получаем дедлайн задачи
+    const taskResult = await pool.request()
+      .input('ID_Task', sql.Int, taskId)
+      .query('SELECT Deadline, ID_Status, Parent_Task_ID FROM Tasks WHERE ID_Task = @ID_Task');
 
-    // ✅ Также обновить общий статус в таблице Tasks
-    await pool
-      .request()
-      .input("ID_Task", sql.Int, taskId)
-      .input("ID_Status", sql.Int, statusId).query(`
-    UPDATE Tasks
-    SET ID_Status = @ID_Status
-    WHERE ID_Task = @ID_Task
-  `);
+    if (!taskResult.recordset.length) {
+      return res.status(404).json({ message: 'Задача не найдена' });
+    }
 
-    res.status(200).json({ message: "Статус задачи для сотрудника обновлен" });
-  } catch (error) {
-    console.error("🔥 Ошибка при обновлении статуса задачи сотрудника:", error);
-    res
-      .status(500)
-      .json({
-        message: "Ошибка при обновлении статуса задачи сотрудника",
-        error: error.message,
+    const { Deadline, Parent_Task_ID } = taskResult.recordset[0];
+    const isOverdue = new Date(Deadline) < new Date();
+
+    // 3️⃣ Получаем ID "Выполнена"
+    const completedResult = await pool.request()
+      .input('StatusName', sql.NVarChar, 'Выполнена')
+      .query('SELECT ID_Status FROM Statuses WHERE Status_Name = @StatusName');
+    const completedId = completedResult.recordset[0]?.ID_Status;
+
+    // 4️⃣ Если просрочено, разрешаем только "Выполнена"
+    if (isOverdue && statusId !== completedId) {
+      return res.status(403).json({
+        message: `Нельзя установить статус "${statusName}", т.к. задача просрочена. Разрешен только "Выполнена".`
       });
+    }
+
+    // 5️⃣ Обновляем статус в Assignment
+    await pool.request()
+      .input('ID_Task', sql.Int, taskId)
+      .input('ID_Employee', sql.Int, employeeId)
+      .input('ID_Status', sql.Int, statusId)
+      .query(`
+        UPDATE Assignment
+        SET ID_Status = @ID_Status
+        WHERE ID_Task = @ID_Task AND ID_Employee = @ID_Employee
+      `);
+
+    // 6️⃣ Обновляем статус текущей задачи
+    await pool.request()
+      .input('ID_Task', sql.Int, taskId)
+      .input('ID_Status', sql.Int, statusId)
+      .query(`
+        UPDATE Tasks
+        SET ID_Status = @ID_Status, OverdueCompleted = 0, Status_Updated_At = GETDATE()
+        WHERE ID_Task = @ID_Task
+      `);
+
+    // 7️⃣ Обновляем родителя, если есть
+    if (Parent_Task_ID) {
+      await pool.request()
+        .input('ID_Task', sql.Int, Parent_Task_ID)
+        .input('ID_Status', sql.Int, statusId)
+        .query(`
+          UPDATE Tasks
+          SET ID_Status = @ID_Status, OverdueCompleted = 0, Status_Updated_At = GETDATE()
+          WHERE ID_Task = @ID_Task
+        `);
+    }
+
+    res.status(200).json({ message: `Статус задачи обновлён на "${statusName}"` });
+  } catch (error) {
+    console.error('❌ Ошибка при обновлении статуса задачи:', error);
+    res.status(500).json({ message: 'Ошибка сервера', error: error.message });
   }
 };
+
 
 // Удаление всех архивных задач
 const deleteArchivedTasks = async (req, res) => {
@@ -1040,17 +1069,17 @@ exports.checkAndUpdateOverdueTasks = async (req, res) => {
 
     // 2. Обновить задачи с истекшим сроком
     await pool.request().input("ID_Status", sql.Int, completedStatusId).query(`
-        UPDATE Tasks
-        SET 
-          ID_Status = @ID_Status,
-          OverdueCompleted = 1  -- 🔥 Пометка, что завершена по просрочке
-        WHERE 
-          Deadline < GETDATE() 
-          AND ID_Status NOT IN (
-            SELECT ID_Status 
-            FROM Statuses 
-            WHERE Status_Name IN ('Завершена', 'Выполнена', 'Архив')
-          )
+       UPDATE Tasks
+SET ID_Status = @ID_Status,
+    OverdueCompleted = 1
+WHERE Deadline < GETDATE()
+  AND ID_Status NOT IN (
+    SELECT ID_Status 
+    FROM Statuses 
+    WHERE Status_Name IN ('Завершена', 'Выполнена', 'Архив')
+  )
+  AND (OverdueCompleted IS NULL OR OverdueCompleted = 0)
+
       `);
 
     res

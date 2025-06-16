@@ -472,6 +472,16 @@ const ProjectManagementPage: React.FC = () => {
     },
   ];
 
+  const buttonStyle = {
+    width: 36,
+    height: 36,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+  };
+  
+
   const columns: ColumnsType<Project> = [
     {
       title: <div style={{ textAlign: "center" }}>Название проекта</div>,
@@ -535,51 +545,54 @@ const ProjectManagementPage: React.FC = () => {
       key: "actions",
       align: "center",
       render: (_text, record) => {
-        if (record.Status === "Завершён") {
-          return (
-            <div className="table-action-buttons">
-              <Button
-                type="link"
-                onClick={() =>
-                  showModal({ ...record, Status: "В процессе" }, true)
-                }
-                icon={<EditOutlined />}
-              >
-                Восстановить
-              </Button>
-              <Button
-                type="link"
-                danger
-                onClick={() => handleConfirmDelete(record.ID_Order)}
-                icon={<InboxOutlined />}
-              >
-                Удалить
-              </Button>
-            </div>
-          );
-        }
-
+        const isArchived = record.Status === "Завершён"; // ✅ добавлена переменная
+    
         return (
-          <div className="table-action-buttons">
-            <Button
-              type="link"
-              onClick={() => showModal(record)}
-              icon={<EditOutlined />}
-            >
-              Редактировать
-            </Button>
-            <Button
-              type="link"
-              danger
-              onClick={() => handleConfirmClose(record.ID_Order)}
-              icon={<InboxOutlined />}
-            >
-              Закрыть проект
-            </Button>
+          <div style={{ display: "flex", justifyContent: "center", gap: "8px" }}>
+            {isArchived ? (
+              <>
+                <Button
+                  type="link"
+                  style={buttonStyle}
+                  onClick={() =>
+                    showModal({ ...record, Status: "В процессе" }, true)
+                  }
+                  icon={<EditOutlined />}
+                />
+                <Button
+                  danger
+                  type="link"
+                  style={buttonStyle}
+                  onClick={() => handleConfirmDelete(record.ID_Order)}
+                  icon={<InboxOutlined />}
+                />
+              </>
+            ) : (
+              <>
+<Button
+  type="link"
+  style={buttonStyle}
+  onClick={(e) => {
+    e.stopPropagation(); 
+    showModal(record);
+  }}
+  icon={<EditOutlined />}
+/>
+
+                <Button
+                  danger
+                  type="link"
+                  style={buttonStyle}
+                  onClick={() => handleConfirmClose(record.ID_Order)}
+                  icon={<InboxOutlined />}
+                />
+              </>
+            )}
           </div>
         );
       },
     },
+    
   ];
 
   return (
@@ -681,12 +694,23 @@ const ProjectManagementPage: React.FC = () => {
                       columns={columns}
                       rowKey="ID_Order"
                       onRow={(record) => ({
-                        onClick: () => {
+                        onClick: (event) => {
+                          const target = event.target as HTMLElement;
+                          // Если клик был по кнопке или иконке внутри кнопки — не выполнять переход
+                          if (
+                            target.closest("button") ||
+                            target.closest(".ant-btn") || // стандартный класс кнопки Ant Design
+                            target.closest(".anticon")   // иконки внутри кнопок
+                          ) {
+                            return;
+                          }
+                      
                           setSelectedProject(record);
                           setActiveTab("order-lifecycle");
                           fetchTasksForProject(record.ID_Order);
                         },
                       })}
+                      
                     />
 
                     {/* Модальное окно формы (без изменений) */}
@@ -730,47 +754,45 @@ const ProjectManagementPage: React.FC = () => {
                         </Form.Item>
 
                         <Form.Item
-                          name="End_Date"
-                          label="Дата окончания"
-                          rules={[
-                            {
-                              required: true,
-                              message: "Пожалуйста, выберите дату окончания",
-                            },
-                            {
-                              validator: async (_, value) => {
-                                if (!value)
-                                  return Promise.reject(
-                                    new Error(
-                                      "Пожалуйста, выберите дату окончания"
-                                    )
-                                  );
-                                const selectedDate =
-                                  dayjs(value).startOf("day");
-                                const today = dayjs().startOf("day");
-                                const maxDate = today.add(1, "year");
+  name="End_Date"
+  label="Дата окончания"
+  rules={[
+    {
+      required: true,
+      message: "Пожалуйста, выберите дату окончания",
+    },
+    {
+      validator: async (_, value) => {
+        if (!value)
+          return Promise.reject(
+            new Error("Пожалуйста, выберите дату окончания")
+          );
 
-                                if (selectedDate.isBefore(today)) {
-                                  return Promise.reject(
-                                    new Error("Нельзя выбрать прошедшую дату")
-                                  );
-                                }
+        const selectedDate = dayjs(value).startOf("day");
+        const today = dayjs().startOf("day");
+        const maxDate = today.add(1, "year");
 
-                                if (selectedDate.isAfter(maxDate)) {
-                                  return Promise.reject(
-                                    new Error(
-                                      `Максимальный срок — ${maxDate.format(
-                                        "YYYY-MM-DD"
-                                      )}`
-                                    )
-                                  );
-                                }
+        // 🔒 Проверяем только при СОЗДАНИИ проекта
+        if (!editingProject) {
+          if (selectedDate.isBefore(today)) {
+            return Promise.reject(
+              new Error("Нельзя выбрать прошедшую дату")
+            );
+          }
 
-                                return Promise.resolve();
-                              },
-                            },
-                          ]}
-                        >
+          if (selectedDate.isAfter(maxDate)) {
+            return Promise.reject(
+              new Error(`Максимальный срок — ${maxDate.format("YYYY-MM-DD")}`)
+            );
+          }
+        }
+
+        return Promise.resolve();
+      },
+    },
+  ]}
+>
+
                           <DatePicker
                             style={{ width: "100%" }}
                             showTime={{ format: "HH:mm" }}

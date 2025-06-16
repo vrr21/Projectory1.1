@@ -134,15 +134,15 @@ const TimeTrackingManager: React.FC = () => {
       return "";
     }
   };
-  
+
   const handleAddComment = async () => {
     console.log("DEBUG: handleAddComment called", viewingEntry);
-  
+
     if (!newComment.trim() || !viewingEntry?.ID_Execution) return;
-  
+
     try {
       const token = localStorage.getItem("token");
-  
+
       // Добавляем комментарий к исполнению задачи
       const res = await fetch(`${API_URL}/api/comments/execution`, {
         method: "POST",
@@ -155,9 +155,9 @@ const TimeTrackingManager: React.FC = () => {
           commentText: newComment.trim(),
         }),
       });
-  
+
       if (!res.ok) throw new Error("Ошибка при добавлении комментария");
-  
+
       // Получаем email сотрудника для уведомления
       let employeeEmail = "";
       if (viewingEntry.ID_Employee) {
@@ -166,7 +166,7 @@ const TimeTrackingManager: React.FC = () => {
       } else {
         console.warn("ID_Employee отсутствует — уведомление не отправляем");
       }
-  
+
       // Отправляем уведомление, если email есть
       if (employeeEmail) {
         await createNotification({
@@ -177,7 +177,7 @@ const TimeTrackingManager: React.FC = () => {
           link: `/tasks/${viewingEntry.ID_Task}`,
         });
       }
-  
+
       setNewComment("");
       await fetchComments(viewingEntry.ID_Execution);
       api.success({ message: "Комментарий добавлен" });
@@ -186,7 +186,6 @@ const TimeTrackingManager: React.FC = () => {
       api.error({ message: "Не удалось добавить комментарий" });
     }
   };
-  
 
   const openCommentsModal = (entry: RawTimeEntry) => {
     setViewingEntry(entry);
@@ -251,11 +250,11 @@ const TimeTrackingManager: React.FC = () => {
     if (!editingCommentId) return;
     const isExecution = viewingEntry?.ID_Execution ? true : false;
     const token = localStorage.getItem("token");
-  
+
     const endpoint = isExecution
       ? `/api/comments/execution/${editingCommentId}`
       : `/api/comments/${editingCommentId}`;
-  
+
     try {
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: "PUT",
@@ -275,7 +274,7 @@ const TimeTrackingManager: React.FC = () => {
       api.error({ message: "Не удалось обновить комментарий" });
     }
   };
-  
+
   const createNotification = async ({
     token,
     userEmail,
@@ -290,7 +289,13 @@ const TimeTrackingManager: React.FC = () => {
     link?: string;
   }) => {
     try {
-      console.log("DEBUG: createNotification called with:", userEmail, title, description, link);
+      console.log(
+        "DEBUG: createNotification called with:",
+        userEmail,
+        title,
+        description,
+        link
+      );
 
       await fetch(`${API_URL}/api/notifications`, {
         method: "POST",
@@ -309,15 +314,15 @@ const TimeTrackingManager: React.FC = () => {
       console.error("Ошибка при создании уведомления:", error);
     }
   };
-  
+
   const handleDeleteComment = async (commentId: number) => {
     const isExecution = viewingEntry?.ID_Execution ? true : false;
     const token = localStorage.getItem("token");
-  
+
     const endpoint = isExecution
       ? `/api/comments/execution/${commentId}`
       : `/api/comments/${commentId}`;
-  
+
     try {
       const response = await fetch(`${API_URL}${endpoint}`, {
         method: "DELETE",
@@ -331,7 +336,6 @@ const TimeTrackingManager: React.FC = () => {
       api.error({ message: "Не удалось удалить комментарий" });
     }
   };
-  
 
   return (
     <Layout className="layout">
@@ -560,28 +564,41 @@ const TimeTrackingManager: React.FC = () => {
                         rowKey="ID_Execution"
                         pagination={{
                           pageSize: 10,
-                          showSizeChanger: false, // Отключаем выбор размера страницы
+                          showSizeChanger: false,
                         }}
                         columns={[
                           {
                             title: "Задача",
                             dataIndex: "Task_Name",
                             key: "task",
+                            align: "center",
+                            render: (text) => (
+                              <div style={{ textAlign: "left" }}>{text}</div>
+                            ),
                           },
                           {
                             title: "Проект",
                             dataIndex: "Order_Name",
                             key: "order",
+                            align: "center",
+                            render: (text) => (
+                              <div style={{ textAlign: "left" }}>{text}</div>
+                            ),
                           },
                           {
                             title: "Сотрудник",
                             dataIndex: "Employee_Name",
                             key: "employee",
+                            align: "center",
+                            render: (text) => (
+                              <div style={{ textAlign: "left" }}>{text}</div>
+                            ),
                           },
                           {
                             title: "Начало",
                             dataIndex: "Start_Date",
                             key: "start",
+                            align: "center",
                             render: (date: string) =>
                               dayjs(date).format("DD.MM.YYYY HH:mm"),
                           },
@@ -589,6 +606,7 @@ const TimeTrackingManager: React.FC = () => {
                             title: "Окончание",
                             dataIndex: "End_Date",
                             key: "end",
+                            align: "center",
                             render: (date: string) =>
                               dayjs(date).format("DD.MM.YYYY HH:mm"),
                           },
@@ -596,17 +614,20 @@ const TimeTrackingManager: React.FC = () => {
                             title: "Потрачено (ч)",
                             dataIndex: "Hours_Spent",
                             key: "hours",
+                            align: "center",
                           },
                           {
                             title: "Норма времени",
                             dataIndex: "Time_Norm",
                             key: "timeNorm",
+                            align: "center",
                             render: (val) => (val ? `${val} ч` : "-"),
                           },
                           {
                             title: "Вложился в норму?",
                             dataIndex: "FitTimeNorm",
                             key: "fitTimeNorm",
+                            align: "center",
                             render: (val) =>
                               val === undefined ? "-" : val ? "Да" : "Нет",
                           },
@@ -712,7 +733,7 @@ const TimeTrackingManager: React.FC = () => {
               )}
             </Modal>
             <Modal
-               title="Комментарии"
+              title="Комментарии"
               open={isCommentsModalVisible}
               onCancel={() => setIsCommentsModalVisible(false)}
               footer={null}

@@ -15,17 +15,22 @@ const {
 } = require('docx');
 const { poolConnect, pool } = require('../config/db');
 
-// Хелпер форматирования значений
+const dayjs = require('dayjs');
+
 function formatValue(value) {
-  if (value instanceof Date) {
-    return new Date(value).toLocaleString('ru-RU');
+  const isDateLike = typeof value === 'string' && dayjs(value).isValid();
+
+  if (value instanceof Date || isDateLike) {
+    return dayjs(value).format('DD.MM.YYYY'); // ❗️ Только дата
   }
+
   return value !== null && value !== undefined ? value.toString() : '';
 }
 
 const headerTranslations = {
   'Project_Type': 'Тип проекта',
   'Project_Name': 'Проект',
+  'Task_Type': 'Тип задачи',
   'Task_Count': 'Количество задач',
   'Task_Date': 'Дата задачи',
   'Employee_Name': 'Сотрудник',
@@ -38,7 +43,11 @@ const headerTranslations = {
   'Hours_Spent': 'Затрачено часов',
   'Start_Date': 'Дата начала',
   'End_Date': 'Дата завершения',
+  'UserEmail': 'Электронная почта',
+  'Status_Updated_At': 'Дата обновления статуса',
+  'IsArchivedCalculated': 'Архивировать?'
 };
+
 
 // Получение данных
 async function getDataFromViews() {

@@ -433,7 +433,6 @@ const EmployeeDashboard = () => {
       setIsConfirmModalVisible(false);
     }
   };
-
   const tableColumns = [
     {
       title: <div style={{ textAlign: "center" }}>Проект</div>,
@@ -442,9 +441,10 @@ const EmployeeDashboard = () => {
       filters: Array.from(new Set(filteredTasks.map((t) => t.Order_Name))).map(
         (value) => ({ text: value, value })
       ),
-      onFilter: (value: string | number | boolean | React.Key, record: Task) =>
-        record.Status_Name === value,
-
+      onFilter: (
+        value: string | number | boolean | React.Key,
+        record: Task
+      ) => record.Order_Name === value,
       render: (text: string) => <div style={{ textAlign: "left" }}>{text}</div>,
     },
     {
@@ -463,26 +463,27 @@ const EmployeeDashboard = () => {
       title: <div style={{ textAlign: "center" }}>Норма времени (часы)</div>,
       dataIndex: "Time_Norm",
       key: "Time_Norm",
-      render: (text: number) => <div style={{ textAlign: "left" }}>{text}</div>,
+      render: (text: number) => <div style={{ textAlign: "center" }}>{text}</div>,
     },
     {
       title: <div style={{ textAlign: "center" }}>Статус</div>,
       dataIndex: "Status_Name",
       key: "Status_Name",
-      filters: Array.from(new Set(filteredTasks.map((t) => t.Status_Name))).map(
-        (value) => ({ text: value, value })
-      ),
-      onFilter: (value: string | number | boolean | React.Key, record: Task) =>
-        record.Status_Name === value,
-
-      render: (text: string) => <div style={{ textAlign: "left" }}>{text}</div>,
+      filters: Array.from(
+        new Set(filteredTasks.map((t) => t.Status_Name))
+      ).map((value) => ({ text: value, value })),
+      onFilter: (
+        value: string | number | boolean | React.Key,
+        record: Task
+      ) => record.Status_Name === value,
+      render: (text: string) => <div style={{ textAlign: "center" }}>{text}</div>,
     },
     {
       title: <div style={{ textAlign: "center" }}>Дедлайн</div>,
       dataIndex: "Deadline",
       key: "Deadline",
       render: (val: string | null) => (
-        <div style={{ textAlign: "left" }}>
+        <div style={{ textAlign: "center" }}>
           {val ? dayjs(val).format("YYYY-MM-DD HH:mm") : "—"}
         </div>
       ),
@@ -492,11 +493,11 @@ const EmployeeDashboard = () => {
       dataIndex: "Employees",
       key: "Employees",
       render: (employees: Employee[]) => (
-        <div style={{ textAlign: "left" }}>{renderEmployees(employees)}</div>
+        <div style={{ textAlign: "center" }}>{renderEmployees(employees)}</div>
       ),
     },
   ];
-
+  
   const openViewModal = (task: Task) => setViewingTask(task);
   const closeViewModal = () => setViewingTask(null);
 

@@ -319,7 +319,7 @@ exports.addExecutionComment = async (req, res) => {
     if (userRole?.includes('менеджер') && EmployeeEmail) {
       await createNotification({
         userEmail: EmployeeEmail,
-        title: `Новый комментарий к исполнению: ${Task_Name}`,
+        title: `Новый комментарий к учёту времени: ${Task_Name}`,
         description: cleanedCommentText,
         link: taskLink
       });
@@ -330,7 +330,7 @@ exports.addExecutionComment = async (req, res) => {
       if (managerEmail) {
         await createNotification({
           userEmail: managerEmail,
-          title: `Новый комментарий к исполнению: ${Task_Name}`,
+          title: `Новый комментарий к учёту времени: ${Task_Name}`,
           description: cleanedCommentText,
           link: taskLink
         });

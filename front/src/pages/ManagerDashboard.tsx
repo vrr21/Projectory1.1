@@ -234,7 +234,6 @@ const ManagerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("kanban");
   const [messageApi, contextHolder] = message.useMessage();
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
-  const taskNames = Array.from(new Set(tasks.map((task) => task.Task_Name)));
   const [allProjects, setAllProjects] = useState<Project[]>([]);
 
   useEffect(() => {
@@ -292,6 +291,7 @@ const ManagerDashboard: React.FC = () => {
   };
 
   const [showArchive, setShowArchive] = useState(false);
+
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentText, setEditingCommentText] = useState<string>("");
   const handleUpdateComment = async () => {
@@ -931,13 +931,13 @@ const ManagerDashboard: React.FC = () => {
             marginBottom: "16px",
             position: "sticky",
             top: 0,
-            backgroundColor: "#1a1a1a",
+            color: "var(--text-color)",
             zIndex: 10,
             padding: "8px 4px",
           }}
         >
           <Button
-            className="dark-action-button"
+            className="add-task-button"
             onClick={() => openModal()}
             icon={<PlusOutlined style={{ color: "inherit" }} />}
           >
@@ -949,17 +949,36 @@ const ManagerDashboard: React.FC = () => {
               placeholder="Поиск задач..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: "250px" }}
+              style={{
+                width: "250px",
+                backgroundColor: "var(--input-bg-color)",
+                color: "var(--text-color)",
+                border: "1px solid var(--border-color)",
+              }}
             />
             <Button
               icon={<FilterOutlined />}
               onClick={() => setIsFilterModalVisible(true)}
-              style={{ backgroundColor: "#1f1f1f", color: "#f0f0f0" }}
+              style={{
+                backgroundColor: "var(--input-bg-color)",
+                color: "var(--text-color)",
+                border: "1px solid var(--border-color)",
+              }}
             >
               Фильтры
             </Button>
+
             <Dropdown menu={exportMenu} trigger={["click"]}>
-              <Button icon={<DownloadOutlined />}>Экспорт</Button>
+              <Button
+                icon={<DownloadOutlined />}
+                style={{
+                  backgroundColor: "var(--input-bg-color)",
+                  color: "var(--text-color)",
+                  border: "1px solid var(--border-color)",
+                }}
+              >
+                Экспорт
+              </Button>
             </Dropdown>
           </div>
         </div>
@@ -968,30 +987,46 @@ const ManagerDashboard: React.FC = () => {
         <div
           className="kanban-status-row"
           style={{
-            display: "flex",
+            display: "grid",
+            gridTemplateColumns: `repeat(${STATUSES.length}, minmax(280px, 1fr))`,
             gap: "12px",
             paddingInline: "4px",
             marginBottom: "12px",
-            position: "sticky",
-            top: "56px", // Под фильтрами
-            backgroundColor: "#1a1a1a",
-            zIndex: 10,
           }}
         >
           {STATUSES.map((status) => (
             <div
-              key={`header-${status}`}
-              className="kanban-status-header"
+              key={`status-title-${status}`}
               style={{
-                flex: "1 1 0",
-                minWidth: "280px",
-                maxWidth: "100%",
-                textAlign: "center",
+                display: "flex",
+                alignItems: "center",
+                backgroundColor: "var(--card-bg-color)",
                 padding: "10px 12px",
-                backgroundColor: "#2a2a2a",
+                borderRadius: "8px",
+                boxShadow: "0 4px 8px rgba(0,0,0,0.15)",
+                textTransform: "uppercase",
+                fontSize: "15px",
+                fontWeight: 400,
+                color: "var(--text-color)",
+                justifyContent: "center",
+                position: "relative",
+                minHeight: "40px",
               }}
             >
-              {status}
+              {/* Вертикальная полоска слева */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: "5px",
+                  borderTopLeftRadius: "8px",
+                  borderBottomLeftRadius: "8px",
+                  backgroundColor: "#00bcd4",
+                }}
+              />
+              {status.toUpperCase()}
             </div>
           ))}
         </div>
@@ -1271,9 +1306,6 @@ const ManagerDashboard: React.FC = () => {
                                         gap: "4px",
                                       }}
                                     >
-                                      {["Выполнена", "Завершена"].includes(
-                                        task.Status_Name
-                                      ) && <ClockCircleOutlined />}
                                       {deadlineInfo?.label}
                                     </div>
                                   </div>
@@ -1448,48 +1480,83 @@ const ManagerDashboard: React.FC = () => {
 
   const renderTaskTable = () => (
     <>
-      <div
+<div
+  className="kanban-toolbar"
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "12px",
+    padding: "8px 4px",
+    marginBottom: "16px",
+  }}
+>
+  {/* Левая часть — всегда слева */}
+  <Button
+    onClick={openModal}
+    icon={<PlusOutlined style={{ color: "inherit" }} />}
+  >
+    Добавить задачу
+  </Button>
+
+  {/* Правая часть — обёртка для кнопок и поиска */}
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      flexWrap: "wrap",
+      gap: "12px",
+      justifyContent: "flex-end",
+    }}
+  >
+    <Input
+      placeholder="Поиск задач..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      style={{
+        width: "250px",
+        backgroundColor: "var(--input-bg-color)",
+        color: "var(--text-color)",
+        border: "1px solid var(--border-color)",
+      }}
+    />
+
+    <Button
+      icon={<InboxOutlined />}
+      onClick={() => setShowArchive(!showArchive)}
+    >
+      {showArchive ? "Назад" : "Архив"}
+    </Button>
+
+    <Button
+      icon={<FilterOutlined />}
+      onClick={() => setIsFilterModalVisible(true)}
+      style={{
+        backgroundColor: "var(--input-bg-color)",
+        color: "var(--text-color)",
+        border: "1px solid var(--border-color)",
+      }}
+    >
+      Фильтры
+    </Button>
+
+    <Dropdown menu={exportMenu} trigger={["click"]}>
+      <Button
+        icon={<DownloadOutlined />}
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "16px",
+          backgroundColor: "var(--input-bg-color)",
+          color: "var(--text-color)",
+          border: "1px solid var(--border-color)",
         }}
       >
-        <Button
-          className="dark-action-button"
-          onClick={() => openModal()}
-          icon={<PlusOutlined style={{ color: "inherit" }} />}
-        >
-          Добавить задачу
-        </Button>
+        Экспорт
+      </Button>
+    </Dropdown>
+  </div>
+</div>
 
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <Input
-            placeholder="Поиск задач..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 250 }}
-          />
-          <Button
-            icon={<InboxOutlined />}
-            onClick={() => setShowArchive(!showArchive)}
-          >
-            {showArchive ? "Назад к списку задач" : "Архив"}
-          </Button>
 
-          <Button
-            icon={<FilterOutlined />}
-            onClick={() => setIsFilterModalVisible(true)}
-            style={{ backgroundColor: "#1f1f1f", color: "#f0f0f0" }}
-          >
-            Фильтры
-          </Button>
-          <Dropdown menu={exportMenu} trigger={["click"]}>
-            <Button icon={<DownloadOutlined />}>Экспорт</Button>
-          </Dropdown>
-        </div>
-      </div>
 
       <h2 style={{ marginTop: "16px", marginBottom: "16px", color: "#fff" }}>
         {showArchive ? "Архивные задачи" : "Активные задачи"}
@@ -1791,23 +1858,6 @@ const ManagerDashboard: React.FC = () => {
                       {project.Order_Name}
                     </Select.Option>
                   ))}
-              </Select>
-            </Form.Item>
-            <Form.Item label="Название задачи">
-              <Select
-                allowClear
-                showSearch
-                value={filters.name}
-                onChange={(value) =>
-                  setFilters((prev) => ({ ...prev, name: value }))
-                }
-                placeholder="Выберите задачу"
-              >
-                {taskNames.map((taskName) => (
-                  <Select.Option key={taskName} value={taskName}>
-                    {taskName}
-                  </Select.Option>
-                ))}
               </Select>
             </Form.Item>
           </Form>

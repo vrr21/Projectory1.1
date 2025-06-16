@@ -112,14 +112,12 @@ router.get('/by-project/:projectId', async (req, res) => {
     });
 
     const tasks = Object.values(tasksMap);
-
     res.json(tasks);
   } catch (error) {
     console.error('🔥 Ошибка при получении задач для проекта:', error);
     res.status(500).json({ error: 'Ошибка при получении задач для проекта', details: error.message });
   }
 });
-
 
 // 🔹 Получить задачу по ID
 router.get('/:id', taskController.getTaskById);
@@ -202,8 +200,8 @@ router.put('/:id', taskController.updateTask);
 // 🔹 Закрыть задачу
 router.patch('/:id/close', taskController.closeTask);
 
-// 🔹 Обновить статус задачи для сотрудника
-router.put('/:taskId/status', taskController.updateEmployeeTaskStatus);
+// ✅ 🔹 Обновить статус задачи для сотрудника (исправлено!)
+router.patch('/:taskId/status', taskController.updateEmployeeTaskStatus);
 
 // 🔹 Обновить общий статус задачи
 router.put('/:id/status', taskController.updateTaskStatus);

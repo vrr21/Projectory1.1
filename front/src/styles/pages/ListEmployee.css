@@ -94,3 +94,20 @@
   font-size: 14px;
   text-transform: uppercase;
 }
+
+/* ListEmployee.css */
+.table-wrapper {
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Адаптация для масштабов и маленьких экранов */
+@media (max-width: 1400px) {
+  .table-wrapper {
+    padding-bottom: 12px;
+  }
+
+  .ant-table {
+    min-width: 1200px; /* 🔥 Это создаёт условие для scroll */
+  }
+}
