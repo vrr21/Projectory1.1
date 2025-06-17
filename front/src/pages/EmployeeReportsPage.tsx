@@ -8,7 +8,6 @@ import {
   theme,
   Dropdown,
   Button,
-  DatePicker,
   Input,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
@@ -50,7 +49,6 @@ type DateRecord = {
 };
 
 const { darkAlgorithm, defaultAlgorithm } = theme;
-const { RangePicker } = DatePicker;
 const API_URL = import.meta.env.VITE_API_URL;
 
 interface TaskByType {
@@ -91,6 +89,10 @@ const EmployeeReportsPage: React.FC = () => {
   const gridColor =
     appTheme === "dark" ? "rgba(255, 255, 255, 0.2)" : "rgba(0, 0, 0, 0.1)";
 
+    const [taskTypeRange, setTaskTypeRange] = useState<[Dayjs, Dayjs] | null>(null);
+const [projectRange, setProjectRange] = useState<[Dayjs, Dayjs] | null>(null);
+const [deadlineRange, setDeadlineRange] = useState<[Dayjs, Dayjs] | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [tasksByType, setTasksByType] = useState<TaskByType[]>([]);
   const [tasksByProject, setTasksByProject] = useState<TaskByProject[]>([]);
@@ -98,17 +100,17 @@ const EmployeeReportsPage: React.FC = () => {
   const [timeTrackingData, setTimeTrackingData] = useState<TimeTrackingEntry[]>(
     []
   );
-  const [dateRange, setDateRange] = useState<
-    [Dayjs | null, Dayjs | null] | null
-  >(null);
+
   const [searchText, setSearchText] = useState("");
   const [taskStatusFilter, setTaskStatusFilter] = useState<
     "all" | "active" | "closed"
   >("all");
-
-  const applyDateFilter = <T extends DateRecord>(data: T[]) => {
-    if (!dateRange || !dateRange[0] || !dateRange[1]) return data;
-    const [start, end] = dateRange;
+  const applyDateFilter = <T extends DateRecord>(
+    data: T[],
+    range: [Dayjs, Dayjs] | null
+  ): T[] => {
+    if (!range || !range[0] || !range[1]) return data;
+    const [start, end] = range;
     return data.filter((item) => {
       const dateStr =
         item.Task_Date || item.Start_Date || item.End_Date || item.Deadline;
@@ -119,6 +121,7 @@ const EmployeeReportsPage: React.FC = () => {
       );
     });
   };
+  
 
   const filterByStatus = <T extends { Status_Name?: string }>(
     data: T[]
@@ -132,7 +135,7 @@ const EmployeeReportsPage: React.FC = () => {
   };
 
   const filteredTasksByType = filterByStatus(
-    applyDateFilter(tasksByType) as (TaskByType & { Status_Name?: string })[]
+    applyDateFilter(tasksByType, taskTypeRange) as (TaskByType & { Status_Name?: string })[]
   );
 
   useEffect(() => {
@@ -190,6 +193,10 @@ const EmployeeReportsPage: React.FC = () => {
         gap: "8px",
         alignItems: "stretch",
         minWidth: "160px",
+        backgroundColor: appTheme === "dark" ? "#1e1e1e" : "#ffffff",
+        border: "1px solid #ccc",
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
       }}
     >
       <Button
@@ -218,17 +225,12 @@ const EmployeeReportsPage: React.FC = () => {
       >
         Год
       </Button>
-      <RangePicker
-        style={{ width: "100%" }}
-        onChange={(dates) =>
-          dates && setRange([dates[0] as Dayjs, dates[1] as Dayjs])
-        }
-      />
       <Button danger onClick={() => setRange(null)}>
         Сбросить фильтр
       </Button>
     </div>
   );
+  
 
   const kanbanColumns: ColumnsType<KanbanTask> = [
     {
@@ -381,7 +383,7 @@ const EmployeeReportsPage: React.FC = () => {
   };
 
   const filteredTasksByProject = filterByStatus(
-    applyDateFilter(tasksByProject) as (TaskByProject & {
+    applyDateFilter(tasksByProject, projectRange) as  (TaskByProject & {
       Status_Name?: string;
     })[]
   );
@@ -406,7 +408,7 @@ const EmployeeReportsPage: React.FC = () => {
     ],
   };
 
-  const dateFiltered = applyDateFilter(kanbanData);
+  const dateFiltered = applyDateFilter(kanbanData, deadlineRange);
 
   // Группируем: { [Project_Name]: { [Deadline]: count } }
   const grouped: Record<string, Record<string, number>> = {};
@@ -525,7 +527,7 @@ const EmployeeReportsPage: React.FC = () => {
       children: (
         <Table
           columns={kanbanColumns}
-          dataSource={applySearchFilter(applyDateFilter(kanbanData))}
+          dataSource={applySearchFilter(applyDateFilter(kanbanData, deadlineRange))}
           rowKey="ID_Task"
           pagination={{ pageSize: 10 }}
         />
@@ -537,7 +539,7 @@ const EmployeeReportsPage: React.FC = () => {
       children: (
         <Table
           columns={timeTrackingColumns}
-          dataSource={applySearchFilter(applyDateFilter(timeTrackingData))}
+          dataSource={applySearchFilter(applyDateFilter(timeTrackingData, null))}
           rowKey={(record, index) => index?.toString() ?? ""}
           pagination={{ pageSize: 10 }}
         />
@@ -626,11 +628,13 @@ const EmployeeReportsPage: React.FC = () => {
               >
                 Распределение моих задач по типам
                 <Dropdown
-                  overlay={buildFilterMenu(setDateRange)}
-                  trigger={["click"]}
-                >
-                  <Button icon={<FilterOutlined />} />
-                </Dropdown>
+  dropdownRender={() => buildFilterMenu(setTaskTypeRange)}
+  trigger={["click"]}
+  overlayStyle={{ zIndex: 1500 }}
+>
+  <Button icon={<FilterOutlined />} />
+</Dropdown>
+
               </span>
             </Divider>
 
@@ -659,11 +663,13 @@ const EmployeeReportsPage: React.FC = () => {
               >
                 Количество моих задач по проектам
                 <Dropdown
-                  overlay={buildFilterMenu(setDateRange)}
-                  trigger={["click"]}
-                >
-                  <Button icon={<FilterOutlined />} />
-                </Dropdown>
+  dropdownRender={() => buildFilterMenu(setProjectRange)}
+  trigger={["click"]}
+  overlayStyle={{ zIndex: 1500 }}
+>
+  <Button icon={<FilterOutlined />} />
+</Dropdown>
+
               </span>
             </Divider>
 
@@ -691,11 +697,13 @@ const EmployeeReportsPage: React.FC = () => {
               >
                 Мои задачи по дедлайнам
                 <Dropdown
-                  overlay={buildFilterMenu(setDateRange)}
-                  trigger={["click"]}
-                >
-                  <Button icon={<FilterOutlined />} />
-                </Dropdown>
+  dropdownRender={() => buildFilterMenu(setDeadlineRange)}
+  trigger={["click"]}
+  overlayStyle={{ zIndex: 1500 }}
+>
+  <Button icon={<FilterOutlined />} />
+</Dropdown>
+
               </span>
             </Divider>
 
